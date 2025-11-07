@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Scan {
+  id            String   @id @default(uuid())
+  url           String
+  domain        String?
+  status        String   @default("PENDING") // PENDING, SCANNING, COMPLETED, FAILED
+
+  // Results
+  riskScore     Int?
+  riskLevel     String? // LOW, MEDIUM, HIGH, CRITICAL
+  detectedTech  String? // JSON as text
+  findings      String? // JSON as text
+  metadata      String? // JSON as text
+
+  // Timestamps
+  createdAt     DateTime @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  // Relations
+  leads         Lead[]
+}
+
+model Lead {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  name            String?
+  company         String?
+  role            String?
+
+  // Marketing
+  leadScore       Int      @default(0)
+  lifecycleStage  String   @default("SUBSCRIBER") // SUBSCRIBER, LEAD, MQL, SQL, CUSTOMER
+  source          String?
+
+  // Relations
+  scanId          String
+  scan            Scan     @relation(fields: [scanId], references: [id])
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  lastInteraction DateTime @default(now())
+}
