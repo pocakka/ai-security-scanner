@@ -9,11 +9,20 @@ export interface AIDetectionResult {
 }
 
 const AI_PROVIDERS = {
-  openai: ['openai.com', 'api.openai.com'],
-  anthropic: ['anthropic.com', 'api.anthropic.com'],
-  google: ['googleapis.com', 'generativelanguage.googleapis.com', 'gemini'],
-  cohere: ['cohere.ai', 'api.cohere.ai'],
-  huggingface: ['huggingface.co'],
+  // Existing providers (5)
+  'OpenAI': ['openai.com', 'api.openai.com'],
+  'Anthropic Claude': ['anthropic.com', 'api.anthropic.com'],
+  'Google Gemini': ['googleapis.com', 'generativelanguage.googleapis.com', 'gemini'],
+  'Cohere': ['cohere.ai', 'api.cohere.ai'],
+  'HuggingFace': ['huggingface.co', 'api-inference.huggingface.co'],
+
+  // New providers (6+)
+  'Azure OpenAI': ['openai.azure.com', 'azure.com/openai'],
+  'AWS Bedrock': ['bedrock-runtime', 'bedrock.', 'amazonaws.com/bedrock'],
+  'Google Vertex AI': ['aiplatform.googleapis.com', 'vertex', 'vertexai'],
+  'Stability AI': ['stability.ai', 'api.stability.ai', 'dreamstudio'],
+  'Replicate': ['replicate.com', 'api.replicate.com'],
+  'ElevenLabs': ['elevenlabs.io', 'api.elevenlabs.io'],
 }
 
 const CHAT_WIDGETS = {
@@ -25,25 +34,63 @@ const CHAT_WIDGETS = {
 }
 
 const AI_ENDPOINTS = [
+  // OpenAI-style endpoints
   '/api/chat',
   '/api/ai',
   '/v1/chat',
   '/v1/completions',
+  '/v1/embeddings',
+  '/v1/images',
   '/completions',
   '/generate',
+
+  // Anthropic-style
+  '/v1/messages',
+  '/v1/complete',
+
+  // Generic AI patterns
+  '/ai/generate',
+  '/ai/chat',
+  '/llm/',
+  '/gpt',
+  '/assistant',
+  '/inference',
 ]
 
 const AI_JS_LIBRARIES = [
+  // Core AI SDKs
   'openai',
   'anthropic',
   '@anthropic-ai',
+  '@azure/openai',
+  '@aws-sdk/client-bedrock',
+  '@google-cloud/aiplatform',
+  '@google/generative-ai',
+  'cohere-ai',
+  '@huggingface/inference',
+  'replicate',
+
+  // AI Frameworks
   'langchain',
+  '@langchain',
   'llamaindex',
+  'llama-index',
   'transformers',
-  'huggingface',
+  '@xenova/transformers',
+
+  // AI SDKs & Tools
   'ai-sdk',
+  '@ai-sdk',
+  'vercel-ai',
+  '@vercel/ai',
+  'gpt-3-encoder',
+  'tiktoken',
+
+  // Chatbot libraries
   'chatbot',
   'chat-widget',
+  'rasa',
+  'botpress',
 ]
 
 export function analyzeAIDetection(crawlResult: CrawlResult): AIDetectionResult {
