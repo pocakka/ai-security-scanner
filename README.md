@@ -8,14 +8,17 @@ A lead generation tool disguised as a security scanner. Think "WooRank for AI Sy
 
 ## 🎯 Project Status
 
-**MVP Complete** - Fully functional localhost version ready for testing!
+**Sprint 4A In Progress** - Real browser automation + AI expansion!
 
-✅ All core features implemented  
-✅ Modern dark-themed UI  
-✅ PDF report generation  
-✅ Email simulation  
-✅ Admin dashboard with metrics  
-✅ GitHub repository with version control  
+✅ All core features implemented
+✅ Modern dark-themed UI
+✅ PDF report generation
+✅ Email simulation
+✅ Admin dashboard with metrics
+✅ **Playwright real browser crawler** (NEW!)
+✅ GitHub repository with version control
+
+**Latest:** Sprint 4A Day 1 complete - Playwright crawler integrated with mock/real toggle!  
 
 ---
 
@@ -36,6 +39,9 @@ cd ai-security-scanner
 # Install dependencies
 npm install
 
+# Install Playwright browser (for real scanning mode)
+npx playwright install chromium
+
 # Setup database
 npx prisma generate
 npx prisma db push
@@ -45,6 +51,29 @@ npm run dev
 ```
 
 The app will be available at **http://localhost:3000** (or 3001/3002 if 3000 is taken)
+
+### 🔄 Crawler Modes
+
+The scanner supports two modes via environment variable:
+
+**Mock Mode (default)** - Fast, predefined test data
+```bash
+# In .env file:
+USE_REAL_CRAWLER="false"
+```
+
+**Real Mode** - Playwright browser automation with real data
+```bash
+# In .env file:
+USE_REAL_CRAWLER="true"
+```
+
+Real mode provides:
+- ✅ Actual network traffic monitoring
+- ✅ Real cookie analysis
+- ✅ JavaScript framework detection
+- ✅ Live security header checks
+- ⚠️ Slower (5-10s vs 1-2s per scan)
 
 ---
 

@@ -442,3 +442,143 @@ npm start
 **Last Updated:** November 7, 2025
 **Status:** Ready for testing and refinement
 **Next Milestone:** Production deployment planning
+
+---
+
+### 🔄 Sprint 4A: Real Playwright Crawler & AI Detection (IN PROGRESS)
+**Duration:** Week 1 of Sprint 4
+**Status:** Day 1 Complete (20%)
+
+**Goal:** Replace mock crawler with real Playwright browser automation and expand AI provider detection from 5 to 10+ providers.
+
+#### Day 1: Core Crawler Implementation ✅ COMPLETE
+
+**Completed Tasks:**
+- [x] Install Playwright package (playwright ^1.49.1)
+- [x] Download Chromium browser binaries (211 MB, headless)
+- [x] Create TypeScript type definitions (crawler-types.ts)
+- [x] Implement PlaywrightCrawler class with full features:
+  - Headless Chromium browser automation
+  - Network request/response monitoring
+  - Cookie collection with security flags
+  - JavaScript evaluation for framework detection
+  - HTML content capture
+  - Redirect following
+  - Timeout handling (60s default)
+  - Resource blocking for performance
+  - Graceful error handling & cleanup
+- [x] Create standalone test script (test-crawler.ts)
+- [x] Test with real websites (example.com, chat.openai.com)
+- [x] Create CrawlerAdapter for backward compatibility
+- [x] Integrate into worker with environment variable toggle
+- [x] Add USE_REAL_CRAWLER configuration option
+
+**New Files Created:**
+- `src/lib/playwright-crawler.ts` - Main crawler class (400+ lines)
+- `src/lib/types/crawler-types.ts` - TypeScript interfaces
+- `src/lib/crawler-adapter.ts` - Adapter pattern for compatibility
+- `test-crawler.ts` - Standalone testing script
+
+**Modified Files:**
+- `src/worker/index.ts` - Added crawler selection logic
+- `.env` - Added USE_REAL_CRAWLER toggle (not committed)
+- `package.json` - Added playwright dependency
+
+**Test Results:**
+```
+✅ example.com:       2.7s scan time, 1 request
+✅ chat.openai.com:   2.0s scan time, 191 requests, 11 cookies
+✅ Cookie analysis:   secure=true, httpOnly=true, sameSite=Lax
+✅ Redirect tracking: chat.openai.com → chatgpt.com
+```
+
+**Architecture Decisions:**
+- **Adapter Pattern:** CrawlerAdapter converts Playwright output to MockCrawler interface
+- **Environment Toggle:** USE_REAL_CRAWLER="true" enables Playwright, "false" uses mock
+- **Backward Compatibility:** Existing analyzers work without modification
+- **Performance:** Mock ~1-2s, Real ~5-10s per scan
+
+**Performance Metrics:**
+- Typical scan: 2-5 seconds
+- Complex sites: < 10 seconds  
+- Max timeout: 60 seconds
+- Browser overhead: ~211 MB Chromium binary
+
+**Git Commits:**
+- 9d8ab6c Worker Integration with Playwright Crawler Toggle
+- a291796 Fix: Admin hydration error with date formatting
+- a8aae9e Playwright Crawler Implementation
+- 446ccd6 Dependencies: Add Playwright for real browser automation
+- 7984ba0 Sprint 4 Planning: AI-First Security Platform
+
+---
+
+#### Day 2: AI Provider Detection Expansion (PLANNED)
+
+**Planned Tasks:**
+- [ ] Expand AI provider detection from 5 to 10+ providers
+- [ ] Add Azure OpenAI Service detection
+- [ ] Add AWS Bedrock detection
+- [ ] Add Google Vertex AI / Gemini detection
+- [ ] Add Stability AI, ElevenLabs, Replicate detection
+- [ ] Create AI Provider Detector analyzer
+- [ ] Test with real AI-powered websites
+- [ ] Update report generator with new providers
+
+**Target Providers (10+):**
+1. ✅ OpenAI (existing)
+2. ✅ Anthropic Claude (existing)
+3. ✅ Google Gemini (existing)
+4. ✅ Cohere (existing)
+5. ✅ HuggingFace (existing)
+6. Azure OpenAI Service (new)
+7. AWS Bedrock (new)
+8. Google Vertex AI (new)
+9. Stability AI (new)
+10. ElevenLabs (new)
+11. Replicate (new)
+
+---
+
+#### Day 3-4: AI Framework & Client-Side Risk Detection (PLANNED)
+
+**Planned Tasks:**
+- [ ] Detect AI frameworks (LangChain.js, Vercel AI SDK, etc.)
+- [ ] Analyze client-side AI risks (system prompt exposure)
+- [ ] Detect model version leakage
+- [ ] Check for embedding vectors in client code
+- [ ] Create AI Framework Detector analyzer
+- [ ] Create Client AI Risk Analyzer
+- [ ] Update risk scoring with AI-specific weights
+
+---
+
+#### Day 5: AI Security Headers (PLANNED)
+
+**Planned Tasks:**
+- [ ] Analyze CORS on AI endpoints
+- [ ] Check rate limiting headers
+- [ ] Validate API versioning headers
+- [ ] Create AI Header Analyzer
+- [ ] Integrate all AI analyzers into pipeline
+
+---
+
+**Sprint 4A Goals:**
+- ✅ Real Playwright crawler working (Day 1 DONE)
+- ⏳ 10+ AI providers detected (Day 2)
+- ⏳ 5+ AI frameworks detected (Day 3-4)
+- ⏳ Client-side AI risk detection working (Day 3-4)
+- ⏳ Network monitoring functional (Day 1 DONE)
+
+**Business Impact:**
+- 🎯 Position as "AI Security Scanner" instead of generic tool
+- 🎯 OWASP LLM Top 10 compliance messaging capability
+- 🎯 Higher pricing tier justification ($5K-$15K vs $2K-$10K)
+- 🎯 Improved lead quality (AI companies = bigger budgets)
+
+---
+
+**Last Updated:** November 7, 2025 (Sprint 4A Day 1)
+**Status:** Playwright crawler integrated, AI expansion in progress
+**Next Milestone:** AI Provider Detection expansion (Day 2)
