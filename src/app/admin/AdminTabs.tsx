@@ -2,6 +2,12 @@
 
 import { useState } from 'react'
 
+// Format date consistently for server and client
+function formatDate(date: Date | string): string {
+  const d = new Date(date)
+  return d.toISOString().split('T')[0] // YYYY-MM-DD format
+}
+
 interface Scan {
   id: string
   url: string
@@ -136,7 +142,7 @@ export default function AdminTabs({ scans, leads }: AdminTabsProps) {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-400">
-                      {new Date(scan.createdAt).toLocaleDateString()}
+                      {formatDate(scan.createdAt)}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <a
@@ -236,7 +242,7 @@ export default function AdminTabs({ scans, leads }: AdminTabsProps) {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-400">
-                      {new Date(lead.createdAt).toLocaleDateString()}
+                      {formatDate(lead.createdAt)}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <a
