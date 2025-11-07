@@ -1,36 +1,271 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🛡️ AI Security Scanner
 
-## Getting Started
+> **Passive AI security analysis platform** that generates qualified leads by offering free, automated security scans.
 
-First, run the development server:
+A lead generation tool disguised as a security scanner. Think "WooRank for AI Systems" - provides instant value while capturing high-quality leads for manual security audits ($2,000-$10,000).
+
+---
+
+## 🎯 Project Status
+
+**MVP Complete** - Fully functional localhost version ready for testing!
+
+✅ All core features implemented  
+✅ Modern dark-themed UI  
+✅ PDF report generation  
+✅ Email simulation  
+✅ Admin dashboard with metrics  
+✅ GitHub repository with version control  
+
+---
+
+## 🚀 Quick Start (Localhost)
+
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+- Git
+
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/pocakka/ai-security-scanner.git
+cd ai-security-scanner
+
+# Install dependencies
+npm install
+
+# Setup database
+npx prisma generate
+npx prisma db push
+
+# Start development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app will be available at **http://localhost:3000** (or 3001/3002 if 3000 is taken)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🎨 Features
 
-## Learn More
+### 🏠 Landing Page
+- Modern dark theme with blue gradient
+- Hero section with compelling copy  
+- Feature cards highlighting key benefits
+- Instant scan form with validation
 
-To learn more about Next.js, take a look at the following resources:
+### 📊 Security Scanning
+- **Passive analysis** (no active attacks)
+- **AI technology detection** (OpenAI, Anthropic, Google AI, etc.)
+- **Security headers** check (CSP, HSTS, X-Frame-Options)
+- **Client-side risk** detection (exposed API keys)
+- **Risk scoring** 0-100 with grades A+ to F
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 📄 Results Page
+- Risk score card with color-coded visualization
+- Issue breakdown by severity
+- Detected AI technologies display  
+- Detailed findings with recommendations
+- **PDF download** button
+- **Lead capture modal** (auto-popup)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 📧 Lead Capture & Email
+- Email collection with name field
+- Professional HTML email template  
+- **Email simulation** (saves to `/emails` directory)
+- Automatic trigger after scan completion
 
-## Deploy on Vercel
+### 📋 PDF Reports
+- Professional design with blue gradient header
+- Large colored score number (60pt)
+- Colored badges for grades and risk levels
+- Issue summary cards  
+- Detailed findings with severity indicators
+- Multi-page support
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 👨‍💼 Admin Dashboard
+- Statistics cards (Scans, Leads, Avg Risk, High Risk Sites)
+- Conversion metrics calculation
+- Scans table with risk scores
+- Recent leads section
+- Modern glassmorphic design
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | Next.js 16, TypeScript, Tailwind CSS |
+| **UI Icons** | Lucide React |
+| **Backend** | Next.js API Routes, Node.js |
+| **Database** | SQLite (Prisma ORM) |
+| **Queue** | In-memory (BullMQ-style) |
+| **PDF** | jsPDF + jspdf-autotable |
+| **Validation** | Zod |
+
+---
+
+## 📡 API Endpoints
+
+```
+POST   /api/scan           Create new scan
+GET    /api/scan           List recent scans
+GET    /api/scan/:id       Get scan details
+GET    /api/scan/:id/pdf   Download PDF report
+
+POST   /api/leads          Capture lead + send email
+GET    /api/leads          List all leads (admin)
+```
+
+---
+
+## 🎯 User Flow
+
+1. **Landing Page** → User enters website URL
+2. **Loading State** → Animated spinner
+3. **Scan Processing** → Mock crawler + analyzers (1-2 sec)
+4. **Results Page** → Full security report
+5. **Lead Modal** → Auto-popup after 2 seconds
+6. **Email Sent** → HTML email saved to `/emails/`
+7. **Admin Dashboard** → Track metrics
+
+---
+
+## 🧪 Testing
+
+### Basic Test Flow
+
+1. Open http://localhost:3000
+2. Enter test URL: `https://openai.com`
+3. Watch loading animation
+4. View results page → Risk score, findings
+5. Download PDF → Click button
+6. Lead capture → Fill form  
+7. Check email: `ls -la emails/ && cat emails/*.txt`
+8. Admin dashboard: http://localhost:3000/admin
+
+### Test URLs
+- `https://openai.com` → Detects OpenAI + Intercom
+- `https://github.com` → Detects Google AI
+- `https://example.com` → Generic scan
+
+---
+
+## 📝 Development Commands
+
+```bash
+# Development
+npm run dev
+
+# Database
+npx prisma studio
+npx prisma generate
+npx prisma db push
+
+# Build
+npm run build
+npm start
+
+# Clean
+rm -rf .next
+```
+
+---
+
+## 🚨 Localhost Limitations
+
+⚠️ **This is a development version. Some features are simulated:**
+
+1. **Mock Crawler** → Predefined test data (not real crawling)
+2. **In-Memory Queue** → Doesn't persist across restarts
+3. **Email Simulation** → Saves to files (doesn't send)
+4. **SQLite** → Not production-ready
+5. **No Auth** → Admin publicly accessible
+
+---
+
+## 📧 Email Simulation
+
+Emails are saved to `/emails` directory:
+
+```
+emails/
+├── 2025-11-07T19-30-00-000Z_john_example_com.html
+└── 2025-11-07T19-30-00-000Z_john_example_com.txt
+```
+
+Console output:
+```
+📧 [EMAIL SIMULATION] Email saved to file system:
+   To: john@example.com
+   Subject: Your AI Security Scan Results...
+   HTML: /path/to/emails/xxx.html
+```
+
+---
+
+## 🚀 Production Roadmap
+
+### Phase 1: Real Infrastructure
+- [ ] Playwright (real browser crawling)
+- [ ] Redis + BullMQ (persistent queues)
+- [ ] PostgreSQL (Supabase/Neon)
+- [ ] Resend (actual emails)
+- [ ] Claude Haiku API
+
+### Phase 2: Security
+- [ ] Admin authentication
+- [ ] Rate limiting
+- [ ] Caching
+- [ ] Error tracking (Sentry)
+
+### Phase 3: Deployment
+- [ ] Vercel (frontend)
+- [ ] Railway/Fly.io (workers)
+- [ ] Custom domain + SSL
+- [ ] CI/CD
+
+---
+
+## 🐛 Troubleshooting
+
+### Port in use
+Next.js auto-assigns next available port (3000/3001/3002)
+
+### Database issues
+```bash
+rm prisma/dev.db
+npx prisma db push
+```
+
+### Cache issues
+```bash
+rm -rf .next
+npm run dev
+```
+
+---
+
+## 📖 Documentation
+
+- **[PROGRESS.md](./PROGRESS.md)** - Development progress
+- **[CLAUDE.md](./CLAUDE.md)** - AI assistant context
+- **[LOCALHOST_SETUP.md](./LOCALHOST_SETUP.md)** - Setup guide
+
+---
+
+## 📞 Repository
+
+**GitHub:** https://github.com/pocakka/ai-security-scanner  
+**Branch:** main  
+**Status:** ✅ MVP Complete  
+
+---
+
+**Last Updated:** November 7, 2025  
+**Version:** 1.0.0 (MVP - Localhost)  
+
+Made with ❤️ using [Claude Code](https://claude.com/claude-code)
