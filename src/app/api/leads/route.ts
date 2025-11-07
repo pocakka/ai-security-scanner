@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
         scanId,
         email,
         name,
-        status: 'NEW',
+        lifecycleStage: 'LEAD',
+        source: 'organic',
       },
     })
 

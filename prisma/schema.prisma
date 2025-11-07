@@ -31,7 +31,7 @@ model Scan {
 
 model Lead {
   id              String   @id @default(uuid())
-  email           String   @unique
+  email           String   // Removed @unique to allow multiple scans per email
   name            String?
   company         String?
   role            String?
