@@ -1,17 +1,17 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function Home() {
+  const router = useRouter()
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<any>(null)
   const [error, setError] = useState('')
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setResult(null)
     setLoading(true)
 
     try {
@@ -27,10 +27,10 @@ export default function Home() {
         throw new Error(data.error || 'Failed to start scan')
       }
 
-      setResult(data)
+      // Redirect to results page
+      router.push(`/scan/${data.scanId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
-    } finally {
       setLoading(false)
     }
   }
@@ -76,20 +76,6 @@ export default function Home() {
           {error && (
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-800">{error}</p>
-            </div>
-          )}
-
-          {result && (
-            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800 font-semibold mb-2">
-                ✅ Scan Created Successfully!
-              </p>
-              <p className="text-sm text-gray-600">
-                Scan ID: <code className="bg-gray-100 px-2 py-1 rounded">{result.scanId}</code>
-              </p>
-              <p className="text-sm text-gray-600 mt-2">
-                {result.message}
-              </p>
             </div>
           )}
         </div>

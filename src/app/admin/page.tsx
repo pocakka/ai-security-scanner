@@ -22,6 +22,7 @@ export default async function AdminPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Domain</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -33,7 +34,7 @@ export default async function AdminPage() {
                 </tr>
               ) : (
                 scans.map((scan) => (
-                  <tr key={scan.id}>
+                  <tr key={scan.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm text-gray-900 font-mono">
                       {scan.id.substring(0, 8)}...
                     </td>
@@ -55,6 +56,14 @@ export default async function AdminPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {new Date(scan.createdAt).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <a
+                        href={`/scan/${scan.id}`}
+                        className="text-blue-600 hover:text-blue-800 font-semibold"
+                      >
+                        View →
+                      </a>
                     </td>
                   </tr>
                 ))
