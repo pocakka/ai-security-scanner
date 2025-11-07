@@ -10,11 +10,11 @@ export interface AIDetectionResult {
 
 const AI_PROVIDERS = {
   // Existing providers (5)
-  'OpenAI': ['openai.com', 'api.openai.com'],
-  'Anthropic Claude': ['anthropic.com', 'api.anthropic.com'],
-  'Google Gemini': ['googleapis.com', 'generativelanguage.googleapis.com', 'gemini'],
-  'Cohere': ['cohere.ai', 'api.cohere.ai'],
-  'HuggingFace': ['huggingface.co', 'api-inference.huggingface.co'],
+  'OpenAI': ['openai.com', 'api.openai.com', 'chatgpt.com'],
+  'Anthropic Claude': ['anthropic.com', 'api.anthropic.com', 'claude.ai'],
+  'Google Gemini': ['generativelanguage.googleapis.com', 'gemini.google.com', 'bard.google.com'], // FIXED: Removed generic googleapis.com
+  'Cohere': ['cohere.ai', 'api.cohere.ai', 'cohere.com'],
+  'HuggingFace': ['huggingface.co', 'api-inference.huggingface.co', 'hf.co'],
 
   // New providers (6+)
   'Azure OpenAI': ['openai.azure.com', 'azure.com/openai'],
@@ -23,6 +23,9 @@ const AI_PROVIDERS = {
   'Stability AI': ['stability.ai', 'api.stability.ai', 'dreamstudio'],
   'Replicate': ['replicate.com', 'api.replicate.com'],
   'ElevenLabs': ['elevenlabs.io', 'api.elevenlabs.io'],
+
+  // Custom/Business AI tools
+  'GPT4Business (YoloAI)': ['gpt4business.yoloai.com', 'app.gpt4business'],
 }
 
 const CHAT_WIDGETS = {
@@ -31,6 +34,14 @@ const CHAT_WIDGETS = {
   crisp: ['crisp.chat'],
   tawk: ['tawk.to'],
   zendesk: ['zendesk'],
+}
+
+// DOM-based AI detection patterns (HTML/JS code snippets)
+// Add patterns like: window.__oai_logHTML, specific script sources, etc.
+const AI_DOM_PATTERNS = {
+  'OpenAI ChatGPT': ['window.__oai_loghtml', '__oai_', 'chatgpt-web'],
+  'GPT4Business (YoloAI)': ['app.gpt4business.yoloai.com', 'gpt4business'],
+  'Anthropic Claude': ['claude-web', 'anthropic-web'],
 }
 
 const AI_ENDPOINTS = [
@@ -156,6 +167,16 @@ export function analyzeAIDetection(crawlResult: CrawlResult): AIDetectionResult 
     if (patterns.some(pattern => htmlLower.includes(pattern))) {
       if (!result.chatWidgets.includes(widget)) {
         result.chatWidgets.push(widget)
+        result.hasAI = true
+      }
+    }
+  }
+
+  // Check HTML/JS for AI DOM patterns (window.__oai_, specific script tags, etc.)
+  for (const [provider, patterns] of Object.entries(AI_DOM_PATTERNS)) {
+    if (patterns.some(pattern => htmlLower.includes(pattern.toLowerCase()))) {
+      if (!result.providers.includes(provider)) {
+        result.providers.push(provider)
         result.hasAI = true
       }
     }
