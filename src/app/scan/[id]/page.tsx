@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Shield, AlertTriangle, CheckCircle, XCircle, Mail, ArrowLeft, TrendingUp } from 'lucide-react'
+import { Shield, AlertTriangle, CheckCircle, XCircle, Mail, ArrowLeft, ArrowRight, TrendingUp } from 'lucide-react'
 
 interface Scan {
   id: string
