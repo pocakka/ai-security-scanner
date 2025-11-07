@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
+import { sendLeadCaptureEmail } from '@/lib/email-service'
 
 const leadSchema = z.object({
   scanId: z.string().uuid(),
@@ -36,6 +37,28 @@ export async function POST(request: NextRequest) {
     })
 
     console.log('✅ Lead captured:', { id: lead.id, email: lead.email, name: lead.name })
+
+    // Send email notification (localhost: saves to file)
+    if (scan.status === 'COMPLETED' && scan.findings) {
+      try {
+        const findings = JSON.parse(scan.findings)
+        await sendLeadCaptureEmail({
+          leadName: name,
+          leadEmail: email,
+          scanId,
+          scanUrl: scan.url,
+          domain: scan.domain || new URL(scan.url).hostname,
+          riskScore: findings.summary?.riskScore?.score || 0,
+          riskLevel: findings.summary?.riskScore?.level || 'UNKNOWN',
+          grade: findings.summary?.riskScore?.grade || 'N/A',
+          criticalIssues: findings.summary?.criticalIssues || 0,
+          highIssues: findings.summary?.highIssues || 0,
+        })
+      } catch (emailError) {
+        console.error('⚠️  Email send failed (non-fatal):', emailError)
+        // Don't fail the request if email fails
+      }
+    }
 
     return NextResponse.json({
       success: true,

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Shield, AlertTriangle, CheckCircle, XCircle, Mail, ArrowLeft, ArrowRight, TrendingUp } from 'lucide-react'
+import { Shield, AlertTriangle, CheckCircle, XCircle, Mail, ArrowLeft, ArrowRight, TrendingUp, Download } from 'lucide-react'
 
 interface Scan {
   id: string
@@ -160,9 +160,19 @@ export default function ScanResultPage() {
               <Shield className="w-6 h-6 text-blue-400" />
               <span className="text-xl font-bold text-white">Security Report</span>
             </div>
-            <a href="/admin" className="text-sm text-slate-400 hover:text-slate-300">
-              View All Scans
-            </a>
+            <div className="flex items-center gap-4">
+              <a
+                href={`/api/scan/${scanId}/pdf`}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+                download
+              >
+                <Download className="w-4 h-4" />
+                Download PDF
+              </a>
+              <a href="/admin" className="text-sm text-slate-400 hover:text-slate-300">
+                View All Scans
+              </a>
+            </div>
           </div>
         </div>
       </div>
