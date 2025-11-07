@@ -1,13 +1,18 @@
 import { prisma } from '../lib/db'
 import { scanQueue, ScanJobData } from '../lib/queue-mock'
 import { MockCrawler } from './crawler-mock'
+import { CrawlerAdapter } from '../lib/crawler-adapter'
 import { analyzeAIDetection } from './analyzers/ai-detection'
 import { analyzeSecurityHeaders } from './analyzers/security-headers'
 import { analyzeClientRisks } from './analyzers/client-risks'
 import { calculateRiskScore } from './scoring'
 import { generateReport } from './report-generator'
 
-const crawler = new MockCrawler()
+// Choose crawler based on environment variable
+const USE_REAL_CRAWLER = process.env.USE_REAL_CRAWLER === 'true'
+const crawler = USE_REAL_CRAWLER ? new CrawlerAdapter() : new MockCrawler()
+
+console.log(`[Worker] Using ${USE_REAL_CRAWLER ? 'REAL Playwright' : 'MOCK'} crawler`)
 
 async function processScan(data: ScanJobData) {
   const { scanId, url } = data
