@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { queueScan } from '@/lib/queue-mock'
 import { z } from 'zod'
+
+// Initialize worker processor
+import '@/worker/init'
 
 const ScanRequestSchema = z.object({
   url: z.string().url('Invalid URL format'),
@@ -25,8 +29,9 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // TODO: Queue the scan job (later)
-    console.log('[API] Scan created:', scan.id)
+    // Queue the scan job
+    await queueScan(scan.id, normalizedUrl)
+    console.log('[API] Scan created and queued:', scan.id)
 
     return NextResponse.json(
       { scanId: scan.id, message: 'Scan queued successfully' },
