@@ -14,6 +14,7 @@ import { analyzeClientRisks } from './analyzers/client-risks'
 import { analyzeSSLTLS } from './analyzers/ssl-tls-analyzer'
 import { analyzeCookieSecurity } from './analyzers/cookie-security-analyzer'
 import { analyzeJSLibraries } from './analyzers/js-libraries-analyzer'
+import { analyzeTechStack } from './analyzers/tech-stack-analyzer'
 import { calculateRiskScore } from './scoring'
 import { generateReport } from './report-generator'
 
@@ -52,6 +53,7 @@ async function processScanJob(data: { scanId: string; url: string }) {
     const sslTLS = analyzeSSLTLS(crawlResult)
     const cookieSecurity = analyzeCookieSecurity(crawlResult)
     const jsLibraries = analyzeJSLibraries(crawlResult)
+    const techStack = analyzeTechStack(crawlResult)
 
     console.log(`[Worker] ✓ AI detected: ${aiDetection.hasAI}`)
     console.log(`[Worker] ✓ Providers: ${aiDetection.providers.join(', ') || 'none'}`)
@@ -60,6 +62,12 @@ async function processScanJob(data: { scanId: string; url: string }) {
     console.log(`[Worker] ✓ SSL/TLS score: ${sslTLS.score}/100`)
     console.log(`[Worker] ✓ Cookies: ${cookieSecurity.totalCookies} (${cookieSecurity.insecureCookies} insecure)`)
     console.log(`[Worker] ✓ JS Libraries: ${jsLibraries.detected.length} (${jsLibraries.vulnerable.length} vulnerable)`)
+    console.log(`[Worker] ✓ Tech Stack: ${techStack.totalCount} technologies detected`)
+    console.log(`[Worker]   - CMS: ${techStack.categories.cms.length}`)
+    console.log(`[Worker]   - Analytics: ${techStack.categories.analytics.length}`)
+    console.log(`[Worker]   - Ads: ${techStack.categories.ads.length}`)
+    console.log(`[Worker]   - CDN: ${techStack.categories.cdn.length}`)
+    console.log(`[Worker]   - Social: ${techStack.categories.social.length}`)
 
     // Step 3: Calculate risk score
     console.log(`[Worker] Calculating risk score...`)
@@ -81,7 +89,8 @@ async function processScanJob(data: { scanId: string; url: string }) {
       riskScore,
       sslTLS,
       cookieSecurity,
-      jsLibraries
+      jsLibraries,
+      techStack
     )
 
     // Step 5: Save results

@@ -4,6 +4,7 @@ import { ClientRisksResult } from './analyzers/client-risks'
 import { SSLTLSResult } from './analyzers/ssl-tls-analyzer'
 import { CookieSecurityResult } from './analyzers/cookie-security-analyzer'
 import { JSLibrariesResult } from './analyzers/js-libraries-analyzer'
+import { TechStackResult } from './analyzers/tech-stack-analyzer'
 import { RiskScore } from './scoring'
 
 export interface ScanReport {
@@ -19,6 +20,7 @@ export interface ScanReport {
     aiProviders: string[]
     chatWidgets: string[]
   }
+  techStack?: TechStackResult
   findings: Finding[]
 }
 
@@ -40,7 +42,8 @@ export function generateReport(
   riskScore: RiskScore,
   sslTLS?: SSLTLSResult,
   cookieSecurity?: CookieSecurityResult,
-  jsLibraries?: JSLibrariesResult
+  jsLibraries?: JSLibrariesResult,
+  techStack?: TechStackResult
 ): ScanReport {
   const findings: Finding[] = []
 
@@ -180,6 +183,7 @@ export function generateReport(
       aiProviders: aiDetection.providers,
       chatWidgets: aiDetection.chatWidgets,
     },
+    techStack,
     findings,
   }
 }

@@ -312,6 +312,112 @@ export default function ScanResultPage() {
           </div>
         )}
 
+        {/* Technology Stack */}
+        {report?.techStack && report.techStack.totalCount > 0 && (
+          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-xl p-6 mb-8">
+            <div className="mb-6 pb-4 border-b border-white/20">
+              <div className="flex items-center gap-3 mb-3">
+                <Globe className="w-8 h-8 text-blue-400" />
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-white mb-1">Technology Stack</h2>
+                  <p className="text-sm text-slate-400">Detected technologies and services used on this website</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-white">{report.techStack.totalCount}</div>
+                  <div className="text-xs text-slate-400">technologies</div>
+                </div>
+              </div>
+              <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-3">
+                <p className="text-sm text-blue-200">
+                  <strong>What does this mean?</strong> This shows all the technologies, frameworks, and third-party services detected on the website, including CMS platforms, analytics tools, CDNs, and more.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* CMS */}
+              {report.techStack.categories.cms.length > 0 && (
+                <TechCategory
+                  title="CMS"
+                  icon="📝"
+                  color="purple"
+                  technologies={report.techStack.categories.cms}
+                />
+              )}
+
+              {/* E-commerce */}
+              {report.techStack.categories.ecommerce.length > 0 && (
+                <TechCategory
+                  title="E-commerce"
+                  icon="🛒"
+                  color="green"
+                  technologies={report.techStack.categories.ecommerce}
+                />
+              )}
+
+              {/* Analytics */}
+              {report.techStack.categories.analytics.length > 0 && (
+                <TechCategory
+                  title="Analytics"
+                  icon="📊"
+                  color="blue"
+                  technologies={report.techStack.categories.analytics}
+                />
+              )}
+
+              {/* Ads */}
+              {report.techStack.categories.ads.length > 0 && (
+                <TechCategory
+                  title="Advertising"
+                  icon="📢"
+                  color="yellow"
+                  technologies={report.techStack.categories.ads}
+                />
+              )}
+
+              {/* CDN */}
+              {report.techStack.categories.cdn.length > 0 && (
+                <TechCategory
+                  title="CDN"
+                  icon="🌐"
+                  color="cyan"
+                  technologies={report.techStack.categories.cdn}
+                />
+              )}
+
+              {/* Social */}
+              {report.techStack.categories.social.length > 0 && (
+                <TechCategory
+                  title="Social Media"
+                  icon="👥"
+                  color="pink"
+                  technologies={report.techStack.categories.social}
+                />
+              )}
+
+              {/* Frameworks */}
+              {report.techStack.categories.framework.length > 0 && (
+                <TechCategory
+                  title="Frameworks"
+                  icon="⚛️"
+                  color="indigo"
+                  technologies={report.techStack.categories.framework}
+                />
+              )}
+
+              {/* Hosting */}
+              {report.techStack.categories.hosting.length > 0 && (
+                <TechCategory
+                  title="Hosting"
+                  icon="☁️"
+                  color="slate"
+                  technologies={report.techStack.categories.hosting}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Findings by Category */}
         <div className="space-y-6">
           {Object.keys(findingsByCategory).length === 0 ? (
@@ -561,6 +667,84 @@ function FindingCard({ finding }: { finding: any }) {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function TechCategory({
+  title,
+  icon,
+  color,
+  technologies
+}: {
+  title: string
+  icon: string
+  color: string
+  technologies: Array<{
+    name: string
+    version?: string
+    confidence: string
+    description?: string
+    website?: string
+  }>
+}) {
+  const colorClasses: Record<string, { border: string, bg: string, text: string }> = {
+    purple: { border: 'border-purple-400/30', bg: 'bg-purple-500/10', text: 'text-purple-300' },
+    green: { border: 'border-green-400/30', bg: 'bg-green-500/10', text: 'text-green-300' },
+    blue: { border: 'border-blue-400/30', bg: 'bg-blue-500/10', text: 'text-blue-300' },
+    yellow: { border: 'border-yellow-400/30', bg: 'bg-yellow-500/10', text: 'text-yellow-300' },
+    cyan: { border: 'border-cyan-400/30', bg: 'bg-cyan-500/10', text: 'text-cyan-300' },
+    pink: { border: 'border-pink-400/30', bg: 'bg-pink-500/10', text: 'text-pink-300' },
+    indigo: { border: 'border-indigo-400/30', bg: 'bg-indigo-500/10', text: 'text-indigo-300' },
+    slate: { border: 'border-slate-400/30', bg: 'bg-slate-500/10', text: 'text-slate-300' },
+  }
+
+  const colors = colorClasses[color] || colorClasses.blue
+
+  const confidenceColors: Record<string, string> = {
+    high: 'bg-green-500/20 text-green-300',
+    medium: 'bg-yellow-500/20 text-yellow-300',
+    low: 'bg-slate-500/20 text-slate-400',
+  }
+
+  return (
+    <div className={`${colors.bg} border ${colors.border} rounded-lg p-4`}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-2xl">{icon}</span>
+        <h3 className={`font-semibold ${colors.text} text-lg`}>{title}</h3>
+        <span className="ml-auto text-xs text-slate-400">{technologies.length}</span>
+      </div>
+      <div className="space-y-2">
+        {technologies.map((tech, idx) => (
+          <div key={idx} className="bg-black/20 rounded-lg p-3 border border-white/10">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <div className="flex-1 min-w-0">
+                {tech.website ? (
+                  <a
+                    href={tech.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-white hover:text-blue-300 transition-colors text-sm"
+                  >
+                    {tech.name}
+                  </a>
+                ) : (
+                  <span className="font-semibold text-white text-sm">{tech.name}</span>
+                )}
+                {tech.version && (
+                  <span className="ml-2 text-xs text-slate-400 font-mono">v{tech.version}</span>
+                )}
+              </div>
+              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${confidenceColors[tech.confidence]}`}>
+                {tech.confidence}
+              </span>
+            </div>
+            {tech.description && (
+              <p className="text-xs text-slate-400 mt-1">{tech.description}</p>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )
