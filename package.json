@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "worker": "tsx src/worker/index.ts"
+    "worker": "tsx src/worker/index-sqlite.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

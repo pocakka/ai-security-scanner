@@ -89,15 +89,14 @@ export class CrawlerAdapter {
   private extractMetadata(result: CrawlerResult): any {
     const metadata: any = {}
 
-    // Try to extract certificate info from HTTPS connection
-    // Note: Playwright doesn't directly expose certificate details
-    // We'll simulate basic certificate data for HTTPS sites
-    if (result.finalUrl.startsWith('https://')) {
+    // Include real SSL certificate information from Playwright crawler
+    if (result.sslCertificate) {
+      metadata.certificate = result.sslCertificate
+    } else if (result.finalUrl.startsWith('https://')) {
+      // Fallback for HTTPS without certificate data
       metadata.certificate = {
-        // Placeholder - in production, use Node's tls module or external API
         secure: true,
         protocol: 'https',
-        // Real implementation would need serverSide certificate extraction
       }
     }
 

@@ -82,6 +82,9 @@ export interface CrawlerResult {
   cookies: CookieData[]
   screenshot?: Buffer
 
+  // SSL/TLS certificate
+  sslCertificate?: any
+
   // JavaScript evaluation
   jsEvaluation?: JavaScriptEvaluation
 

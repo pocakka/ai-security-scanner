@@ -49,3 +49,20 @@ model Lead {
   createdAt       DateTime @default(now())
   lastInteraction DateTime @default(now())
 }
+
+model Job {
+  id          String   @id @default(uuid())
+  type        String   // "scan", "email", etc.
+  data        String   // JSON payload
+  status      String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  error       String?
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  @@index([status, createdAt])
+}

@@ -177,7 +177,13 @@ function parseCertificateInfo(cert: any): CertificateInfo {
   const validTo = new Date(cert.validTo || cert.valid_to)
   const now = new Date()
 
-  const daysUntilExpiry = Math.floor((validTo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  // Check if dates are valid
+  const isValidFromValid = !isNaN(validFrom.getTime())
+  const isValidToValid = !isNaN(validTo.getTime())
+
+  const daysUntilExpiry = isValidToValid
+    ? Math.floor((validTo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    : 0
   const isExpired = daysUntilExpiry < 0
 
   // Check if self-signed (issuer === subject)
@@ -187,8 +193,8 @@ function parseCertificateInfo(cert: any): CertificateInfo {
 
   return {
     issuer,
-    validFrom: validFrom.toISOString().split('T')[0],
-    validTo: validTo.toISOString().split('T')[0],
+    validFrom: isValidFromValid ? validFrom.toISOString().split('T')[0] : 'Unknown',
+    validTo: isValidToValid ? validTo.toISOString().split('T')[0] : 'Unknown',
     daysUntilExpiry,
     isExpired,
     isSelfSigned,

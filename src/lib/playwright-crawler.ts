@@ -60,7 +60,9 @@ export class PlaywrightCrawler {
       // Collect page data
       const html = await this.page!.content()
       const title = await this.page!.title()
+      const finalUrl = this.page!.url()
       const cookies = await this.collectCookies()
+      const sslCertificate = await this.collectSSLCertificate(finalUrl)
       const jsEvaluation = this.config.evaluateJavaScript
         ? await this.evaluateJavaScript()
         : undefined
@@ -72,7 +74,6 @@ export class PlaywrightCrawler {
       }
 
       const loadTime = Date.now() - startTime
-      const finalUrl = this.page!.url()
 
       console.log(`[PlaywrightCrawler] ✅ Scan completed in ${loadTime}ms`)
       console.log(`[PlaywrightCrawler] Captured ${this.requests.length} requests, ${this.responses.length} responses`)
@@ -87,6 +88,7 @@ export class PlaywrightCrawler {
         html,
         title,
         cookies,
+        sslCertificate,
         jsEvaluation,
         screenshot,
         loadTime,
@@ -316,6 +318,70 @@ export class PlaywrightCrawler {
     } catch (error) {
       console.error('[PlaywrightCrawler] Screenshot failed:', error)
       return undefined
+    }
+  }
+
+  /**
+   * Collect SSL/TLS certificate information
+   */
+  private async collectSSLCertificate(url: string): Promise<any> {
+    try {
+      const parsedUrl = new URL(url)
+
+      // Only collect SSL info for HTTPS
+      if (parsedUrl.protocol !== 'https:') {
+        return null
+      }
+
+      // Use Node.js tls module to get certificate details
+      const tls = await import('tls')
+      const { promisify } = await import('util')
+
+      return new Promise((resolve) => {
+        const socket = tls.connect(
+          {
+            host: parsedUrl.hostname,
+            port: 443,
+            servername: parsedUrl.hostname,
+            rejectUnauthorized: false, // Accept self-signed certs
+          },
+          () => {
+            const cert = socket.getPeerCertificate(true)
+
+            if (cert && Object.keys(cert).length > 0) {
+              const certInfo = {
+                subject: cert.subject,
+                issuer: cert.issuer,
+                validFrom: cert.valid_from,
+                validTo: cert.valid_to,
+                fingerprint: cert.fingerprint,
+                serialNumber: cert.serialNumber,
+              }
+
+              socket.end()
+              resolve(certInfo)
+            } else {
+              socket.end()
+              resolve(null)
+            }
+          }
+        )
+
+        socket.on('error', (err) => {
+          console.error('[PlaywrightCrawler] SSL certificate collection failed:', err.message)
+          socket.end()
+          resolve(null)
+        })
+
+        // Timeout after 5 seconds
+        setTimeout(() => {
+          socket.end()
+          resolve(null)
+        }, 5000)
+      })
+    } catch (error) {
+      console.error('[PlaywrightCrawler] SSL certificate collection failed:', error)
+      return null
     }
   }
 
