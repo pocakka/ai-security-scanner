@@ -46,7 +46,7 @@ export class CrawlerAdapter {
 
       // Extract script sources from responses
       scripts: playwrightResult.responses
-        .filter((r) => r.resourceType === 'script')
+        .filter((r) => r.resourceType === 'script' || r.resourceType === 'stylesheet')
         .map((r) => r.url),
 
       // Convert response headers (use first HTML response)
