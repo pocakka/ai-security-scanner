@@ -132,43 +132,51 @@ async function processScanJob(data: { scanId: string; url: string }) {
 }
 
 /**
- * Main worker loop - polls for jobs every 2 seconds
+ * Main worker function - processes ONE job then exits
+ * This ensures each scan runs with fresh code (no caching issues)
  */
-async function workerLoop() {
-  while (true) {
-    try {
-      // Get next pending job from SQLite queue
-      const job = await jobQueue.getNext()
+async function processOneJob() {
+  console.log('[Worker] 🔍 Checking for pending jobs...')
 
-      if (job) {
-        console.log(`[Worker] 🎯 Found job ${job.id} (type: ${job.type})`)
+  try {
+    // Get next pending job from SQLite queue
+    const job = await jobQueue.getNext()
 
-        try {
-          if (job.type === 'scan') {
-            await processScanJob(job.data)
-            await jobQueue.complete(job.id)
-          } else {
-            console.log(`[Worker] ⚠️  Unknown job type: ${job.type}`)
-            await jobQueue.fail(job.id, `Unknown job type: ${job.type}`)
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-          await jobQueue.fail(job.id, errorMessage)
+    if (job) {
+      console.log(`[Worker] 🎯 Found job ${job.id} (type: ${job.type})`)
+
+      try {
+        if (job.type === 'scan') {
+          await processScanJob(job.data)
+          await jobQueue.complete(job.id)
+          console.log(`[Worker] ✅ Job completed successfully, worker shutting down...`)
+        } else {
+          console.log(`[Worker] ⚠️  Unknown job type: ${job.type}`)
+          await jobQueue.fail(job.id, `Unknown job type: ${job.type}`)
         }
-      } else {
-        // No jobs - wait before polling again
-        await new Promise(resolve => setTimeout(resolve, 2000))
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        await jobQueue.fail(job.id, errorMessage)
+        console.log(`[Worker] ❌ Job failed, worker shutting down...`)
       }
-    } catch (error) {
-      console.error('[Worker] ❌ Worker loop error:', error)
-      // Wait a bit before retrying
-      await new Promise(resolve => setTimeout(resolve, 5000))
+
+      // Close browser and exit after processing one job
+      await crawler.close()
+      process.exit(0)
+    } else {
+      console.log('[Worker] 💤 No jobs found, worker shutting down...')
+      await crawler.close()
+      process.exit(0)
     }
+  } catch (error) {
+    console.error('[Worker] ❌ Error checking for jobs:', error)
+    await crawler.close()
+    process.exit(1)
   }
 }
 
-// Start worker loop
-workerLoop()
+// Process one job then exit
+processOneJob()
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
