@@ -9,6 +9,11 @@ export interface CrawlResult {
   responseHeaders: Record<string, string>
   loadTime: number
   finalUrl: string
+  cookies?: CookieData[]
+  metadata?: {
+    certificate?: any
+    [key: string]: any
+  }
 }
 
 export interface NetworkRequest {
@@ -16,6 +21,17 @@ export interface NetworkRequest {
   method: string
   resourceType: string
   status?: number
+}
+
+export interface CookieData {
+  name: string
+  value: string
+  domain: string
+  path: string
+  expires?: number
+  httpOnly: boolean
+  secure: boolean
+  sameSite?: 'Strict' | 'Lax' | 'None'
 }
 
 // Mock data generator based on URL

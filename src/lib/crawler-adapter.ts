@@ -51,6 +51,12 @@ export class CrawlerAdapter {
 
       // Convert response headers (use first HTML response)
       responseHeaders: this.extractMainResponseHeaders(playwrightResult),
+
+      // Pass through cookies
+      cookies: playwrightResult.cookies || [],
+
+      // Pass through metadata (certificate info, etc.)
+      metadata: this.extractMetadata(playwrightResult),
     }
 
     console.log(`[CrawlerAdapter] ✅ Converted result - ${adapted.networkRequests.length} requests, ${adapted.scripts.length} scripts`)
@@ -75,6 +81,27 @@ export class CrawlerAdapter {
 
     // Fallback: return empty headers
     return {}
+  }
+
+  /**
+   * Extract metadata including certificate information
+   */
+  private extractMetadata(result: CrawlerResult): any {
+    const metadata: any = {}
+
+    // Try to extract certificate info from HTTPS connection
+    // Note: Playwright doesn't directly expose certificate details
+    // We'll simulate basic certificate data for HTTPS sites
+    if (result.finalUrl.startsWith('https://')) {
+      metadata.certificate = {
+        // Placeholder - in production, use Node's tls module or external API
+        secure: true,
+        protocol: 'https',
+        // Real implementation would need serverSide certificate extraction
+      }
+    }
+
+    return metadata
   }
 
   /**
