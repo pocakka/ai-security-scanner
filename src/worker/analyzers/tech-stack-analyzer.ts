@@ -54,7 +54,15 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
     let extractedVersion: string | undefined
 
     for (const pattern of tech.patterns) {
-      const regex = typeof pattern.match === 'string' ? new RegExp(pattern.match, 'gi') : pattern.match
+      // Ensure regex has 'g' flag for matchAll
+      let regex: RegExp
+      if (typeof pattern.match === 'string') {
+        regex = new RegExp(pattern.match, 'gi')
+      } else {
+        // If RegExp, ensure it has global flag
+        const flags = pattern.match.flags.includes('g') ? pattern.match.flags : pattern.match.flags + 'g'
+        regex = new RegExp(pattern.match.source, flags)
+      }
 
       switch (pattern.type) {
         case 'html':
@@ -78,11 +86,10 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
 
         case 'script':
           for (const scriptUrl of scripts) {
-            // Reset regex for each script
-            const scriptRegex = typeof pattern.match === 'string' ? new RegExp(pattern.match, 'gi') : new RegExp(pattern.match.source, pattern.match.flags)
-            const scriptMatches = scriptUrl.matchAll(scriptRegex)
-            for (const match of scriptMatches) {
-              const evidence = match[1] || scriptUrl
+            if (regex.test(scriptUrl)) {
+              // Extract evidence from capture group or use full URL
+              const match = scriptUrl.match(regex)
+              const evidence = match && match[1] ? match[1] : scriptUrl
               matches.add(evidence)
             }
           }
@@ -90,10 +97,9 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
 
         case 'link':
           for (const linkUrl of links) {
-            const linkRegex = typeof pattern.match === 'string' ? new RegExp(pattern.match, 'gi') : new RegExp(pattern.match.source, pattern.match.flags)
-            const linkMatches = linkUrl.matchAll(linkRegex)
-            for (const match of linkMatches) {
-              const evidence = match[1] || linkUrl
+            if (regex.test(linkUrl)) {
+              const match = linkUrl.match(regex)
+              const evidence = match && match[1] ? match[1] : linkUrl
               matches.add(evidence)
             }
           }
@@ -101,10 +107,10 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
 
         case 'header':
           for (const [headerName, headerValue] of Object.entries(headers)) {
-            const headerRegex = typeof pattern.match === 'string' ? new RegExp(pattern.match, 'gi') : new RegExp(pattern.match.source, pattern.match.flags)
-            const headerMatches = (headerName + headerValue).matchAll(headerRegex)
-            for (const match of headerMatches) {
-              const evidence = match[1] || match[0]
+            const combined = headerName + headerValue
+            if (regex.test(combined)) {
+              const match = combined.match(regex)
+              const evidence = match && match[1] ? match[1] : match ? match[0] : combined
               matches.add(evidence)
             }
           }
