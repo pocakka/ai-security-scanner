@@ -687,6 +687,7 @@ function TechCategory({
     confidence: string
     description?: string
     website?: string
+    evidence?: string
   }>
 }) {
   const colorClasses: Record<string, { border: string, bg: string, text: string }> = {
@@ -740,7 +741,12 @@ function TechCategory({
                 {tech.confidence}
               </span>
             </div>
-            {tech.description && (
+            {tech.evidence && (
+              <div className="bg-blue-500/10 border border-blue-400/20 rounded px-2 py-1 mt-2">
+                <p className="text-xs text-blue-200 font-mono break-all">{tech.evidence}</p>
+              </div>
+            )}
+            {tech.description && !tech.evidence && (
               <p className="text-xs text-slate-400 mt-1">{tech.description}</p>
             )}
           </div>

@@ -8,6 +8,7 @@ export interface DetectedTech {
   version?: string
   description?: string
   website?: string
+  evidence?: string // The actual match that was found (plugin name, tracking ID, etc.)
 }
 
 export interface TechStackResult {
@@ -30,6 +31,8 @@ export interface TechStackResult {
  *
  * Detects technologies used on a website similar to Wappalyzer.
  * Uses configurable rules from tech-detection-rules.ts
+ *
+ * Lists ALL individual matches (plugins, tracking IDs, etc.)
  */
 export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
   const detected: DetectedTech[] = []
@@ -47,19 +50,24 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
 
   // Check each tech pattern
   for (const tech of TECH_DETECTION_RULES) {
-    let matchCount = 0
+    const matches = new Set<string>() // Store unique matches
     let extractedVersion: string | undefined
 
     for (const pattern of tech.patterns) {
-      const regex = typeof pattern.match === 'string' ? new RegExp(pattern.match, 'i') : pattern.match
+      const regex = typeof pattern.match === 'string' ? new RegExp(pattern.match, 'gi') : pattern.match
 
       switch (pattern.type) {
         case 'html':
         case 'dom':
-          if (regex.test(html)) {
-            matchCount++
+          // Find ALL matches in HTML
+          const htmlMatches = html.matchAll(regex)
+          for (const match of htmlMatches) {
+            // If there's a capture group, use it as the evidence
+            const evidence = match[1] || match[0]
+            matches.add(evidence)
+
             // Try to extract version
-            if (pattern.version) {
+            if (pattern.version && !extractedVersion) {
               const versionMatch = html.match(pattern.version)
               if (versionMatch && versionMatch[1]) {
                 extractedVersion = versionMatch[1]
@@ -70,37 +78,46 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
 
         case 'script':
           for (const scriptUrl of scripts) {
-            if (regex.test(scriptUrl)) {
-              matchCount++
-              break
+            // Reset regex for each script
+            const scriptRegex = typeof pattern.match === 'string' ? new RegExp(pattern.match, 'gi') : new RegExp(pattern.match.source, pattern.match.flags)
+            const scriptMatches = scriptUrl.matchAll(scriptRegex)
+            for (const match of scriptMatches) {
+              const evidence = match[1] || scriptUrl
+              matches.add(evidence)
             }
           }
           break
 
         case 'link':
           for (const linkUrl of links) {
-            if (regex.test(linkUrl)) {
-              matchCount++
-              break
+            const linkRegex = typeof pattern.match === 'string' ? new RegExp(pattern.match, 'gi') : new RegExp(pattern.match.source, pattern.match.flags)
+            const linkMatches = linkUrl.matchAll(linkRegex)
+            for (const match of linkMatches) {
+              const evidence = match[1] || linkUrl
+              matches.add(evidence)
             }
           }
           break
 
         case 'header':
           for (const [headerName, headerValue] of Object.entries(headers)) {
-            if (regex.test(headerName) || regex.test(headerValue)) {
-              matchCount++
-              break
+            const headerRegex = typeof pattern.match === 'string' ? new RegExp(pattern.match, 'gi') : new RegExp(pattern.match.source, pattern.match.flags)
+            const headerMatches = (headerName + headerValue).matchAll(headerRegex)
+            for (const match of headerMatches) {
+              const evidence = match[1] || match[0]
+              matches.add(evidence)
             }
           }
           break
 
         case 'meta':
-          // Meta tags are in HTML
-          if (regex.test(html)) {
-            matchCount++
+          const metaMatches = html.matchAll(regex)
+          for (const match of metaMatches) {
+            const evidence = match[1] || match[0]
+            matches.add(evidence)
+
             // Try to extract version
-            if (pattern.version) {
+            if (pattern.version && !extractedVersion) {
               const versionMatch = html.match(pattern.version)
               if (versionMatch && versionMatch[1]) {
                 extractedVersion = versionMatch[1]
@@ -110,24 +127,41 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
           break
 
         case 'js-global':
-          // Check for JavaScript global variables in HTML content
-          if (regex.test(html)) {
-            matchCount++
+          const jsMatches = html.matchAll(regex)
+          for (const match of jsMatches) {
+            const evidence = match[1] || match[0]
+            matches.add(evidence)
           }
           break
       }
     }
 
-    // If at least one pattern matched, consider tech detected
-    if (matchCount > 0) {
-      detected.push({
-        name: tech.name,
-        category: tech.category,
-        confidence: tech.confidence,
-        version: extractedVersion,
-        description: tech.description,
-        website: tech.website,
-      })
+    // Create a detected tech entry for EACH unique match
+    if (matches.size > 0) {
+      // If no specific evidence captured, just add the tech once
+      if (matches.size === 1 && [...matches][0] === tech.name) {
+        detected.push({
+          name: tech.name,
+          category: tech.category,
+          confidence: tech.confidence,
+          version: extractedVersion,
+          description: tech.description,
+          website: tech.website,
+        })
+      } else {
+        // Add each unique match as a separate entry
+        for (const evidence of matches) {
+          detected.push({
+            name: tech.name,
+            category: tech.category,
+            confidence: tech.confidence,
+            version: extractedVersion,
+            description: tech.description,
+            website: tech.website,
+            evidence: evidence.length > 200 ? evidence.substring(0, 200) + '...' : evidence, // Truncate long URLs
+          })
+        }
+      }
     }
   }
 

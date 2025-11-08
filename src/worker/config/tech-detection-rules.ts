@@ -38,7 +38,8 @@ export const TECH_DETECTION_RULES: TechPattern[] = [
       { type: 'html', match: /wp-content\//i },
       { type: 'html', match: /wp-includes\//i },
       { type: 'meta', match: /<meta name="generator" content="WordPress ([\d.]+)"/i, version: /WordPress ([\d.]+)/i },
-      { type: 'script', match: /\/wp-content\/plugins\//i },
+      // Capture individual plugin names
+      { type: 'script', match: /\/wp-content\/plugins\/([^\/]+)\//gi },
       { type: 'script', match: /\/wp-includes\/js\//i },
     ],
   },
@@ -153,13 +154,14 @@ export const TECH_DETECTION_RULES: TechPattern[] = [
     name: 'Google Analytics',
     category: 'analytics',
     confidence: 'high',
-    description: 'Web analytics service',
+    description: 'Web analytics tracking',
     website: 'https://analytics.google.com',
     patterns: [
       { type: 'script', match: /google-analytics\.com\/analytics\.js/i },
       { type: 'script', match: /googletagmanager\.com\/gtag\/js/i },
-      { type: 'html', match: /['"](UA-\d{4,}-\d+)['"]/i, version: /UA-([\d-]+)/i },
-      { type: 'html', match: /['"](G-[A-Z0-9]+)['"]/i },
+      // Capture individual tracking IDs
+      { type: 'html', match: /['"](UA-\d{4,}-\d+)['"]/gi },
+      { type: 'html', match: /['"](G-[A-Z0-9]+)['"]/gi },
     ],
   },
   {
@@ -170,18 +172,20 @@ export const TECH_DETECTION_RULES: TechPattern[] = [
     website: 'https://tagmanager.google.com',
     patterns: [
       { type: 'script', match: /googletagmanager\.com\/gtm\.js/i },
-      { type: 'html', match: /['"](GTM-[A-Z0-9]+)['"]/i, version: /GTM-([A-Z0-9]+)/i },
+      // Capture individual GTM container IDs
+      { type: 'html', match: /['"](GTM-[A-Z0-9]+)['"]/gi },
     ],
   },
   {
     name: 'Facebook Pixel',
     category: 'analytics',
     confidence: 'high',
-    description: 'Facebook analytics',
+    description: 'Facebook conversion tracking',
     website: 'https://facebook.com/business/tools/meta-pixel',
     patterns: [
       { type: 'script', match: /connect\.facebook\.net\/.*\/fbevents\.js/i },
-      { type: 'html', match: /fbq\s*\(/i },
+      // Capture individual pixel IDs
+      { type: 'html', match: /fbq\s*\(\s*['"]init['"]\s*,\s*['"]([\d]+)['"]/gi },
     ],
   },
   {
