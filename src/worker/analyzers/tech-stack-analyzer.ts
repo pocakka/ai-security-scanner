@@ -102,12 +102,19 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
           break
 
         case 'script':
+          // Debug: Log script count for WordPress
+          if (tech.name === 'WordPress') {
+            console.log(`[TechAnalyzer] Checking ${scripts.length} script/stylesheet URLs for WordPress plugins`)
+          }
           for (const scriptUrl of scripts) {
             if (regex.test(scriptUrl)) {
               // Extract evidence from capture group or use full URL
               const match = scriptUrl.match(regex)
               const evidence = match && match[1] ? match[1] : scriptUrl
               matches.add(evidence)
+              if (tech.name === 'WordPress') {
+                console.log(`[TechAnalyzer]   ✓ Match found: ${evidence}`)
+              }
             }
           }
           break
