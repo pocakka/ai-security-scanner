@@ -1,6 +1,9 @@
 import { AIDetectionResult } from './analyzers/ai-detection'
 import { SecurityHeadersResult } from './analyzers/security-headers'
 import { ClientRisksResult } from './analyzers/client-risks'
+import { SSLTLSResult } from './analyzers/ssl-tls-analyzer'
+import { CookieSecurityResult } from './analyzers/cookie-security-analyzer'
+import { JSLibrariesResult } from './analyzers/js-libraries-analyzer'
 
 export interface RiskScore {
   score: number // 0-100
@@ -11,7 +14,10 @@ export interface RiskScore {
 export function calculateRiskScore(
   aiDetection: AIDetectionResult,
   securityHeaders: SecurityHeadersResult,
-  clientRisks: ClientRisksResult
+  clientRisks: ClientRisksResult,
+  sslTLS?: SSLTLSResult,
+  cookieSecurity?: CookieSecurityResult,
+  jsLibraries?: JSLibrariesResult
 ): RiskScore {
   let totalPenalty = 0
 
@@ -58,6 +64,27 @@ export function calculateRiskScore(
   // AI-specific penalty if AI detected but security is weak
   if (aiDetection.hasAI && securityHeaders.missing.includes('content-security-policy')) {
     totalPenalty += 10 // Extra penalty for AI without CSP
+  }
+
+  // SSL/TLS penalties
+  if (sslTLS) {
+    // Invert SSL score to penalty (100 score = 0 penalty, 0 score = 40 penalty)
+    const sslPenalty = Math.floor((100 - sslTLS.score) * 0.4)
+    totalPenalty += sslPenalty
+  }
+
+  // Cookie security penalties
+  if (cookieSecurity) {
+    // Invert cookie score to penalty
+    const cookiePenalty = Math.floor((100 - cookieSecurity.score) * 0.2)
+    totalPenalty += cookiePenalty
+  }
+
+  // JS Libraries penalties
+  if (jsLibraries) {
+    // Invert JS libraries score to penalty
+    const jsPenalty = Math.floor((100 - jsLibraries.score) * 0.3)
+    totalPenalty += jsPenalty
   }
 
   // Calculate final score

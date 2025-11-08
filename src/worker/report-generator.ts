@@ -1,6 +1,9 @@
 import { AIDetectionResult } from './analyzers/ai-detection'
 import { SecurityHeadersResult } from './analyzers/security-headers'
 import { ClientRisksResult } from './analyzers/client-risks'
+import { SSLTLSResult } from './analyzers/ssl-tls-analyzer'
+import { CookieSecurityResult } from './analyzers/cookie-security-analyzer'
+import { JSLibrariesResult } from './analyzers/js-libraries-analyzer'
 import { RiskScore } from './scoring'
 
 export interface ScanReport {
@@ -21,7 +24,7 @@ export interface ScanReport {
 
 export interface Finding {
   id: string
-  category: 'ai' | 'security' | 'client'
+  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library'
   severity: 'low' | 'medium' | 'high' | 'critical'
   title: string
   description: string
@@ -34,7 +37,10 @@ export function generateReport(
   aiDetection: AIDetectionResult,
   securityHeaders: SecurityHeadersResult,
   clientRisks: ClientRisksResult,
-  riskScore: RiskScore
+  riskScore: RiskScore,
+  sslTLS?: SSLTLSResult,
+  cookieSecurity?: CookieSecurityResult,
+  jsLibraries?: JSLibrariesResult
 ): ScanReport {
   const findings: Finding[] = []
 
@@ -98,6 +104,69 @@ export function generateReport(
     mediumCount++
   }
 
+  // SSL/TLS findings
+  if (sslTLS) {
+    for (const finding of sslTLS.findings) {
+      findings.push({
+        id: `ssl-${findings.length}`,
+        category: 'ssl',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description,
+        evidence: finding.evidence,
+        impact: getSSLImpact(finding.type),
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
+  // Cookie security findings
+  if (cookieSecurity) {
+    for (const finding of cookieSecurity.findings) {
+      findings.push({
+        id: `cookie-${findings.length}`,
+        category: 'cookie',
+        severity: finding.severity,
+        title: finding.issue,
+        description: finding.description,
+        evidence: `Cookie: ${finding.cookieName}`,
+        impact: getCookieImpact(finding.issue),
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
+  // JS Libraries findings
+  if (jsLibraries) {
+    for (const finding of jsLibraries.findings) {
+      findings.push({
+        id: `library-${findings.length}`,
+        category: 'library',
+        severity: finding.severity,
+        title: finding.issue,
+        description: finding.description,
+        evidence: `Library: ${finding.library}`,
+        impact: getLibraryImpact(finding.issue),
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
   return {
     summary: {
       hasAI: aiDetection.hasAI,
@@ -139,4 +208,43 @@ function getHeaderImpact(header: string): string {
     'x-content-type-options': 'Missing prevents MIME type sniffing protection, potentially allowing script execution.',
   }
   return impacts[header] || 'Security header provides additional protection layer.'
+}
+
+function getSSLImpact(type: string): string {
+  const impacts: Record<string, string> = {
+    certificate: 'Invalid or expired SSL certificates cause browser warnings and prevent secure connections, exposing user data to interception.',
+    protocol: 'Unencrypted HTTP or outdated TLS protocols expose all data (including AI prompts, API keys, user credentials) to man-in-the-middle attacks.',
+    cipher: 'Weak encryption ciphers can be broken, allowing attackers to decrypt HTTPS traffic.',
+    mixed_content: 'Loading HTTP resources on HTTPS pages creates security holes that attackers can exploit to inject malicious content.',
+  }
+  return impacts[type] || 'SSL/TLS configuration issue compromises connection security.'
+}
+
+function getCookieImpact(issue: string): string {
+  if (issue.includes('Secure')) {
+    return 'Cookies without Secure flag can be transmitted over unencrypted HTTP, exposing session tokens and authentication data to network sniffers.'
+  }
+  if (issue.includes('HttpOnly')) {
+    return 'Cookies without HttpOnly flag are accessible to JavaScript, making them vulnerable to theft via XSS attacks.'
+  }
+  if (issue.includes('SameSite')) {
+    return 'Missing SameSite attribute makes the application vulnerable to Cross-Site Request Forgery (CSRF) attacks.'
+  }
+  if (issue.includes('third-party')) {
+    return 'Excessive third-party cookies raise privacy concerns and may violate GDPR/CCPA regulations.'
+  }
+  return 'Cookie security issue may expose user session data or enable attacks.'
+}
+
+function getLibraryImpact(issue: string): string {
+  if (issue.includes('Vulnerable')) {
+    return 'Using libraries with known vulnerabilities exposes the application to exploits that attackers actively use in the wild.'
+  }
+  if (issue.includes('SRI') || issue.includes('Subresource Integrity')) {
+    return 'Loading scripts from CDNs without integrity checks allows attackers to inject malicious code if the CDN is compromised (supply chain attack).'
+  }
+  if (issue.includes('Deprecated')) {
+    return 'Deprecated libraries no longer receive security updates, leaving known vulnerabilities unpatched indefinitely.'
+  }
+  return 'Library security issue may enable code injection or other attacks.'
 }

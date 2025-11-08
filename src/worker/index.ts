@@ -5,6 +5,9 @@ import { CrawlerAdapter } from '../lib/crawler-adapter'
 import { analyzeAIDetection } from './analyzers/ai-detection'
 import { analyzeSecurityHeaders } from './analyzers/security-headers'
 import { analyzeClientRisks } from './analyzers/client-risks'
+import { analyzeSSLTLS } from './analyzers/ssl-tls-analyzer'
+import { analyzeCookieSecurity } from './analyzers/cookie-security-analyzer'
+import { analyzeJSLibraries } from './analyzers/js-libraries-analyzer'
 import { calculateRiskScore } from './scoring'
 import { generateReport } from './report-generator'
 
@@ -39,18 +42,27 @@ async function processScan(data: ScanJobData) {
     const aiDetection = analyzeAIDetection(crawlResult)
     const securityHeaders = analyzeSecurityHeaders(crawlResult)
     const clientRisks = analyzeClientRisks(crawlResult)
+    const sslTLS = analyzeSSLTLS(crawlResult)
+    const cookieSecurity = analyzeCookieSecurity(crawlResult)
+    const jsLibraries = analyzeJSLibraries(crawlResult)
 
     console.log(`[Worker] AI detected: ${aiDetection.hasAI}`)
     console.log(`[Worker] Providers: ${aiDetection.providers.join(', ') || 'none'}`)
     console.log(`[Worker] API keys found: ${clientRisks.apiKeysFound.length}`)
     console.log(`[Worker] Missing headers: ${securityHeaders.missing.length}`)
+    console.log(`[Worker] SSL/TLS score: ${sslTLS.score}/100`)
+    console.log(`[Worker] Cookies: ${cookieSecurity.totalCookies} (${cookieSecurity.insecureCookies} insecure)`)
+    console.log(`[Worker] JS Libraries: ${jsLibraries.detected.length} (${jsLibraries.vulnerable.length} vulnerable)`)
 
     // Step 3: Calculate risk score
     console.log(`[Worker] Calculating risk score...`)
     const riskScore = calculateRiskScore(
       aiDetection,
       securityHeaders,
-      clientRisks
+      clientRisks,
+      sslTLS,
+      cookieSecurity,
+      jsLibraries
     )
 
     // Step 4: Generate report
@@ -59,7 +71,10 @@ async function processScan(data: ScanJobData) {
       aiDetection,
       securityHeaders,
       clientRisks,
-      riskScore
+      riskScore,
+      sslTLS,
+      cookieSecurity,
+      jsLibraries
     )
 
     // Step 5: Save results
