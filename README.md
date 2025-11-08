@@ -8,7 +8,7 @@ A lead generation tool disguised as a security scanner. Think "WooRank for AI Sy
 
 ## 🎯 Project Status
 
-**Sprint 4B Complete** - Technology Stack Detection + Auto-Worker System!
+**Sprint 4C Complete** - WordPress Plugin Detection WORKING! 🎉
 
 ✅ All core features implemented
 ✅ Modern dark-themed UI with categorized findings
@@ -16,11 +16,12 @@ A lead generation tool disguised as a security scanner. Think "WooRank for AI Sy
 ✅ Email simulation
 ✅ Admin dashboard with metrics
 ✅ **Playwright real browser crawler**
-✅ **Technology Stack Detection** - 50+ tech patterns (NEW!)
-✅ **Auto-spawn worker system** - fresh code on every scan (NEW!)
+✅ **Technology Stack Detection** - 50+ tech patterns
+✅ **WordPress Plugin Detection** - Individual plugin listing with Title Case formatting (NEW!)
+✅ **Dev mode worker loop** - Fresh code on every scan, no cache issues (NEW!)
 ✅ GitHub repository with version control
 
-**Latest:** Tech detection + auto-worker complete - detects WordPress plugins, Google Analytics IDs, CDNs, frameworks individually!  
+**Latest:** WordPress plugins now correctly detected and displayed! Contact Form 7, Elementor, WooCommerce, etc. all show individually on frontend!  
 
 ---
 
@@ -48,11 +49,36 @@ npx playwright install chromium
 npx prisma generate
 npx prisma db push
 
-# Start development server
+# Start development server (Terminal 1)
 npm run dev
+
+# Start worker in dev mode (Terminal 2)
+npm run worker
 ```
 
 The app will be available at **http://localhost:3000** (or 3001/3002 if 3000 is taken)
+
+### 🔧 Development Workflow
+
+**IMPORTANT:** In development mode, you need to run **TWO separate processes**:
+
+**Terminal 1 - Next.js Dev Server:**
+```bash
+npm run dev
+```
+
+**Terminal 2 - Worker (with hot-reload):**
+```bash
+npm run worker
+```
+
+Why two terminals?
+- Dev mode disables auto-spawn to avoid cache issues
+- Worker runs in continuous loop (polls every 5s)
+- You see real-time console logs for debugging
+- Code changes are picked up immediately (no stale cache!)
+
+**Production mode** automatically spawns workers - no manual worker needed
 
 ### 🔄 Crawler Modes
 
