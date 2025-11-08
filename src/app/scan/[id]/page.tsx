@@ -505,10 +505,10 @@ function FindingCard({ finding }: { finding: any }) {
   }
 
   const severityLabels: Record<string, string> = {
-    critical: 'KRITIKUS',
-    high: 'MAGAS',
-    medium: 'KÖZEPES',
-    low: 'ALACSONY',
+    critical: 'CRITICAL',
+    high: 'HIGH',
+    medium: 'MEDIUM',
+    low: 'LOW',
   }
 
   const [expanded, setExpanded] = useState(false)
