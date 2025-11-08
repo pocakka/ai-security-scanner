@@ -35,19 +35,25 @@ export async function POST(request: NextRequest) {
     })
     console.log('[API] Scan created and queued:', scan.id)
 
-    // Spawn a fresh worker process to handle this job
-    // Worker will process ONE job then exit (ensuring fresh code)
-    const workerPath = path.join(process.cwd(), 'src', 'worker', 'index-sqlite.ts')
-    const worker = spawn('npx', ['tsx', workerPath], {
-      cwd: process.cwd(),
-      detached: true,
-      stdio: 'ignore', // Don't pipe output to avoid blocking
-    })
+    // Auto-spawn worker (disabled in development mode to avoid cache issues)
+    // In development, run a manual worker with: npm run worker
+    if (process.env.NODE_ENV === 'production' || process.env.AUTO_SPAWN_WORKERS === 'true') {
+      const workerPath = path.join(process.cwd(), 'src', 'worker', 'index-sqlite.ts')
+      const worker = spawn('npx', ['tsx', workerPath], {
+        cwd: process.cwd(),
+        detached: true,
+        stdio: 'ignore', // Don't pipe output to avoid blocking
+        env: {
+          ...process.env,
+          TSX_TSCONFIG_PATH: undefined, // Clear tsx cache
+        },
+      })
 
-    // Let worker run independently
-    worker.unref()
-
-    console.log('[API] Fresh worker spawned for scan:', scan.id)
+      worker.unref()
+      console.log('[API] Fresh worker spawned for scan:', scan.id)
+    } else {
+      console.log('[API] ⚠️  Auto-spawn disabled in dev mode. Run manual worker: npm run worker')
+    }
 
     return NextResponse.json(
       { scanId: scan.id, message: 'Scan queued successfully' },
