@@ -175,9 +175,9 @@ export default function ScanResultPage() {
     )
   }
 
-  // Parse findings
-  const findings = scan.findings ? JSON.parse(scan.findings) : []
-  const detectedTech = scan.detectedTech ? JSON.parse(scan.detectedTech) : {}
+  // Findings already parsed by API
+  const findings = scan.findings || []
+  const detectedTech = scan.detectedTech || {}
   const summary = {
     hasAI: detectedTech?.aiProviders?.length > 0 || detectedTech?.chatWidgets?.length > 0,
     riskScore: {
