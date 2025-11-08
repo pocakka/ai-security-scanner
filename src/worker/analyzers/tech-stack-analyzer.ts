@@ -106,14 +106,19 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
           if (tech.name === 'WordPress') {
             console.log(`[TechAnalyzer] Checking ${scripts.length} script/stylesheet URLs for WordPress plugins`)
           }
+
+          // Use matchAll to find ALL matches with capture groups
           for (const scriptUrl of scripts) {
-            if (regex.test(scriptUrl)) {
-              // Extract evidence from capture group or use full URL
-              const match = scriptUrl.match(regex)
-              const evidence = match && match[1] ? match[1] : scriptUrl
+            // Reset regex lastIndex for test
+            regex.lastIndex = 0
+            const allMatches = scriptUrl.matchAll(regex)
+
+            for (const match of allMatches) {
+              // match[1] is the capture group (plugin name)
+              const evidence = match[1] || match[0]
               matches.add(evidence)
               if (tech.name === 'WordPress') {
-                console.log(`[TechAnalyzer]   ✓ Match found: ${evidence}`)
+                console.log(`[TechAnalyzer]   ✓ Match found: ${evidence} (from ${scriptUrl.substring(0, 80)}...)`)
               }
             }
           }
