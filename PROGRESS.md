@@ -553,7 +553,136 @@ npm start
 
 ---
 
-#### Day 3-4: AI Framework & Client-Side Risk Detection (PLANNED)
+#### Day 3: SQLite Queue + General Security Analyzers ✅ COMPLETE
+
+**Direction Change:** Per user request, shifted focus from AI-specific features to general website security first, then return to AI features later (based on upgrade_4.md strategy).
+
+**Critical Bug Fixed: In-Memory Queue Architecture**
+
+**Problem Discovered:**
+- API Route (Next.js process) added jobs to Queue A
+- Worker (separate process) read from Queue B
+- In-memory queues couldn't communicate between processes
+- Result: Workers never picked up scan jobs from API
+- Multiple old worker processes running simultaneously
+
+**Solution Implemented:**
+- ✅ Created Job model in Prisma schema with retry logic
+- ✅ Implemented SQLiteQueue class (add, getNext, complete, fail, cleanup)
+- ✅ Built new polling-based worker (index-sqlite.ts) - checks DB every 2s
+- ✅ Updated API route to use SQLiteQueue instead of in-memory queue
+- ✅ Updated package.json worker script to use new worker
+
+**New Security Analyzers (3):**
+
+1. **SSL/TLS Analyzer** ✅
+   - Certificate validation (expiry, self-signed, issuer)
+   - Real certificate extraction using Node.js TLS module
+   - Protocol version detection (TLS 1.2/1.3)
+   - Mixed content detection (HTTP on HTTPS pages)
+   - Weak cipher detection
+   - Score: 0-100 based on security posture
+   - **Bug Fixed:** Invalid time value crash when parsing certificate dates
+
+2. **Cookie Security Analyzer** ✅
+   - Secure flag validation
+   - HttpOnly flag on sensitive cookies
+   - SameSite attribute checking (Strict/Lax/None)
+   - Third-party cookie inventory
+   - Session timeout validation
+   - Only reports problematic cookies (not all cookies)
+
+3. **JS Libraries Analyzer** ✅
+   - Framework detection (React, Vue, Angular, jQuery, Lodash, etc.)
+   - Vulnerable version identification (CVE database)
+   - Deprecated library detection (Moment.js, Bower, etc.)
+   - Subresource Integrity (SRI) validation for CDN scripts
+   - Only reports vulnerable/deprecated/missing SRI
+
+**SSL Certificate Extraction:**
+- Added `collectSSLCertificate()` method to PlaywrightCrawler
+- Uses Node.js `tls` module to extract real certificate data
+- Captures: subject, issuer, validFrom, validTo, fingerprint, serialNumber
+- Updated CrawlerResult interface to include `sslCertificate` field
+- CrawlerAdapter passes certificate data to analyzers via metadata
+
+**Files Created:**
+- `src/lib/queue-sqlite.ts` - SQLite persistent queue
+- `src/worker/index-sqlite.ts` - Polling-based worker
+- `prisma/migrations/20251108090932_add_job_queue/` - Job model migration
+- `src/worker/analyzers/ssl-tls-analyzer.ts` - SSL/TLS security analyzer
+- `src/worker/analyzers/cookie-security-analyzer.ts` - Cookie security analyzer
+- `src/worker/analyzers/js-libraries-analyzer.ts` - JS library vulnerability scanner
+
+**Files Modified:**
+- `package.json` - Worker script updated to index-sqlite.ts
+- `prisma/schema.prisma` - Added Job model
+- `src/app/api/scan/route.ts` - Switched to SQLiteQueue
+- `src/lib/playwright-crawler.ts` - Added SSL certificate extraction
+- `src/lib/types/crawler-types.ts` - Added sslCertificate field
+- `src/lib/crawler-adapter.ts` - Pass certificate to metadata
+- `src/worker/crawler-mock.ts` - Extended CrawlResult interface (cookies, metadata)
+- `src/worker/scoring.ts` - Added weights for SSL/Cookie/JS analyzers
+- `src/worker/report-generator.ts` - Added ssl/cookie/library finding categories
+
+**Test Results:**
+```
+✅ origo.hu:        3.8s scan, 19/100 risk score (CRITICAL)
+                    - 6 missing headers
+                    - SSL/TLS: 50/100 (self-signed cert issues)
+                    - Cookies: 4 found, 0 insecure
+                    - JS Libraries: 2 detected, 0 vulnerable
+
+✅ 24.hu:           60s timeout (site too slow)
+                    - All 6 analyzers ran before timeout
+                    - Risk score: 25/100 (F - CRITICAL)
+
+❌ portfolio.hu:    Fixed after SSL date validation
+```
+
+**Database Schema Update:**
+```prisma
+model Job {
+  id          String   @id @default(uuid())
+  type        String   // "scan", "email", etc.
+  data        String   // JSON payload
+  status      String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  error       String?
+  createdAt   DateTime @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  @@index([status, createdAt])
+}
+```
+
+**Worker Log Output (All 6 Analyzers):**
+```
+[Worker] ✓ AI detected: true
+[Worker] ✓ Providers: none
+[Worker] ✓ API keys found: 0
+[Worker] ✓ Missing headers: 5
+[Worker] ✓ SSL/TLS score: 50/100        ← NEW!
+[Worker] ✓ Cookies: 4 (0 insecure)      ← NEW!
+[Worker] ✓ JS Libraries: 2 (0 vulnerable) ← NEW!
+[Worker] Risk Score: 19/100 (F - CRITICAL)
+```
+
+**Git Commits:**
+- 39edfee feat: SQLite-based queue + SSL/Cookie/JS analyzers + SSL certificate extraction
+
+**Architecture Impact:**
+- ✅ **Process isolation solved** - API and Worker now communicate via database
+- ✅ **Job persistence** - Queue survives restarts
+- ✅ **Retry logic** - Failed jobs automatically retry (max 3 attempts)
+- ✅ **Cleanup** - Old jobs auto-deleted after 7 days
+- ⚠️ **Performance** - 2s polling interval (acceptable for localhost)
+
+---
+
+#### Day 4-5: AI Framework & Client-Side Risk Detection (PLANNED)
 
 **Planned Tasks:**
 - [ ] Detect AI frameworks (LangChain.js, Vercel AI SDK, etc.)
@@ -566,7 +695,7 @@ npm start
 
 ---
 
-#### Day 5: AI Security Headers (PLANNED)
+#### Day 6: AI Security Headers (PLANNED)
 
 **Planned Tasks:**
 - [ ] Analyze CORS on AI endpoints
@@ -580,18 +709,21 @@ npm start
 **Sprint 4A Goals:**
 - ✅ Real Playwright crawler working (Day 1 DONE)
 - ✅ 10+ AI providers detected (Day 2 DONE - 12 providers!)
-- ⏳ 5+ AI frameworks detected (Day 3-4)
-- ⏳ Client-side AI risk detection working (Day 3-4)
-- ✅ Network monitoring functional (Day 1 DONE)
+- ✅ SQLite queue architecture (Day 3 DONE)
+- ✅ General security analyzers (Day 3 DONE - SSL/Cookie/JS)
+- ✅ SSL certificate extraction (Day 3 DONE)
+- ⏳ 5+ AI frameworks detected (Day 4-5)
+- ⏳ Client-side AI risk detection working (Day 4-5)
 
 **Business Impact:**
 - 🎯 Position as "AI Security Scanner" instead of generic tool
 - 🎯 OWASP LLM Top 10 compliance messaging capability
 - 🎯 Higher pricing tier justification ($5K-$15K vs $2K-$10K)
 - 🎯 Improved lead quality (AI companies = bigger budgets)
+- 🎯 **NEW:** General website security scanner appeal (broader market)
 
 ---
 
-**Last Updated:** November 7, 2025 (Sprint 4A Day 2 COMPLETE)
-**Status:** 12 AI providers detected, DOM-based detection added, false positive fixed
-**Next Milestone:** AI Framework & Client-Side Risk Detection (Day 3-4)
+**Last Updated:** November 8, 2025 (Sprint 4A Day 3 COMPLETE)
+**Status:** 6 analyzers working, SQLite queue operational, SSL certificate extraction live
+**Next Milestone:** AI Framework & Client-Side Risk Detection (Day 4-5)
