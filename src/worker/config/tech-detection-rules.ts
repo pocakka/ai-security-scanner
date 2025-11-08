@@ -35,12 +35,11 @@ export const TECH_DETECTION_RULES: TechPattern[] = [
     description: 'Open-source content management system',
     website: 'https://wordpress.org',
     patterns: [
-      { type: 'html', match: /wp-content\//i },
-      { type: 'html', match: /wp-includes\//i },
       { type: 'meta', match: /<meta name="generator" content="WordPress ([\d.]+)"/i, version: /WordPress ([\d.]+)/i },
-      // Capture individual plugin names
+      // Capture individual plugin names from <script> tags
       { type: 'script', match: /\/wp-content\/plugins\/([^\/]+)\//gi },
-      { type: 'script', match: /\/wp-includes\/js\//i },
+      // Capture individual plugin names from <link> tags
+      { type: 'link', match: /\/wp-content\/plugins\/([^\/]+)\//gi },
     ],
   },
   {

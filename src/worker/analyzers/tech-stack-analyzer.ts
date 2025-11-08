@@ -27,6 +27,23 @@ export interface TechStackResult {
 }
 
 /**
+ * Formats a plugin/tech name from slug to title case
+ * Example: "insert-headers-and-footers" -> "Insert Headers And Footers"
+ */
+function formatPluginName(slug: string): string {
+  // Common WordPress plugin slug patterns
+  slug = slug.replace(/^wp-/, '') // Remove wp- prefix
+  slug = slug.replace(/-pro$/i, ' Pro') // Handle -pro suffix
+  slug = slug.replace(/-lite$/i, ' Lite') // Handle -lite suffix
+
+  // Split by hyphens and capitalize each word
+  return slug
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+}
+
+/**
  * Tech Stack Analyzer
  *
  * Detects technologies used on a website similar to Wappalyzer.
@@ -144,19 +161,42 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
 
     // Create a detected tech entry for EACH unique match
     if (matches.size > 0) {
-      // If no specific evidence captured, just add the tech once
-      if (matches.size === 1 && [...matches][0] === tech.name) {
-        detected.push({
-          name: tech.name,
-          category: tech.category,
-          confidence: tech.confidence,
-          version: extractedVersion,
-          description: tech.description,
-          website: tech.website,
-        })
-      } else {
-        // Add each unique match as a separate entry
+      // Special handling for WordPress plugins - use plugin name as the tech name
+      if (tech.name === 'WordPress') {
+        const pluginNames = new Set<string>()
+
         for (const evidence of matches) {
+          const lowerEvidence = evidence.toLowerCase()
+          // Check if this is a plugin slug
+          // Skip: dots (.js, .css), wp-content/wp-includes folder names, and single-word WordPress folders
+          if (
+            !evidence.includes('.') &&
+            lowerEvidence !== 'wp-content' &&
+            lowerEvidence !== 'wp-includes' &&
+            lowerEvidence !== 'content' &&
+            lowerEvidence !== 'includes' &&
+            evidence.length > 2
+          ) {
+            // This is a plugin slug, format it nicely
+            const formattedName = formatPluginName(evidence)
+            pluginNames.add(formattedName)
+          }
+        }
+
+        // Add each unique plugin as a separate WordPress entry
+        if (pluginNames.size > 0) {
+          for (const pluginName of pluginNames) {
+            detected.push({
+              name: pluginName,
+              category: tech.category,
+              confidence: tech.confidence,
+              version: extractedVersion,
+              description: 'WordPress Plugin',
+              website: tech.website,
+            })
+          }
+        } else {
+          // No plugins found, just add WordPress itself
           detected.push({
             name: tech.name,
             category: tech.category,
@@ -164,8 +204,33 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
             version: extractedVersion,
             description: tech.description,
             website: tech.website,
-            evidence: evidence.length > 200 ? evidence.substring(0, 200) + '...' : evidence, // Truncate long URLs
           })
+        }
+      } else {
+        // For non-WordPress tech, use original logic
+        // If no specific evidence captured, just add the tech once
+        if (matches.size === 1 && [...matches][0] === tech.name) {
+          detected.push({
+            name: tech.name,
+            category: tech.category,
+            confidence: tech.confidence,
+            version: extractedVersion,
+            description: tech.description,
+            website: tech.website,
+          })
+        } else {
+          // Add each unique match as a separate entry
+          for (const evidence of matches) {
+            detected.push({
+              name: tech.name,
+              category: tech.category,
+              confidence: tech.confidence,
+              version: extractedVersion,
+              description: tech.description,
+              website: tech.website,
+              evidence: evidence.length > 200 ? evidence.substring(0, 200) + '...' : evidence, // Truncate long URLs
+            })
+          }
         }
       }
     }
