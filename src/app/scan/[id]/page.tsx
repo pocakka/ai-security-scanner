@@ -175,10 +175,11 @@ export default function ScanResultPage() {
     )
   }
 
-  // Findings already parsed by API
-  const findings = scan.findings || []
-  const detectedTech = scan.detectedTech || {}
-  const summary = {
+  // Parse report structure (findings is actually a full ScanReport object)
+  const report = scan.findings || { summary: {}, detectedTech: {}, findings: [] }
+  const findings = report.findings || []
+  const detectedTech = report.detectedTech || scan.detectedTech || {}
+  const summary = report.summary || {
     hasAI: detectedTech?.aiProviders?.length > 0 || detectedTech?.chatWidgets?.length > 0,
     riskScore: {
       score: scan.riskScore || 0,
