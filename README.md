@@ -8,17 +8,19 @@ A lead generation tool disguised as a security scanner. Think "WooRank for AI Sy
 
 ## 🎯 Project Status
 
-**Sprint 4A In Progress** - Real browser automation + AI expansion!
+**Sprint 4B Complete** - Technology Stack Detection + Auto-Worker System!
 
 ✅ All core features implemented
-✅ Modern dark-themed UI
+✅ Modern dark-themed UI with categorized findings
 ✅ PDF report generation
 ✅ Email simulation
 ✅ Admin dashboard with metrics
-✅ **Playwright real browser crawler** (NEW!)
+✅ **Playwright real browser crawler**
+✅ **Technology Stack Detection** - 50+ tech patterns (NEW!)
+✅ **Auto-spawn worker system** - fresh code on every scan (NEW!)
 ✅ GitHub repository with version control
 
-**Latest:** Sprint 4A Day 1 complete - Playwright crawler integrated with mock/real toggle!  
+**Latest:** Tech detection + auto-worker complete - detects WordPress plugins, Google Analytics IDs, CDNs, frameworks individually!  
 
 ---
 
@@ -88,15 +90,30 @@ Real mode provides:
 ### 📊 Security Scanning
 - **Passive analysis** (no active attacks)
 - **AI technology detection** (OpenAI, Anthropic, Google AI, etc.)
+- **Technology Stack Detection** (WordPress plugins, Analytics, Ads, CDN, Social) - **NEW!**
 - **Security headers** check (CSP, HSTS, X-Frame-Options)
+- **SSL/TLS analysis** (certificate validity, protocol version)
+- **Cookie security** (Secure, HttpOnly, SameSite flags)
+- **JavaScript library** detection (with vulnerability checks)
 - **Client-side risk** detection (exposed API keys)
 - **Risk scoring** 0-100 with grades A+ to F
 
 ### 📄 Results Page
 - Risk score card with color-coded visualization
-- Issue breakdown by severity
-- Detected AI technologies display  
-- Detailed findings with recommendations
+- Issue breakdown by severity (Critical/High/Medium/Low)
+- **Technology Stack section** - shows ALL detected technologies individually
+  - CMS platforms (WordPress, Joomla, Drupal, Shopify, etc.)
+  - WordPress plugins listed separately with evidence
+  - Analytics tracking IDs (Google Analytics, GTM, Facebook Pixel)
+  - Advertising networks
+  - CDN providers
+  - Social media integrations
+  - Frameworks (React, Next.js, Vue.js, Angular)
+  - Hosting platforms
+- Detected AI technologies display
+- **Categorized security findings** with educational explanations
+- Evidence boxes showing exact matches
+- Collapsible recommendations
 - **PDF download** button
 - **Lead capture modal** (auto-popup)
 
@@ -130,10 +147,13 @@ Real mode provides:
 | **Frontend** | Next.js 16, TypeScript, Tailwind CSS |
 | **UI Icons** | Lucide React |
 | **Backend** | Next.js API Routes, Node.js |
+| **Crawler** | Playwright (Chromium headless browser) |
 | **Database** | SQLite (Prisma ORM) |
-| **Queue** | In-memory (BullMQ-style) |
+| **Queue** | SQLite-based job queue with auto-spawn workers |
+| **Tech Detection** | 50+ configurable patterns (Wappalyzer-style) |
 | **PDF** | jsPDF + jspdf-autotable |
 | **Validation** | Zod |
+| **Worker Management** | Auto-spawn fresh process per scan |
 
 ---
 
@@ -187,12 +207,16 @@ GET    /api/leads          List all leads (admin)
 
 ```bash
 # Development
-npm run dev
+npm run dev          # Start Next.js dev server (auto-spawns workers)
+
+# Workers are now auto-managed!
+# No need to run 'npm run worker' manually
+# A fresh worker spawns automatically for each scan
 
 # Database
-npx prisma studio
-npx prisma generate
-npx prisma db push
+npx prisma studio    # Visual database editor
+npx prisma generate  # Regenerate Prisma client
+npx prisma db push   # Push schema changes
 
 # Build
 npm run build
@@ -200,6 +224,7 @@ npm start
 
 # Clean
 rm -rf .next
+pkill -9 -f "tsx src/worker"  # Kill any stuck workers (rare)
 ```
 
 ---
@@ -294,7 +319,7 @@ npm run dev
 
 ---
 
-**Last Updated:** November 7, 2025  
-**Version:** 1.0.0 (MVP - Localhost)  
+**Last Updated:** November 8, 2025
+**Version:** 1.1.0 (MVP - Localhost + Tech Detection)  
 
 Made with ❤️ using [Claude Code](https://claude.com/claude-code)
