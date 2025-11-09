@@ -1,4 +1,5 @@
 import { CrawlResult } from '../crawler-mock'
+import { ADVANCED_AI_DETECTION_RULES } from './advanced-ai-detection-rules'
 
 export interface AIDetectionResult {
   hasAI: boolean
@@ -6,6 +7,21 @@ export interface AIDetectionResult {
   chatWidgets: string[]
   apiEndpoints: string[]
   jsLibraries: string[]
+  // NEW: Advanced categories
+  vectorDatabases?: string[]
+  mlFrameworks?: string[]
+  voiceServices?: string[]
+  imageServices?: string[]
+  securityTools?: string[]
+  detailedFindings?: AIDetailedFinding[]
+}
+
+export interface AIDetailedFinding {
+  name: string
+  category: string
+  riskLevel: 'critical' | 'high' | 'medium' | 'low'
+  description: string
+  evidence: string[]
 }
 
 const AI_PROVIDERS = {
@@ -179,6 +195,91 @@ export function analyzeAIDetection(crawlResult: CrawlResult): AIDetectionResult 
         result.providers.push(provider)
         result.hasAI = true
       }
+    }
+  }
+
+  // NEW: Advanced AI detection using comprehensive rules
+  result.vectorDatabases = []
+  result.mlFrameworks = []
+  result.voiceServices = []
+  result.imageServices = []
+  result.securityTools = []
+  result.detailedFindings = []
+
+  for (const rule of ADVANCED_AI_DETECTION_RULES) {
+    let detected = false
+    const evidence: string[] = []
+
+    for (const pattern of rule.patterns) {
+      // Check scripts
+      if (pattern.type === 'script') {
+        for (const script of crawlResult.scripts) {
+          if (pattern.match.test(script)) {
+            detected = true
+            evidence.push(`Script: ${script.substring(0, 100)}...`)
+            break
+          }
+        }
+      }
+
+      // Check HTML
+      if (pattern.type === 'html' && pattern.match.test(crawlResult.html)) {
+        detected = true
+        evidence.push(`HTML contains pattern: ${pattern.description || 'match found'}`)
+      }
+
+      // Check network requests
+      if (pattern.type === 'api-endpoint') {
+        for (const req of crawlResult.networkRequests) {
+          if (pattern.match.test(req.url)) {
+            detected = true
+            evidence.push(`API endpoint: ${req.url}`)
+            break
+          }
+        }
+      }
+
+      // Check headers
+      if (pattern.type === 'header' && crawlResult.responseHeaders) {
+        for (const [key, value] of Object.entries(crawlResult.responseHeaders)) {
+          if (pattern.match.test(`${key}: ${value}`)) {
+            detected = true
+            evidence.push(`Header: ${key}`)
+            break
+          }
+        }
+      }
+    }
+
+    if (detected) {
+      result.hasAI = true
+
+      // Categorize by type
+      if (rule.category === 'Vector Database') {
+        result.vectorDatabases.push(rule.name)
+      } else if (rule.category === 'Client-side ML Framework') {
+        result.mlFrameworks.push(rule.name)
+      } else if (rule.category === 'Voice/Speech AI') {
+        result.voiceServices.push(rule.name)
+      } else if (rule.category.includes('Image')) {
+        result.imageServices.push(rule.name)
+      } else if (rule.category.includes('Security') || rule.category.includes('Monitoring')) {
+        result.securityTools.push(rule.name)
+      } else if (rule.category === 'AI API Provider' || rule.category === 'AI Development Framework') {
+        // Add to providers if not already there
+        if (!result.providers.includes(rule.name)) {
+          result.providers.push(rule.name)
+        }
+      }
+
+      // Add detailed finding
+      result.detailedFindings.push({
+        name: rule.name,
+        category: rule.category,
+        riskLevel: rule.riskLevel,
+        description: rule.description,
+        evidence: evidence.slice(0, 3), // Limit to 3 evidence items
+      })
     }
   }
 

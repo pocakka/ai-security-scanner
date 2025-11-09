@@ -1,14 +1,18 @@
 import { CrawlResult } from '../crawler-mock'
+import { ADVANCED_API_KEY_PATTERNS, detectExposedEnvVars, identifyProvider } from './advanced-api-key-patterns'
 
 export interface ClientRisksResult {
   apiKeysFound: APIKeyFinding[]
   findings: ClientRiskFinding[]
+  exposedEnvVars?: string[] // NEW: Detected environment variable names
 }
 
 export interface APIKeyFinding {
   type: string
   location: 'script' | 'html'
   preview: string
+  provider?: string // NEW: Identified provider
+  costRisk?: 'extreme' | 'high' | 'medium' // NEW: Cost risk level
 }
 
 export interface ClientRiskFinding {
@@ -19,43 +23,45 @@ export interface ClientRiskFinding {
   recommendation: string
 }
 
-// API Key patterns
-const API_KEY_PATTERNS = [
-  { type: 'OpenAI', regex: /sk-[a-zA-Z0-9]{48}/g, severity: 'critical' as const },
-  { type: 'OpenAI Project', regex: /sk-proj-[a-zA-Z0-9]{48}/g, severity: 'critical' as const },
-  { type: 'Anthropic', regex: /sk-ant-[a-zA-Z0-9\-]{95}/g, severity: 'critical' as const },
-  { type: 'Google AI', regex: /AIza[a-zA-Z0-9_\-]{35}/g, severity: 'critical' as const },
-  { type: 'Generic Bearer', regex: /Bearer\s+[a-zA-Z0-9\-_]{20,}/g, severity: 'high' as const },
-]
-
 export function analyzeClientRisks(crawlResult: CrawlResult): ClientRisksResult {
   const result: ClientRisksResult = {
     apiKeysFound: [],
     findings: [],
+    exposedEnvVars: [],
   }
 
-  // Check all scripts for API keys
+  const detectedKeys = new Set<string>() // Prevent duplicates
+
+  // Check all scripts for API keys using ADVANCED patterns
   for (let i = 0; i < crawlResult.scripts.length; i++) {
     const script = crawlResult.scripts[i]
 
-    for (const { type, regex, severity } of API_KEY_PATTERNS) {
-      const matches = script.match(regex)
-      if (matches) {
+    for (const apiKeyConfig of ADVANCED_API_KEY_PATTERNS) {
+      for (const pattern of apiKeyConfig.patterns) {
+        const matches = script.matchAll(pattern)
         for (const match of matches) {
-          const key = match
+          const key = match[0]
+
+          // Skip if already detected
+          if (detectedKeys.has(key)) continue
+          detectedKeys.add(key)
+
+          const provider = identifyProvider(key)
 
           result.apiKeysFound.push({
-            type,
+            type: apiKeyConfig.provider,
             location: 'script',
             preview: `${key.substring(0, 15)}...${key.substring(key.length - 10)}`,
+            provider: provider?.provider,
+            costRisk: provider?.costRisk,
           })
 
           result.findings.push({
             type: 'exposed_api_key',
-            severity,
-            description: `${type} API key found in client-side JavaScript`,
-            evidence: `Script contains: ${match.substring(0, 25)}...`,
-            recommendation: 'CRITICAL: Revoke this API key immediately and move authentication to server-side. Never expose API keys in client code.',
+            severity: apiKeyConfig.severity,
+            description: apiKeyConfig.description,
+            evidence: `Script contains: ${key.substring(0, 25)}...`,
+            recommendation: apiKeyConfig.recommendation,
           })
         }
       }
@@ -63,27 +69,49 @@ export function analyzeClientRisks(crawlResult: CrawlResult): ClientRisksResult 
   }
 
   // Check HTML for API keys (less common but possible)
-  for (const { type, regex, severity } of API_KEY_PATTERNS) {
-    const matches = crawlResult.html.match(regex)
-    if (matches) {
+  for (const apiKeyConfig of ADVANCED_API_KEY_PATTERNS) {
+    for (const pattern of apiKeyConfig.patterns) {
+      const matches = crawlResult.html.matchAll(pattern)
       for (const match of matches) {
-        const key = match
+        const key = match[0]
+
+        // Skip if already detected
+        if (detectedKeys.has(key)) continue
+        detectedKeys.add(key)
+
+        const provider = identifyProvider(key)
 
         result.apiKeysFound.push({
-          type,
+          type: apiKeyConfig.provider,
           location: 'html',
           preview: `${key.substring(0, 15)}...${key.substring(key.length - 10)}`,
+          provider: provider?.provider,
+          costRisk: provider?.costRisk,
         })
 
         result.findings.push({
           type: 'exposed_api_key_html',
-          severity,
-          description: `${type} API key found in HTML`,
-          evidence: match.substring(0, 30) + '...',
-          recommendation: 'CRITICAL: Revoke this API key immediately. API keys should never appear in HTML.',
+          severity: apiKeyConfig.severity,
+          description: `${apiKeyConfig.provider} API key found in HTML source`,
+          evidence: key.substring(0, 30) + '...',
+          recommendation: apiKeyConfig.recommendation,
         })
       }
     }
+  }
+
+  // NEW: Check for exposed environment variable names
+  const exposedEnvVars = detectExposedEnvVars(crawlResult.html)
+  if (exposedEnvVars.length > 0) {
+    result.exposedEnvVars = exposedEnvVars
+
+    result.findings.push({
+      type: 'exposed_env_vars',
+      severity: 'high',
+      description: `${exposedEnvVars.length} environment variable names exposed in client-side code`,
+      evidence: exposedEnvVars.join(', '),
+      recommendation: 'Remove all environment variable references from client-side code. Use server-side proxy pattern.',
+    })
   }
 
   return result
