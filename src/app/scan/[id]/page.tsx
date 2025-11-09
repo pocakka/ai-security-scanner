@@ -202,6 +202,10 @@ export default function ScanResultPage() {
     return acc
   }, {})
 
+  // Separate AI findings from other categories (for prioritized display)
+  const aiFindings = findingsByCategory['ai'] || []
+  const nonAICategories = Object.keys(findingsByCategory).filter(cat => cat !== 'ai')
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Admin Debug Bar - only visible to logged-in admins */}
@@ -282,38 +286,71 @@ export default function ScanResultPage() {
           </div>
         </div>
 
-        {/* Detected Tech */}
-        {summary?.hasAI && (
+        {/* AI Detection Section - PRIORITIZED FIRST */}
+        {(summary?.hasAI || aiFindings.length > 0) && (
           <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-xl p-6 mb-8">
-            <h2 className="text-2xl font-bold mb-4 text-white flex items-center gap-2">
-              🤖 Detected AI Technologies
-            </h2>
-            <div className="space-y-4">
-              {detectedTech?.aiProviders?.length > 0 && (
-                <div>
-                  <p className="text-sm text-slate-400 mb-2">AI Providers:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {detectedTech.aiProviders.map((provider: string) => (
-                      <span key={provider} className="px-4 py-2 bg-blue-500/20 border border-blue-400/30 text-blue-300 rounded-lg text-sm font-semibold">
-                        {provider}
-                      </span>
-                    ))}
-                  </div>
+            {/* AI Section Header */}
+            <div className="mb-6 pb-4 border-b border-white/20">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="text-4xl">🤖</div>
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-white mb-1">Artificial Intelligence Detection</h2>
+                  <p className="text-sm text-slate-400 mb-2">AI technologies and security analysis</p>
                 </div>
-              )}
-              {detectedTech?.chatWidgets?.length > 0 && (
-                <div>
-                  <p className="text-sm text-slate-400 mb-2">Chat Widgets:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {detectedTech.chatWidgets.map((widget: string) => (
-                      <span key={widget} className="px-4 py-2 bg-purple-500/20 border border-purple-400/30 text-purple-300 rounded-lg text-sm font-semibold">
-                        {widget}
-                      </span>
-                    ))}
+                {aiFindings.length > 0 && (
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-white">{aiFindings.length}</div>
+                    <div className="text-xs text-slate-400">findings</div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+              <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-3">
+                <p className="text-sm text-blue-200">
+                  <strong>What does this mean?</strong> This shows AI services detected on the website, including chatbots, language models, and AI-powered features. AI implementations require additional security considerations including prompt injection protection, data leakage prevention, and output validation.
+                </p>
+              </div>
             </div>
+
+            {/* Detected AI Technologies */}
+            {(detectedTech?.aiProviders?.length > 0 || detectedTech?.chatWidgets?.length > 0) && (
+              <div className="mb-6 space-y-4">
+                <h3 className="text-lg font-semibold text-white">Detected Technologies</h3>
+                {detectedTech?.aiProviders?.length > 0 && (
+                  <div>
+                    <p className="text-sm text-slate-400 mb-2">AI Providers:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {detectedTech.aiProviders.map((provider: string) => (
+                        <span key={provider} className="px-4 py-2 bg-blue-500/20 border border-blue-400/30 text-blue-300 rounded-lg text-sm font-semibold">
+                          {provider}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {detectedTech?.chatWidgets?.length > 0 && (
+                  <div>
+                    <p className="text-sm text-slate-400 mb-2">Chat Widgets:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {detectedTech.chatWidgets.map((widget: string) => (
+                        <span key={widget} className="px-4 py-2 bg-purple-500/20 border border-purple-400/30 text-purple-300 rounded-lg text-sm font-semibold">
+                          {widget}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* AI Security Findings */}
+            {aiFindings.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white border-t border-white/20 pt-4">Security Findings</h3>
+                {aiFindings.map((finding: any, index: number) => (
+                  <FindingCard key={index} finding={finding} />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -423,16 +460,17 @@ export default function ScanResultPage() {
           </div>
         )}
 
-        {/* Findings by Category */}
+        {/* Other Findings by Category (excluding AI which is shown above) */}
         <div className="space-y-6">
-          {Object.keys(findingsByCategory).length === 0 ? (
+          {nonAICategories.length === 0 ? (
             <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-xl p-12 text-center">
               <CheckCircle className="w-20 h-20 text-green-400 mx-auto mb-4" />
               <h3 className="text-2xl font-bold text-white mb-2">Great Job!</h3>
-              <p className="text-slate-300 text-lg">No security issues found on this website.</p>
+              <p className="text-slate-300 text-lg">No additional security issues found on this website.</p>
             </div>
           ) : (
-            Object.entries(findingsByCategory).map(([category, categoryFindings]: [string, any]) => {
+            nonAICategories.map((category: string) => {
+              const categoryFindings = findingsByCategory[category]
               const meta = CATEGORY_META[category as keyof typeof CATEGORY_META] || CATEGORY_META.security
 
               return (
@@ -447,7 +485,7 @@ export default function ScanResultPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-3xl font-bold text-white">{categoryFindings.length}</div>
-                        <div className="text-xs text-slate-400">issue</div>
+                        <div className="text-xs text-slate-400">issues</div>
                       </div>
                     </div>
                     <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-3">
