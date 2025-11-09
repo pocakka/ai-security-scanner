@@ -57,18 +57,18 @@ export const ADVANCED_API_KEY_PATTERNS: APIKeyPattern[] = [
     description: 'Google AI API key detected.',
     recommendation: 'Restrict API key to specific IP addresses and domains in Google Cloud Console.',
   },
-  {
-    provider: 'Azure OpenAI',
-    patterns: [
-      // Azure API keys are 32 hex chars, but we need context to avoid false positives
-      // Only match if NOT in common image/asset URL patterns
-      /(?<!\/)[a-f0-9]{32}(?![a-zA-Z0-9/])/g,  // 32 hex, not part of URL path
-    ],
-    severity: 'high',
-    costRisk: 'high',
-    description: 'Azure OpenAI subscription key potentially exposed.',
-    recommendation: 'Regenerate key in Azure Portal. Use Azure AD authentication instead.',
-  },
+  // Azure OpenAI - REMOVED: 32-hex pattern too generic (MD5 hashes, asset IDs, etc.)
+  // TODO: Re-add with context-aware detection (Ocp-Apim-Subscription-Key header + 32-hex value)
+  // {
+  //   provider: 'Azure OpenAI',
+  //   patterns: [
+  //     /(?<!\/)[a-f0-9]{32}(?![a-zA-Z0-9/])/g,  // TOO GENERIC - matches MD5 hashes
+  //   ],
+  //   severity: 'high',
+  //   costRisk: 'high',
+  //   description: 'Azure OpenAI subscription key potentially exposed.',
+  //   recommendation: 'Regenerate key in Azure Portal. Use Azure AD authentication instead.',
+  // },
 
   // ========================================================================
   // AI MODEL PROVIDERS
@@ -138,16 +138,18 @@ export const ADVANCED_API_KEY_PATTERNS: APIKeyPattern[] = [
     description: 'ElevenLabs API key detected.',
     recommendation: 'Revoke key. Voice synthesis can be expensive with abuse.',
   },
-  {
-    provider: 'AssemblyAI',
-    patterns: [
-      /[a-f0-9]{32}/g,                  // Generic 32-char hex
-    ],
-    severity: 'high',
-    costRisk: 'medium',
-    description: 'AssemblyAI API key potentially exposed.',
-    recommendation: 'Verify key usage and move to server-side.',
-  },
+  // AssemblyAI - REMOVED: 32-hex pattern too generic (MD5 hashes, asset IDs, etc.)
+  // TODO: Re-add with context-aware detection (ASSEMBLYAI_API_KEY variable + 32-hex value)
+  // {
+  //   provider: 'AssemblyAI',
+  //   patterns: [
+  //     /[a-f0-9]{32}/g,  // TOO GENERIC - matches everything
+  //   ],
+  //   severity: 'high',
+  //   costRisk: 'medium',
+  //   description: 'AssemblyAI API key potentially exposed.',
+  //   recommendation: 'Verify key usage and move to server-side.',
+  // },
 
   // ========================================================================
   // VECTOR DATABASES & RAG
@@ -155,12 +157,13 @@ export const ADVANCED_API_KEY_PATTERNS: APIKeyPattern[] = [
   {
     provider: 'Pinecone',
     patterns: [
-      /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g,  // UUID format
-      /pc-[a-zA-Z0-9]{32,}/g,           // Pinecone API key
+      // REMOVED: UUID pattern - too generic, matches session IDs, database IDs, etc.
+      // /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g,  // TOO GENERIC
+      /pc-[a-zA-Z0-9]{32,}/g,           // Pinecone API key with prefix (GOOD - specific!)
     ],
     severity: 'high',
     costRisk: 'medium',
-    description: 'Pinecone API key or environment exposed.',
+    description: 'Pinecone API key exposed.',
     recommendation: 'Regenerate API key. Use backend proxy for vector operations.',
   },
   {

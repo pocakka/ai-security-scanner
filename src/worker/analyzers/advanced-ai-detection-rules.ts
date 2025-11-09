@@ -327,7 +327,8 @@ export const VECTOR_DATABASES: AIDetectionPattern[] = [
     patterns: [
       { type: 'script', match: /weaviate\.io/i },
       { type: 'header', match: /x-weaviate/i },
-      { type: 'port', match: /8080/i },
+      // REMOVED: Port 8080 - too generic (Tomcat, Jenkins, many dev servers use it)
+      // { type: 'port', match: /8080/i },
     ],
     riskLevel: 'medium',
     description: 'Weaviate vector search engine detected.',
@@ -337,7 +338,8 @@ export const VECTOR_DATABASES: AIDetectionPattern[] = [
     category: 'Vector Database',
     patterns: [
       { type: 'script', match: /qdrant/i },
-      { type: 'port', match: /6333/i },
+      // REMOVED: Port 6333 - port numbers alone are too generic
+      // { type: 'port', match: /6333/i },
       { type: 'header', match: /qdrant-api-key/i },
     ],
     riskLevel: 'medium',
@@ -425,7 +427,8 @@ export const IMAGE_AI_SERVICES: AIDetectionPattern[] = [
     category: 'Image Generation AI',
     patterns: [
       { type: 'script', match: /stable-diffusion/i },
-      { type: 'port', match: /7860/i },
+      // REMOVED: Port 7860 - Gradio default port, used by many apps
+      // { type: 'port', match: /7860/i },
       { type: 'js-global', match: /window\.SD/i },
     ],
     riskLevel: 'medium',
