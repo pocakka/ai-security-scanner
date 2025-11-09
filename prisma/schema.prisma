@@ -43,7 +43,7 @@ model Lead {
 
   // Relations
   scanId          String
-  scan            Scan     @relation(fields: [scanId], references: [id])
+  scan            Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
 
   // Timestamps
   createdAt       DateTime @default(now())

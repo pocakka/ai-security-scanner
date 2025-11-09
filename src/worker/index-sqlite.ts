@@ -175,47 +175,9 @@ async function processOneJob() {
   }
 }
 
-// Start continuous worker loop (dev mode) or one-shot processing (prod mode)
-if (process.env.NODE_ENV === 'development') {
-  // Dev mode: continuous loop
-  async function workerLoop() {
-    console.log('[Worker] 🔁 Dev mode: continuous loop (polling every 5s)')
-
-    while (true) {
-      try {
-        const job = await jobQueue.getNext()
-
-        if (job) {
-          console.log(`[Worker] 🎯 Found job ${job.id}`)
-
-          try {
-            if (job.type === 'scan') {
-              await processScanJob(job.data)
-              await jobQueue.complete(job.id)
-              console.log(`[Worker] ✅ Job completed`)
-            } else {
-              await jobQueue.fail(job.id, `Unknown job type: ${job.type}`)
-            }
-          } catch (error) {
-            const msg = error instanceof Error ? error.message : 'Unknown error'
-            await jobQueue.fail(job.id, msg)
-            console.error(`[Worker] ❌ Job failed:`, error)
-          }
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 5000))
-      } catch (error) {
-        console.error('[Worker] ❌ Loop error:', error)
-        await new Promise((resolve) => setTimeout(resolve, 10000))
-      }
-    }
-  }
-
-  workerLoop()
-} else {
-  // Production mode: process one job then exit
-  processOneJob()
-}
+// Always use one-shot mode: process one job then exit
+// This ensures workers are short-lived and don't accumulate
+processOneJob()
 
 // Graceful shutdown
 process.on('SIGINT', async () => {

@@ -1,14 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Shield, Zap, Lock, AlertTriangle, CheckCircle, ArrowRight } from 'lucide-react'
+import { Shield, Zap, Lock, AlertTriangle, CheckCircle, FileText } from 'lucide-react'
 
 export default function Home() {
   const router = useRouter()
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  // Check if user is logged in
+  useEffect(() => {
+    const authToken = localStorage.getItem('admin_auth')
+    setIsLoggedIn(authToken === 'authenticated')
+  }, [])
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,12 +57,15 @@ export default function Home() {
               <Shield className="w-8 h-8 text-blue-400" />
               <span className="text-xl font-bold text-white">AI Security Scanner</span>
             </div>
-            <a
-              href="/admin"
-              className="text-sm text-blue-300 hover:text-blue-200 transition-colors flex items-center gap-1"
-            >
-              View All Scans <ArrowRight className="w-4 h-4" />
-            </a>
+            {isLoggedIn && (
+              <a
+                href="/aiq_belepes_mrd/dashboard"
+                className="text-sm text-blue-300 hover:text-blue-200 transition-colors flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Latest Reports
+              </a>
+            )}
           </div>
 
           {/* Hero Content */}
