@@ -1,729 +1,371 @@
-# AI Security Scanner - Development Progress
+# AI Security Scanner - Fejlesztési Haladás
 
-## Project Status: ✅ MVP COMPLETE (Localhost Version)
-
-All core features implemented and fully functional on localhost. Ready for testing and refinement before production deployment.
+> Utolsó frissítés: 2025-11-09 22:00
 
 ---
 
-## Sprint Summary
+## 📊 OVERALL PROGRESS
 
-### ✅ Sprint 0: Project Setup (COMPLETED)
-**Duration:** Initial setup
-**Status:** 100% Complete
+**Sprint 0 (Setup)**: ✅ **COMPLETED**
+**Sprint 1 (Backend)**: ✅ **COMPLETED**
+**Sprint 2 (Frontend)**: ✅ **80% COMPLETED**
+**Sprint 3 (Launch Prep)**: 🔄 **20% IN PROGRESS**
+**Deployment**: ⚪ Not Started
 
-**Completed Tasks:**
-- [x] Initialize Next.js 14 project with TypeScript and Tailwind CSS
-- [x] Setup Prisma ORM with SQLite database
-- [x] Create database schema (Scan and Lead models)
-- [x] Configure project structure (lib/, components/, worker/, app/api/)
-- [x] Install core dependencies (zod, date-fns, lucide-react)
-- [x] Create basic landing page and admin page
-- [x] Setup API routes (/api/scan, /api/leads)
-- [x] Initialize Git repository and connect to GitHub
-- [x] Create .gitignore for development files
-
-**Key Files Created:**
-- `prisma/schema.prisma` - Database schema
-- `src/lib/db.ts` - Prisma client singleton
-- `src/app/page.tsx` - Landing page
-- `src/app/admin/page.tsx` - Admin dashboard
-- `src/app/api/scan/route.ts` - Scan API endpoints
-
-**Git Commits:**
-- Initial commit: Setup with Next.js, Prisma, SQLite
+**Overall: ~12/15 napból (80%)** - MVP majdnem kész!
 
 ---
 
-### ✅ Sprint 1: Core Scanning Engine (COMPLETED)
-**Duration:** Core development
-**Status:** 100% Complete
+## ✅ SPRINT 0: ELŐKÉSZÜLETEK (COMPLETED)
 
-**Completed Tasks:**
-- [x] Create in-memory queue system (queue-mock.ts)
-- [x] Build mock crawler with realistic test data
-- [x] Implement AI detection analyzer (providers, chatbots, endpoints)
-- [x] Implement security headers analyzer (CSP, HSTS, X-Frame-Options)
-- [x] Implement client-side risks analyzer (API key detection)
-- [x] Create risk scoring algorithm (0-100 with grades A+ to F)
-- [x] Build comprehensive report generator
-- [x] Setup worker processor for scan pipeline
-- [x] Create results page with full report visualization
-- [x] Fix Next.js 16 async params issue
+### ✅ Nap 0.1-0.2: Local Setup (COMPLETED)
 
-**Key Features:**
-- **Queue System:** BullMQ-style in-memory queue for localhost
-- **Crawling:** Mock crawler generates realistic security data based on domain
-- **Analysis:** 3 analyzer modules (AI detection, security headers, client risks)
-- **Scoring:** Sophisticated risk calculation with severity weights
-- **Reporting:** Structured JSON reports with findings and recommendations
+#### 1. LOCAL Development Setup
+- [x] Git repository inicializálva
+- [x] Next.js 14 telepítve TypeScript + Tailwind-del
+- [x] SQLite database setup (Prisma)
+- [x] Local development környezet
 
-**Technologies Detected:**
-- AI Providers: OpenAI, Anthropic, Google AI, Cohere, HuggingFace
-- Chat Widgets: Intercom, Drift, Crisp, Tawk.to, Zendesk
-- Security Headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options
-- Exposed Secrets: API key patterns in client-side code
+#### 2. Dependencies telepítve
+- [x] Core: `prisma`, `@prisma/client`, `zod`, `date-fns`, `lucide-react`
+- [x] Crawler: `playwright`, `playwright-core`
+- [x] Utils: `clsx`, `tailwind-merge`, `dotenv`
+- [x] Dev: `tsx`
 
-**Git Commits:**
-- Sprint 1 Core: Worker, Analyzers, Scoring & Report Generation
-- Results Page Complete: Full scan report visualization
-- Fix: Next.js 16 async params in scan detail endpoint
+#### 3. Database Schema (SQLite - LOCAL)
+- [x] `prisma/schema.prisma` létrehozva
+- [x] Models: Scan, Lead, Job (worker queue)
+- [x] Migrations futtatva
+- [x] Prisma Client generálva
+- [x] SQLite database működik: `prisma/dev.db`
+
+#### 4. Project Structure
+- [x] `src/lib/` - db.ts, crawler-adapter.ts, playwright-crawler.ts
+- [x] `src/app/api/scan/` - POST + GET endpoints
+- [x] `src/app/page.tsx` - Landing page
+- [x] `src/app/scan/[id]/` - Scan results page
+- [x] `src/worker/` - Background job processing
+- [x] `src/worker/analyzers/` - Security analyzers
 
 ---
 
-### ✅ Sprint 2: Frontend Polish & Lead Capture (COMPLETED)
-**Duration:** UI/UX development
-**Status:** 100% Complete
+## ✅ SPRINT 1: CORE ENGINE (COMPLETED)
 
-**Completed Tasks:**
-- [x] Redesign landing page with dark theme and hero section
-- [x] Add feature cards and trust badges
-- [x] Implement loading animations and states
-- [x] Redesign results page with modern dark UI
-- [x] Create lead capture modal with form validation
-- [x] Build lead API endpoint (POST /api/leads)
-- [x] Implement automatic modal trigger after scan completion
-- [x] Add responsive design for mobile devices
+### ✅ Nap 1.1: Queue System Setup
+- [x] SQLite-based job queue (`Job` model in Prisma)
+- [x] Auto-spawn worker on scan request
+- [x] Scan API endpoint (`src/app/api/scan/route.ts`)
+- [x] Scan Status API (`src/app/api/scan/[id]/route.ts`)
 
-**Design System:**
-- **Color Palette:** Dark slate/blue gradient backgrounds
-- **Components:** Glassmorphic cards with backdrop blur
-- **Icons:** Lucide React (Shield, Zap, Lock, AlertTriangle, Mail, etc.)
-- **Typography:** Clear hierarchy with large headings and readable body text
-- **Animations:** Smooth transitions, loading spinners, hover effects
+### ✅ Nap 1.2: Playwright Crawler
+- [x] Crawler Engine (`src/lib/playwright-crawler.ts`)
+- [x] Network request capture (Playwright network monitoring)
+- [x] DOM analysis (full HTML extraction)
+- [x] Script extraction (all JS/CSS resources)
+- [x] Cookie collection
+- [x] SSL/TLS certificate validation
+- [x] **NEW**: Detailed timing breakdown (browser init, navigation, page load, data collection)
 
-**User Flow:**
-1. Landing page → Enter URL
-2. Loading state → Animated spinner with status
-3. Results page → Full security report
-4. Lead modal → Automatic popup after 2 seconds
-5. Success state → Thank you message
+### ✅ Nap 1.3: AI Detection Logic
+- [x] AI Detection Analyzer (`src/worker/analyzers/ai-detection-analyzer.ts`)
+- [x] Provider detection (OpenAI, Anthropic, Google AI, etc.)
+- [x] Chat widget detection (Intercom, Drift, Zendesk, etc.)
+- [x] API endpoint detection
+- [x] JS library detection (langchain, openai-node, etc.)
 
-**Git Commits:**
-- Sprint 2 Complete: Modern UI & Lead Capture
-- Fix: Add missing ArrowRight import to results page
+### ✅ Nap 1.4: Security Headers Analysis
+- [x] Security Headers Analyzer (`src/worker/analyzers/security-headers-analyzer.ts`)
+- [x] CSP, HSTS, X-Frame-Options checking
+- [x] Header validation
+- [x] Weakness detection and scoring
 
----
+### ✅ Nap 1.5: Client-Side Risk Detection
+- [x] Client Risks Analyzer (`src/worker/analyzers/client-risks-analyzer.ts`)
+- [x] API key pattern matching (OpenAI, Anthropic, AWS, etc.)
+- [x] Sensitive data detection
+- [x] Finding generation with severity levels
 
-### ✅ Sprint 3: PDF Reports, Email & Admin Dashboard (COMPLETED)
-**Duration:** Advanced features
-**Status:** 100% Complete
+### ✅ Nap 2.1-2.2: Infrastructure & Scoring
+- [x] SSL/TLS Analyzer (`src/worker/analyzers/ssl-tls-analyzer.ts`)
+- [x] Cookie Security Analyzer (`src/worker/analyzers/cookie-security-analyzer.ts`)
+  - **NEW**: 1st party vs 3rd party filtering
+  - **NEW**: Reduced false positives from ~175 to ~5-10
+- [x] JS Libraries Analyzer (`src/worker/analyzers/js-libraries-analyzer.ts`)
+- [x] Tech Stack Analyzer (`src/worker/analyzers/tech-stack-analyzer.ts`)
+  - **NEW**: 120+ technologies across 8 categories
+  - **NEW**: Early exit optimization (no duplicates)
+  - **NEW**: WordPress plugin detection
+- [x] Risk Score Calculator (`src/worker/scoring/risk-calculator.ts`)
+- [x] Report Generator (`src/worker/report-generator/index.ts`)
 
-**Completed Tasks:**
-- [x] Install jsPDF and jspdf-autotable libraries
-- [x] Create professional PDF report generator
-- [x] Add PDF download endpoint (GET /api/scan/:id/pdf)
-- [x] Add "Download PDF" button to results page
-- [x] Build HTML email templates for lead notifications
-- [x] Implement email simulation (saves to /emails directory)
-- [x] Integrate email sending on lead capture
-- [x] Redesign admin dashboard with statistics
-- [x] Add lead management section to admin
-- [x] Calculate and display conversion metrics
-- [x] Enhance PDF design with colors, badges, and modern layout
-
-**PDF Report Features:**
-- Blue gradient header with shield icon
-- Large colored score number (60pt, color-coded by risk)
-- Colored grade and risk level badges
-- Modern card grid for issue counts
-- AI technologies detection box
-- Colored left borders on finding cards (severity-based)
-- Professional typography and spacing
-- Multi-page support with headers and footers
-- Automatic page overflow handling
-
-**Email Simulation:**
-- Professional HTML email template
-- Plain text fallback version
-- Risk score visualization in email
-- Issue summary table
-- CTA for manual audit requests
-- Files saved to `/emails` directory with timestamps
-- Console logging for tracking
-
-**Admin Dashboard:**
-- 4 statistics cards (Total Scans, Total Leads, Avg Risk Score, High Risk Sites)
-- Lead conversion rate calculation
-- Enhanced scans table with risk scores and levels
-- Color-coded status badges
-- Recent leads section (last 10)
-- Glassmorphic dark theme design
-
-**Git Commits:**
-- Sprint 3 Complete: PDF Reports, Email Simulation & Admin Dashboard
-- Enhanced PDF design with colors, badges, and modern layout
+### ✅ Nap 2.3: Worker Main Process
+- [x] Worker Entry Point (`src/worker/index-sqlite.ts`)
+- [x] SQLite-based job queue processing
+- [x] Job processing logic
+- [x] Error handling
+- [x] Automatic worker spawning
+- [x] **NEW**: Performance timing tracking
+- [x] **NEW**: Metadata storage with crawler breakdown
 
 ---
 
-## Technical Stack
+## ✅ SPRINT 2: FRONTEND & UX (80% COMPLETED)
+
+### ✅ Nap 3.1: UI Components Setup
+- [x] Custom Tailwind components (no shadcn/ui needed)
+- [x] Gradient-based modern UI design
+- [x] Lucide icons integrated
+
+### ✅ Nap 3.2: Landing Page
+- [x] Hero component with scan form
+- [x] URL validation
+- [x] Real-time scan triggering
+- [x] Loading states
+- [x] Landing page (`src/app/page.tsx`)
+
+### ✅ Nap 3.3: Scan Results Page
+- [x] Results page (`src/app/scan/[id]/page.tsx`)
+- [x] Loading state with polling
+- [x] Risk score display
+- [x] Issues summary by category
+- [x] Detected technologies display
+- [x] Technology Stack section
+  - CMS, Analytics, Advertising, CDN, Social, E-commerce, Libraries, Hosting
+- [x] WordPress-specific findings
+- [x] Findings cards with severity indicators
+- [x] **NEW**: Admin Performance Debug Bar
+  - Detailed timing breakdown
+  - Crawler phase analysis
+  - Color-coded performance metrics
+  - Non-fixed positioning
+
+### 🔄 Remaining Frontend Tasks
+- [ ] Lead capture modal (Email gate for full report)
+- [ ] PDF download button
+- [ ] Share functionality
+- [ ] Improved mobile responsiveness
+
+---
+
+## 🔄 SPRINT 3: LAUNCH PREP (20% IN PROGRESS)
+
+### 🔄 Nap 4.1: Email Modal & Lead Capture
+- [x] Lead API Endpoint (`src/app/api/leads/route.ts`)
+- [x] Database model for leads
+- [ ] Email Modal Component (partially done, needs polish)
+- [ ] Form validation
+- [ ] Lead scoring logic
+
+### ⚪ Nap 4.2: Email System Setup
+- [ ] Email Client (`src/lib/email.ts`)
+- [ ] Welcome email template
+- [ ] Follow-up email templates
+- [ ] Email sending tested
+
+### ⚪ Nap 4.3: PDF Generation
+- [ ] Puppeteer/PDF library installed
+- [ ] PDF Service (`src/lib/pdf.ts`)
+- [ ] PDF template HTML
+- [ ] PDF generation tested
+- [ ] S3/R2 storage for PDFs
+
+### ⚪ Nap 4.4: Analytics & Monitoring
+- [ ] Plausible Analytics script added
+- [ ] Custom events configured
+- [ ] Error monitoring setup (Sentry)
+
+---
+
+## ⚪ DEPLOYMENT (0/1 nap)
+
+### Vercel Deployment (Frontend)
+- [ ] Vercel CLI installed
+- [ ] Project deployed to Vercel
+- [ ] Environment variables configured
+- [ ] Custom domain connected
+- [ ] SSL certificate verified
+
+### Railway/Fly.io Deployment (Worker)
+- [ ] Dockerfile.worker created
+- [ ] Worker deployment platform chosen
+- [ ] Worker deployed
+- [ ] Environment variables configured
+- [ ] Worker logs verified
+
+### Database Migration (SQLite → PostgreSQL)
+- [ ] PostgreSQL database provisioned (Supabase/Neon)
+- [ ] Schema migrated
+- [ ] Data migration script
+- [ ] Connection pooling configured
+
+### Domain & DNS
+- [ ] DNS records configured
+- [ ] Email domain verified
+- [ ] SSL/TLS active
+
+### Health Checks
+- [ ] Health check endpoint created
+- [ ] Monitoring dashboard setup
+- [ ] Backup strategy configured
+
+---
+
+## 🆕 RECENT UPDATES (2025-11-09)
+
+### Performance Optimizations
+1. **Technology Detection Early Exit**
+   - Prevents duplicate listings (4× Google Analytics → 1×)
+   - Exception: WordPress plugins still list individually
+   - Performance improvement via reduced regex operations
+
+2. **Cookie Security Filtering**
+   - Distinguishes 1st party vs 3rd party cookies
+   - Only analyzes cookies under website owner's control
+   - Reduced false positives: ~175 → ~5-10 findings
+
+3. **Admin Performance Debug Bar**
+   - New component: `AdminDebugBar.tsx`
+   - Detailed timing breakdown:
+     - Total scan time
+     - Crawler breakdown (browser init, navigation, page load, data collection)
+     - Individual analyzer execution times
+   - Color-coded performance indicators
+   - Authentication: `localStorage.setItem('admin_auth', 'authenticated')`
+   - Non-fixed positioning (doesn't overlap content)
+
+4. **Crawler Timing Breakdown**
+   - Browser initialization timing
+   - Navigation timing (DNS + TCP + TLS + HTTP)
+   - Page load timing (DOM ready + JS execution)
+   - Data collection timing
+   - Stored in scan metadata
+
+### Documentation
+- ✅ CLAUDE.md created with full project overview
+- ✅ Implemented features documented
+- ✅ Developer guide added
+- ✅ Project structure documented
+
+---
+
+## 📝 NOTES & BLOCKERS
+
+### Current Blockers
+_Nincs jelenleg_
+
+### Decisions Made
+1. SQLite for local development (faster iteration)
+2. Custom UI instead of shadcn/ui (more control)
+3. Auto-spawn workers instead of persistent queue
+4. 1st party cookie filtering only (better UX)
+5. Admin auth via localStorage (simple, effective for MVP)
+
+### Next Steps (Priority Order)
+1. ⏭️ **Lead capture modal polish** - Email gate for full report
+2. ⏭️ **PDF generation** - Downloadable security reports
+3. ⏭️ **Email automation** - Welcome + follow-up sequences
+4. ⏭️ **Analytics integration** - Plausible for funnel tracking
+5. ⏭️ **Production deployment** - Vercel + Railway + PostgreSQL
+
+---
+
+## 🎯 MILESTONES
+
+- [x] **Milestone 1**: Sprint 0 Complete - Setup befejezve, local dev működik
+- [x] **Milestone 2**: Sprint 1 Complete - Backend működik, scan lefut
+- [x] **Milestone 3**: Sprint 2 (80%) - Frontend működik, results megjelennek
+- [ ] **Milestone 4**: Sprint 3 Complete - Email + PDF működik
+- [ ] **Milestone 5**: Deployment Complete - Production live
+- [ ] **Milestone 6**: First 10 scans completed
+- [ ] **Milestone 7**: First lead captured
+- [ ] **Milestone 8**: First paying customer
+
+---
+
+## 📊 TIME TRACKING
+
+| Sprint | Planned | Actual | Status |
+|--------|---------|--------|--------|
+| Sprint 0 | 2 days | ~0.5 days | ✅ Complete |
+| Sprint 1 | 5 days | ~3 days | ✅ Complete |
+| Sprint 2 | 3 days | ~2 days | 🔄 80% Complete |
+| Sprint 3 | 4 days | ~0.5 days | 🔄 20% In Progress |
+| Deployment | 1 day | - | ⚪ Not Started |
+| **Total** | **15 days** | **~6 days** | **80%** |
+
+**Velocity**: 2.5x faster than planned! 🚀
+
+---
+
+## 🎨 IMPLEMENTED FEATURES
+
+### Core Scanning Engine
+- ✅ Real Playwright browser automation
+- ✅ Network traffic monitoring
+- ✅ 7 specialized security analyzers
+- ✅ Risk scoring algorithm
+- ✅ Detailed finding generation
+- ✅ Performance timing tracking
+
+### Technology Detection
+- ✅ 120+ technologies across 8 categories
+- ✅ WordPress plugin detection with versions
+- ✅ Admin panel exposure detection
+- ✅ CMS, Analytics, Ads, CDN, Social, E-commerce, Libraries, Hosting
+
+### Security Analysis
+- ✅ AI provider detection (10+ providers)
+- ✅ Security headers validation (CSP, HSTS, X-Frame-Options, etc.)
+- ✅ Client-side risk detection (exposed API keys)
+- ✅ SSL/TLS certificate validation
+- ✅ Cookie security analysis (1st party only)
+- ✅ JavaScript library vulnerability scanning
+
+### Admin Features
+- ✅ Performance debug bar with detailed timing
+- ✅ Crawler breakdown visualization
+- ✅ Color-coded performance metrics
+- ✅ Admin authentication via localStorage
+
+### UI/UX
+- ✅ Modern gradient-based design
+- ✅ Real-time scan status polling
+- ✅ Categorized findings display
+- ✅ Technology stack visualization
+- ✅ WordPress-specific findings
+- ✅ Responsive layout (desktop optimized)
+
+---
+
+## 🔧 TECHNICAL STACK (CURRENT)
 
 ### Frontend
-- **Framework:** Next.js 16.0.1 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS
-- **Icons:** Lucide React
-- **UI Patterns:** Glassmorphism, Dark theme
+- Next.js 14 (App Router)
+- TypeScript
+- Tailwind CSS
+- Lucide Icons
+- React Hooks
 
 ### Backend
-- **Runtime:** Node.js
-- **API:** Next.js API Routes
-- **Queue:** In-memory queue system (BullMQ-style)
-- **Worker:** Integrated worker processor
+- Next.js API Routes
+- Prisma ORM
+- SQLite (dev) → PostgreSQL (production)
+- Playwright (headless Chromium)
+- Custom SQLite job queue
 
-### Database
-- **ORM:** Prisma
-- **Database:** SQLite (localhost)
-- **Location:** `prisma/dev.db`
+### Infrastructure (Local)
+- http://localhost:3000 (Next.js dev server)
+- Auto-spawn worker on scan request
+- Local SQLite database (prisma/dev.db)
 
-### Tools & Libraries
-- **PDF:** jsPDF + jspdf-autotable
-- **Validation:** Zod
-- **Date Handling:** date-fns
-- **Type Safety:** TypeScript strict mode
-
----
-
-## Database Schema
-
-```prisma
-model Scan {
-  id            String   @id @default(uuid())
-  url           String
-  domain        String?
-  status        String   @default("PENDING")
-  riskScore     Int?
-  riskLevel     String?
-  detectedTech  String?  // JSON
-  findings      String?  // JSON
-  metadata      String?  // JSON
-  createdAt     DateTime @default(now())
-  startedAt     DateTime?
-  completedAt   DateTime?
-  leads         Lead[]
-}
-
-model Lead {
-  id        String   @id @default(uuid())
-  scanId    String
-  email     String
-  name      String
-  status    String   @default("NEW")
-  createdAt DateTime @default(now())
-  scan      Scan     @relation(fields: [scanId], references: [id])
-}
-```
+### Infrastructure (Planned)
+- Vercel (frontend)
+- Railway/Fly.io (worker)
+- PostgreSQL (Supabase/Neon)
+- S3/R2 (PDF storage)
+- Resend (email)
+- Plausible (analytics)
 
 ---
 
-## File Structure
-
-```
-ai-security-scanner/
-├── prisma/
-│   ├── schema.prisma          # Database schema
-│   └── dev.db                 # SQLite database (gitignored)
-├── src/
-│   ├── app/
-│   │   ├── page.tsx           # Landing page (dark hero, scan form)
-│   │   ├── admin/page.tsx     # Admin dashboard (stats, scans, leads)
-│   │   ├── scan/[id]/page.tsx # Results page (full report)
-│   │   └── api/
-│   │       ├── scan/
-│   │       │   ├── route.ts            # POST scan, GET scans
-│   │       │   └── [id]/
-│   │       │       ├── route.ts        # GET scan details
-│   │       │       └── pdf/route.ts    # GET PDF download
-│   │       └── leads/route.ts          # POST lead, GET leads
-│   ├── lib/
-│   │   ├── db.ts                  # Prisma client
-│   │   ├── utils.ts               # Utility functions
-│   │   ├── queue-mock.ts          # In-memory queue
-│   │   ├── pdf-generator.ts       # PDF report generator
-│   │   ├── email-service.ts       # Email simulation
-│   │   └── email-templates.ts     # HTML email templates
-│   └── worker/
-│       ├── init.ts                # Worker initialization
-│       ├── crawler-mock.ts        # Mock crawler
-│       ├── scoring.ts             # Risk scoring algorithm
-│       ├── report-generator.ts    # Report builder
-│       └── analyzers/
-│           ├── ai-detection.ts    # AI tech detection
-│           ├── security-headers.ts # Security headers check
-│           └── client-risks.ts    # Client-side risk detection
-├── emails/                        # Email simulation output
-├── CLAUDE.md                      # Project instructions for AI
-├── LOCALHOST_SETUP.md             # Setup guide
-└── package.json                   # Dependencies
-```
-
----
-
-## API Endpoints
-
-### Scan Management
-- `POST /api/scan` - Create new scan, returns scanId
-- `GET /api/scan` - List recent scans
-- `GET /api/scan/:id` - Get scan details with findings
-- `GET /api/scan/:id/pdf` - Download PDF report
-
-### Lead Management
-- `POST /api/leads` - Capture lead, trigger email
-- `GET /api/leads` - List all leads (admin)
-
----
-
-## How It Works
-
-### Scan Pipeline
-1. **User submits URL** → Landing page form
-2. **Create scan record** → Status: PENDING
-3. **Queue job** → In-memory queue adds task
-4. **Worker processes:**
-   - Crawl (mock data based on domain)
-   - Analyze (AI detection, headers, client risks)
-   - Score (calculate risk 0-100)
-   - Report (generate findings JSON)
-   - Save to database
-5. **Results available** → Status: COMPLETED
-6. **User views report** → Results page
-
-### Lead Capture Flow
-1. **Scan completes** → Modal appears after 2 seconds
-2. **User enters data** → Name + email
-3. **Lead saved** → Database record created
-4. **Email sent** → Simulated (saved to /emails)
-5. **Success message** → Thank you screen
-
----
-
-## Current Metrics (Example Data)
-
-From a typical test run:
-- **Total Scans:** 15+
-- **Completion Rate:** ~95%
-- **Average Scan Time:** 1-2 seconds
-- **Risk Score Range:** 30-85/100
-- **Lead Conversion:** Variable (depends on user flow)
-
----
-
-## Known Limitations (Localhost Mode)
-
-1. **Mock Crawler:** Uses predefined test data, not real website analysis
-2. **No Redis:** In-memory queue (doesn't persist across restarts)
-3. **Email Simulation:** Saves to files instead of sending
-4. **SQLite:** Not suitable for production (use PostgreSQL)
-5. **No Authentication:** Admin dashboard is public
-6. **No Rate Limiting:** Unlimited scans allowed
-
----
-
-## Next Steps (For Production)
-
-### Phase 1: Real Infrastructure
-- [ ] Replace mock crawler with Playwright
-- [ ] Setup Redis + BullMQ for persistent queue
-- [ ] Migrate to PostgreSQL (Supabase/Neon)
-- [ ] Configure Resend for real email sending
-- [ ] Setup Claude Haiku API for AI analysis
-
-### Phase 2: Security & Polish
-- [ ] Add admin authentication
-- [ ] Implement rate limiting
-- [ ] Add scan result caching
-- [ ] Error tracking with Sentry
-- [ ] Analytics with Plausible
-
-### Phase 3: Deployment
-- [ ] Deploy frontend to Vercel
-- [ ] Deploy workers to Railway/Fly.io
-- [ ] Configure environment variables
-- [ ] Setup custom domain
-- [ ] SSL certificate configuration
-
-### Phase 4: Business Features
-- [ ] Payment integration (Stripe)
-- [ ] Manual audit request workflow
-- [ ] Lead scoring and qualification
-- [ ] Email marketing automation
-- [ ] Customer dashboard
-
----
-
-## Development Commands
-
-```bash
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-
-# Database management
-npx prisma generate
-npx prisma db push
-npx prisma studio
-
-# Build for production
-npm run build
-npm start
-```
-
----
-
-## Testing Checklist
-
-### Basic Flow
-- [x] Landing page loads correctly
-- [x] Scan form accepts URL and submits
-- [x] Loading state shows spinner
-- [x] Results page displays full report
-- [x] PDF download works
-- [x] Lead modal appears after scan
-- [x] Lead form submits successfully
-- [x] Email saved to /emails directory
-- [x] Admin dashboard shows statistics
-- [x] Admin can view all scans and leads
-
-### Edge Cases
-- [x] Invalid URL handling
-- [x] Scan failure scenarios
-- [x] Empty database state
-- [x] Mobile responsive design
-- [x] Long URLs truncation
-- [x] Multiple findings display
-- [x] PDF multi-page layout
-
----
-
-## Git Repository
-
-**Repository:** https://github.com/pocakka/ai-security-scanner
-**Branch:** main
-**Total Commits:** 8+
-
-### Commit History
-1. Initial setup with Next.js, Prisma, SQLite
-2. Sprint 1 Core: Worker, Analyzers, Scoring & Report Generation
-3. Results Page Complete: Full scan report visualization
-4. Fix: Next.js 16 async params
-5. Sprint 2 Complete: Modern UI & Lead Capture
-6. Fix: Add missing ArrowRight import
-7. Sprint 3 Complete: PDF Reports, Email Simulation & Admin Dashboard
-8. Enhanced PDF design with colors, badges, and modern layout
-
----
-
-## Project Timeline
-
-- **Sprint 0:** Project Setup → ✅ Complete
-- **Sprint 1:** Core Engine → ✅ Complete
-- **Sprint 2:** Frontend & Leads → ✅ Complete
-- **Sprint 3:** PDF & Admin → ✅ Complete
-- **Current Status:** MVP COMPLETE 🎉
-- **Next:** Production preparation (when ready)
-
----
-
-## Success Criteria: ✅ ALL MET
-
-- [x] Scan accepts URL and processes it
-- [x] Results display risk score and findings
-- [x] Lead capture works with email notification
-- [x] PDF report generates and downloads
-- [x] Admin dashboard shows metrics
-- [x] All features work on localhost
-- [x] Code is on GitHub with version history
-- [x] Documentation is comprehensive
-
----
-
-**Last Updated:** November 7, 2025
-**Status:** Ready for testing and refinement
-**Next Milestone:** Production deployment planning
-
----
-
-### 🔄 Sprint 4A: Real Playwright Crawler & AI Detection (IN PROGRESS)
-**Duration:** Week 1 of Sprint 4
-**Status:** Day 1 Complete (20%)
-
-**Goal:** Replace mock crawler with real Playwright browser automation and expand AI provider detection from 5 to 10+ providers.
-
-#### Day 1: Core Crawler Implementation ✅ COMPLETE
-
-**Completed Tasks:**
-- [x] Install Playwright package (playwright ^1.49.1)
-- [x] Download Chromium browser binaries (211 MB, headless)
-- [x] Create TypeScript type definitions (crawler-types.ts)
-- [x] Implement PlaywrightCrawler class with full features:
-  - Headless Chromium browser automation
-  - Network request/response monitoring
-  - Cookie collection with security flags
-  - JavaScript evaluation for framework detection
-  - HTML content capture
-  - Redirect following
-  - Timeout handling (60s default)
-  - Resource blocking for performance
-  - Graceful error handling & cleanup
-- [x] Create standalone test script (test-crawler.ts)
-- [x] Test with real websites (example.com, chat.openai.com)
-- [x] Create CrawlerAdapter for backward compatibility
-- [x] Integrate into worker with environment variable toggle
-- [x] Add USE_REAL_CRAWLER configuration option
-
-**New Files Created:**
-- `src/lib/playwright-crawler.ts` - Main crawler class (400+ lines)
-- `src/lib/types/crawler-types.ts` - TypeScript interfaces
-- `src/lib/crawler-adapter.ts` - Adapter pattern for compatibility
-- `test-crawler.ts` - Standalone testing script
-
-**Modified Files:**
-- `src/worker/index.ts` - Added crawler selection logic
-- `.env` - Added USE_REAL_CRAWLER toggle (not committed)
-- `package.json` - Added playwright dependency
-
-**Test Results:**
-```
-✅ example.com:       2.7s scan time, 1 request
-✅ chat.openai.com:   2.0s scan time, 191 requests, 11 cookies
-✅ Cookie analysis:   secure=true, httpOnly=true, sameSite=Lax
-✅ Redirect tracking: chat.openai.com → chatgpt.com
-```
-
-**Architecture Decisions:**
-- **Adapter Pattern:** CrawlerAdapter converts Playwright output to MockCrawler interface
-- **Environment Toggle:** USE_REAL_CRAWLER="true" enables Playwright, "false" uses mock
-- **Backward Compatibility:** Existing analyzers work without modification
-- **Performance:** Mock ~1-2s, Real ~5-10s per scan
-
-**Performance Metrics:**
-- Typical scan: 2-5 seconds
-- Complex sites: < 10 seconds  
-- Max timeout: 60 seconds
-- Browser overhead: ~211 MB Chromium binary
-
-**Git Commits:**
-- 9d8ab6c Worker Integration with Playwright Crawler Toggle
-- a291796 Fix: Admin hydration error with date formatting
-- a8aae9e Playwright Crawler Implementation
-- 446ccd6 Dependencies: Add Playwright for real browser automation
-- 7984ba0 Sprint 4 Planning: AI-First Security Platform
-
----
-
-#### Day 2: AI Provider Detection Expansion ✅ COMPLETE
-
-**Completed Tasks:**
-- [x] Expand AI provider detection from 5 to 12 providers
-- [x] Add Azure OpenAI Service detection
-- [x] Add AWS Bedrock detection
-- [x] Add Google Vertex AI / Gemini detection
-- [x] Add Stability AI, ElevenLabs, Replicate detection
-- [x] Add GPT4Business (YoloAI) custom provider
-- [x] Fix Google Gemini false positive (googleapis.com → specific domains)
-- [x] Add DOM-based detection patterns (window.__oai_logHTML, etc.)
-- [x] Create AI_DETECTION_CONFIG.md documentation
-- [x] Expand JS libraries from 10 to 25+
-- [x] Expand endpoints from 6 to 16
-
-**Achieved Providers (12):**
-1. ✅ OpenAI (enhanced: +chatgpt.com)
-2. ✅ Anthropic Claude (enhanced: +claude.ai)
-3. ✅ Google Gemini (fixed: specific domains only)
-4. ✅ Cohere (enhanced: +cohere.com)
-5. ✅ HuggingFace (enhanced: +hf.co)
-6. ✅ Azure OpenAI Service
-7. ✅ AWS Bedrock
-8. ✅ Google Vertex AI
-9. ✅ Stability AI
-10. ✅ ElevenLabs
-11. ✅ Replicate
-12. ✅ GPT4Business (YoloAI)
-
-**New Features:**
-- DOM-based detection (HTML/JS code patterns)
-- User-editable configuration via AI_DETECTION_CONFIG.md
-- False positive prevention (removed generic patterns)
-
-**Git Commits:**
-- a91f525 Fix: Remove googleapis.com false positive
-- b6f0138 Documentation: AI Detection Config Guide
-
----
-
-#### Day 3: SQLite Queue + General Security Analyzers ✅ COMPLETE
-
-**Direction Change:** Per user request, shifted focus from AI-specific features to general website security first, then return to AI features later (based on upgrade_4.md strategy).
-
-**Critical Bug Fixed: In-Memory Queue Architecture**
-
-**Problem Discovered:**
-- API Route (Next.js process) added jobs to Queue A
-- Worker (separate process) read from Queue B
-- In-memory queues couldn't communicate between processes
-- Result: Workers never picked up scan jobs from API
-- Multiple old worker processes running simultaneously
-
-**Solution Implemented:**
-- ✅ Created Job model in Prisma schema with retry logic
-- ✅ Implemented SQLiteQueue class (add, getNext, complete, fail, cleanup)
-- ✅ Built new polling-based worker (index-sqlite.ts) - checks DB every 2s
-- ✅ Updated API route to use SQLiteQueue instead of in-memory queue
-- ✅ Updated package.json worker script to use new worker
-
-**New Security Analyzers (3):**
-
-1. **SSL/TLS Analyzer** ✅
-   - Certificate validation (expiry, self-signed, issuer)
-   - Real certificate extraction using Node.js TLS module
-   - Protocol version detection (TLS 1.2/1.3)
-   - Mixed content detection (HTTP on HTTPS pages)
-   - Weak cipher detection
-   - Score: 0-100 based on security posture
-   - **Bug Fixed:** Invalid time value crash when parsing certificate dates
-
-2. **Cookie Security Analyzer** ✅
-   - Secure flag validation
-   - HttpOnly flag on sensitive cookies
-   - SameSite attribute checking (Strict/Lax/None)
-   - Third-party cookie inventory
-   - Session timeout validation
-   - Only reports problematic cookies (not all cookies)
-
-3. **JS Libraries Analyzer** ✅
-   - Framework detection (React, Vue, Angular, jQuery, Lodash, etc.)
-   - Vulnerable version identification (CVE database)
-   - Deprecated library detection (Moment.js, Bower, etc.)
-   - Subresource Integrity (SRI) validation for CDN scripts
-   - Only reports vulnerable/deprecated/missing SRI
-
-**SSL Certificate Extraction:**
-- Added `collectSSLCertificate()` method to PlaywrightCrawler
-- Uses Node.js `tls` module to extract real certificate data
-- Captures: subject, issuer, validFrom, validTo, fingerprint, serialNumber
-- Updated CrawlerResult interface to include `sslCertificate` field
-- CrawlerAdapter passes certificate data to analyzers via metadata
-
-**Files Created:**
-- `src/lib/queue-sqlite.ts` - SQLite persistent queue
-- `src/worker/index-sqlite.ts` - Polling-based worker
-- `prisma/migrations/20251108090932_add_job_queue/` - Job model migration
-- `src/worker/analyzers/ssl-tls-analyzer.ts` - SSL/TLS security analyzer
-- `src/worker/analyzers/cookie-security-analyzer.ts` - Cookie security analyzer
-- `src/worker/analyzers/js-libraries-analyzer.ts` - JS library vulnerability scanner
-
-**Files Modified:**
-- `package.json` - Worker script updated to index-sqlite.ts
-- `prisma/schema.prisma` - Added Job model
-- `src/app/api/scan/route.ts` - Switched to SQLiteQueue
-- `src/lib/playwright-crawler.ts` - Added SSL certificate extraction
-- `src/lib/types/crawler-types.ts` - Added sslCertificate field
-- `src/lib/crawler-adapter.ts` - Pass certificate to metadata
-- `src/worker/crawler-mock.ts` - Extended CrawlResult interface (cookies, metadata)
-- `src/worker/scoring.ts` - Added weights for SSL/Cookie/JS analyzers
-- `src/worker/report-generator.ts` - Added ssl/cookie/library finding categories
-
-**Test Results:**
-```
-✅ origo.hu:        3.8s scan, 19/100 risk score (CRITICAL)
-                    - 6 missing headers
-                    - SSL/TLS: 50/100 (self-signed cert issues)
-                    - Cookies: 4 found, 0 insecure
-                    - JS Libraries: 2 detected, 0 vulnerable
-
-✅ 24.hu:           60s timeout (site too slow)
-                    - All 6 analyzers ran before timeout
-                    - Risk score: 25/100 (F - CRITICAL)
-
-❌ portfolio.hu:    Fixed after SSL date validation
-```
-
-**Database Schema Update:**
-```prisma
-model Job {
-  id          String   @id @default(uuid())
-  type        String   // "scan", "email", etc.
-  data        String   // JSON payload
-  status      String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
-  attempts    Int      @default(0)
-  maxAttempts Int      @default(3)
-  error       String?
-  createdAt   DateTime @default(now())
-  startedAt   DateTime?
-  completedAt DateTime?
-
-  @@index([status, createdAt])
-}
-```
-
-**Worker Log Output (All 6 Analyzers):**
-```
-[Worker] ✓ AI detected: true
-[Worker] ✓ Providers: none
-[Worker] ✓ API keys found: 0
-[Worker] ✓ Missing headers: 5
-[Worker] ✓ SSL/TLS score: 50/100        ← NEW!
-[Worker] ✓ Cookies: 4 (0 insecure)      ← NEW!
-[Worker] ✓ JS Libraries: 2 (0 vulnerable) ← NEW!
-[Worker] Risk Score: 19/100 (F - CRITICAL)
-```
-
-**Git Commits:**
-- 39edfee feat: SQLite-based queue + SSL/Cookie/JS analyzers + SSL certificate extraction
-
-**Architecture Impact:**
-- ✅ **Process isolation solved** - API and Worker now communicate via database
-- ✅ **Job persistence** - Queue survives restarts
-- ✅ **Retry logic** - Failed jobs automatically retry (max 3 attempts)
-- ✅ **Cleanup** - Old jobs auto-deleted after 7 days
-- ⚠️ **Performance** - 2s polling interval (acceptable for localhost)
-
----
-
-#### Day 4-5: AI Framework & Client-Side Risk Detection (PLANNED)
-
-**Planned Tasks:**
-- [ ] Detect AI frameworks (LangChain.js, Vercel AI SDK, etc.)
-- [ ] Analyze client-side AI risks (system prompt exposure)
-- [ ] Detect model version leakage
-- [ ] Check for embedding vectors in client code
-- [ ] Create AI Framework Detector analyzer
-- [ ] Create Client AI Risk Analyzer
-- [ ] Update risk scoring with AI-specific weights
-
----
-
-#### Day 6: AI Security Headers (PLANNED)
-
-**Planned Tasks:**
-- [ ] Analyze CORS on AI endpoints
-- [ ] Check rate limiting headers
-- [ ] Validate API versioning headers
-- [ ] Create AI Header Analyzer
-- [ ] Integrate all AI analyzers into pipeline
-
----
-
-**Sprint 4A Goals:**
-- ✅ Real Playwright crawler working (Day 1 DONE)
-- ✅ 10+ AI providers detected (Day 2 DONE - 12 providers!)
-- ✅ SQLite queue architecture (Day 3 DONE)
-- ✅ General security analyzers (Day 3 DONE - SSL/Cookie/JS)
-- ✅ SSL certificate extraction (Day 3 DONE)
-- ⏳ 5+ AI frameworks detected (Day 4-5)
-- ⏳ Client-side AI risk detection working (Day 4-5)
-
-**Business Impact:**
-- 🎯 Position as "AI Security Scanner" instead of generic tool
-- 🎯 OWASP LLM Top 10 compliance messaging capability
-- 🎯 Higher pricing tier justification ($5K-$15K vs $2K-$10K)
-- 🎯 Improved lead quality (AI companies = bigger budgets)
-- 🎯 **NEW:** General website security scanner appeal (broader market)
-
----
-
-**Last Updated:** November 8, 2025 (Sprint 4A Day 3 COMPLETE)
-**Status:** 6 analyzers working, SQLite queue operational, SSL certificate extraction live
-**Next Milestone:** AI Framework & Client-Side Risk Detection (Day 4-5)
+_Ez a dokumentum automatikusan frissül minden lépés után._
