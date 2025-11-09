@@ -60,7 +60,9 @@ export const ADVANCED_API_KEY_PATTERNS: APIKeyPattern[] = [
   {
     provider: 'Azure OpenAI',
     patterns: [
-      /[a-f0-9]{32}/g,                  // Azure API key (32 hex chars)
+      // Azure API keys are 32 hex chars, but we need context to avoid false positives
+      // Only match if NOT in common image/asset URL patterns
+      /(?<!\/)[a-f0-9]{32}(?![a-zA-Z0-9/])/g,  // 32 hex, not part of URL path
     ],
     severity: 'high',
     costRisk: 'high',

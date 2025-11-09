@@ -23,6 +23,49 @@ export interface ClientRiskFinding {
   recommendation: string
 }
 
+/**
+ * Check if a potential API key match is a false positive
+ * (e.g., part of an image URL, asset ID, or other non-sensitive context)
+ */
+function isLikelyFalsePositive(key: string, context: string, provider: string): boolean {
+  // 32-hex-char patterns are used by Azure OpenAI, AssemblyAI, and others
+  // BUT they're also common in image URLs, asset IDs, etc.
+  // Apply filtering for ANY provider with 32-hex patterns
+  if (key.length === 32 && /^[a-f0-9]{32}$/i.test(key)) {
+    // Check if the key appears in common false positive contexts
+    const falsePositivePatterns = [
+      /images\.ctfassets\.net\/[^\/]+\/[^\/]+\/[a-f0-9]{32}/i,  // Contentful asset URLs
+      /cdn\.[\w-]+\.com\/[^\/]*[a-f0-9]{32}/i,                 // CDN URLs with hex IDs
+      /\.(png|jpg|jpeg|gif|webp|svg|ico)\?[^"']*[a-f0-9]{32}/i, // Image URLs with query params
+      /\/assets\/[^\/]*[a-f0-9]{32}/i,                          // Asset paths
+      /\/static\/[^\/]*[a-f0-9]{32}/i,                          // Static file paths
+      /"url":"[^"]*[a-f0-9]{32}/i,                              // JSON URL fields
+      /"src":"[^"]*[a-f0-9]{32}/i,                              // JSON src fields
+      /"href":"[^"]*[a-f0-9]{32}/i,                             // JSON href fields
+      /\.net\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/[a-f0-9]{32}/i,   // Generic CDN asset patterns
+    ]
+
+    // Check if key appears in any false positive context
+    for (const pattern of falsePositivePatterns) {
+      if (pattern.test(context)) {
+        return true
+      }
+    }
+
+    // Check if the key is immediately preceded/followed by URL path characters
+    const keyIndex = context.indexOf(key)
+    if (keyIndex > 0) {
+      const before = context.charAt(keyIndex - 1)
+      const after = context.charAt(keyIndex + key.length)
+      if (before === '/' || after === '/' || after === '.') {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
 export function analyzeClientRisks(crawlResult: CrawlResult): ClientRisksResult {
   const result: ClientRisksResult = {
     apiKeysFound: [],
@@ -44,6 +87,12 @@ export function analyzeClientRisks(crawlResult: CrawlResult): ClientRisksResult 
 
           // Skip if already detected
           if (detectedKeys.has(key)) continue
+
+          // Check if this is a false positive (e.g., part of image URL)
+          if (isLikelyFalsePositive(key, script, apiKeyConfig.provider)) {
+            continue
+          }
+
           detectedKeys.add(key)
 
           const provider = identifyProvider(key)
@@ -77,6 +126,12 @@ export function analyzeClientRisks(crawlResult: CrawlResult): ClientRisksResult 
 
         // Skip if already detected
         if (detectedKeys.has(key)) continue
+
+        // Check if this is a false positive (e.g., part of image URL)
+        if (isLikelyFalsePositive(key, crawlResult.html, apiKeyConfig.provider)) {
+          continue
+        }
+
         detectedKeys.add(key)
 
         const provider = identifyProvider(key)
