@@ -69,8 +69,15 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
   for (const tech of TECH_DETECTION_RULES) {
     const matches = new Set<string>() // Store unique matches
     let extractedVersion: string | undefined
+    let foundMatch = false // Track if we found at least one match
 
     for (const pattern of tech.patterns) {
+      // For WordPress, collect ALL plugin matches
+      // For other tech, break after first match
+      if (foundMatch && tech.name !== 'WordPress') {
+        break // Early exit - we already found this tech
+      }
+
       // Ensure regex has 'g' flag for matchAll
       let regex: RegExp
       if (typeof pattern.match === 'string') {
@@ -90,6 +97,7 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
             // If there's a capture group, use it as the evidence
             const evidence = match[1] || match[0]
             matches.add(evidence)
+            foundMatch = true
 
             // Try to extract version
             if (pattern.version && !extractedVersion) {
@@ -117,6 +125,7 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
               // match[1] is the capture group (plugin name)
               const evidence = match[1] || match[0]
               matches.add(evidence)
+              foundMatch = true
               if (tech.name === 'WordPress') {
                 console.log(`[TechAnalyzer]   ✓ Match found: ${evidence} (from ${scriptUrl.substring(0, 80)}...)`)
               }
@@ -130,6 +139,7 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
               const match = linkUrl.match(regex)
               const evidence = match && match[1] ? match[1] : linkUrl
               matches.add(evidence)
+              foundMatch = true
             }
           }
           break
@@ -141,6 +151,7 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
               const match = combined.match(regex)
               const evidence = match && match[1] ? match[1] : match ? match[0] : combined
               matches.add(evidence)
+              foundMatch = true
             }
           }
           break
@@ -150,6 +161,7 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
           for (const match of metaMatches) {
             const evidence = match[1] || match[0]
             matches.add(evidence)
+            foundMatch = true
 
             // Try to extract version
             if (pattern.version && !extractedVersion) {
@@ -166,6 +178,7 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
           for (const match of jsMatches) {
             const evidence = match[1] || match[0]
             matches.add(evidence)
+            foundMatch = true
           }
           break
       }

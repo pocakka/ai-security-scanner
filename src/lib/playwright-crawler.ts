@@ -38,6 +38,8 @@ export class PlaywrightCrawler {
    */
   async crawl(url: string): Promise<CrawlerResult> {
     const startTime = Date.now()
+    const timingBreakdown: Record<string, number> = {}
+
     console.log(`[PlaywrightCrawler] Starting scan for: ${url}`)
 
     try {
@@ -45,19 +47,28 @@ export class PlaywrightCrawler {
       this.validateUrl(url)
 
       // Initialize browser
+      const browserStart = Date.now()
       await this.initBrowser()
+      timingBreakdown.browserInit = Date.now() - browserStart
 
       // Setup network monitoring
+      const monitoringStart = Date.now()
       this.setupNetworkMonitoring()
+      timingBreakdown.networkSetup = Date.now() - monitoringStart
 
-      // Navigate to page
+      // Navigate to page (DNS + TCP + TLS + initial HTML)
+      const navigationStart = Date.now()
       const response = await this.navigateToPage(url)
       const statusCode = response?.status() || 0
+      timingBreakdown.navigation = Date.now() - navigationStart
 
-      // Wait for page to stabilize
+      // Wait for page to stabilize (JS execution, resources loading)
+      const pageLoadStart = Date.now()
       await this.waitForPageLoad()
+      timingBreakdown.pageLoad = Date.now() - pageLoadStart
 
       // Collect page data
+      const dataCollectionStart = Date.now()
       const html = await this.page!.content()
       const title = await this.page!.title()
       const finalUrl = this.page!.url()
@@ -66,16 +77,23 @@ export class PlaywrightCrawler {
       const jsEvaluation = this.config.evaluateJavaScript
         ? await this.evaluateJavaScript()
         : undefined
+      timingBreakdown.dataCollection = Date.now() - dataCollectionStart
 
       // Optional screenshot
       let screenshot: Buffer | undefined
       if (this.config.captureScreenshot) {
+        const screenshotStart = Date.now()
         screenshot = await this.captureScreenshot()
+        timingBreakdown.screenshot = Date.now() - screenshotStart
       }
 
       const loadTime = Date.now() - startTime
 
       console.log(`[PlaywrightCrawler] ✅ Scan completed in ${loadTime}ms`)
+      console.log(`[PlaywrightCrawler]   Browser Init: ${timingBreakdown.browserInit}ms`)
+      console.log(`[PlaywrightCrawler]   Navigation: ${timingBreakdown.navigation}ms`)
+      console.log(`[PlaywrightCrawler]   Page Load: ${timingBreakdown.pageLoad}ms`)
+      console.log(`[PlaywrightCrawler]   Data Collection: ${timingBreakdown.dataCollection}ms`)
       console.log(`[PlaywrightCrawler] Captured ${this.requests.length} requests, ${this.responses.length} responses`)
 
       return {
@@ -92,6 +110,7 @@ export class PlaywrightCrawler {
         jsEvaluation,
         screenshot,
         loadTime,
+        timingBreakdown, // NEW: detailed timing data
         timestamp: new Date(),
         userAgent: this.config.userAgent || DEFAULT_CRAWLER_CONFIG.userAgent,
       }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Shield, AlertTriangle, CheckCircle, XCircle, Mail, ArrowLeft, ArrowRight, TrendingUp, Download, Lock, Cookie, Code, Globe } from 'lucide-react'
+import AdminDebugBar from './AdminDebugBar'
 
 interface Scan {
   id: string
@@ -12,6 +13,7 @@ interface Scan {
   riskLevel?: string
   findings?: any
   detectedTech?: any
+  metadata?: any // Already parsed by API
   completedAt?: string
 }
 
@@ -202,6 +204,9 @@ export default function ScanResultPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+      {/* Admin Debug Bar - only visible to logged-in admins */}
+      <AdminDebugBar metadata={scan.metadata} />
+
       {/* Header */}
       <div className="border-b border-white/10 bg-black/20 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-6 py-6">

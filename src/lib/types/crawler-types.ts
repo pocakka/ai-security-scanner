@@ -90,6 +90,7 @@ export interface CrawlerResult {
 
   // Metadata
   loadTime: number // milliseconds
+  timingBreakdown?: Record<string, number> // NEW: detailed timing breakdown
   timestamp: Date
   error?: string
   userAgent: string

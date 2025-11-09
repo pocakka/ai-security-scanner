@@ -30,6 +30,10 @@ async function processScanJob(data: { scanId: string; url: string }) {
 
   console.log(`[Worker] Processing scan ${scanId} for ${url}`)
 
+  // Performance timing tracking
+  const timings: Record<string, number> = {}
+  const startTime = Date.now()
+
   try {
     // Update status to scanning
     await prisma.scan.update({
@@ -42,18 +46,44 @@ async function processScanJob(data: { scanId: string; url: string }) {
 
     // Step 1: Crawl the website
     console.log(`[Worker] Crawling ${url}...`)
+    const crawlStart = Date.now()
     const crawlResult = await crawler.crawl(url)
-    console.log(`[Worker] Crawl completed in ${crawlResult.loadTime}ms`)
+    timings.crawl = Date.now() - crawlStart
+    console.log(`[Worker] Crawl completed in ${timings.crawl}ms`)
 
     // Step 2: Run all analyzers
     console.log(`[Worker] Running analyzers...`)
+    const analyzerStart = Date.now()
+
+    const aiDetectionStart = Date.now()
     const aiDetection = analyzeAIDetection(crawlResult)
+    timings.aiDetection = Date.now() - aiDetectionStart
+
+    const securityHeadersStart = Date.now()
     const securityHeaders = analyzeSecurityHeaders(crawlResult)
+    timings.securityHeaders = Date.now() - securityHeadersStart
+
+    const clientRisksStart = Date.now()
     const clientRisks = analyzeClientRisks(crawlResult)
+    timings.clientRisks = Date.now() - clientRisksStart
+
+    const sslTLSStart = Date.now()
     const sslTLS = analyzeSSLTLS(crawlResult)
+    timings.sslTLS = Date.now() - sslTLSStart
+
+    const cookieSecurityStart = Date.now()
     const cookieSecurity = analyzeCookieSecurity(crawlResult)
+    timings.cookieSecurity = Date.now() - cookieSecurityStart
+
+    const jsLibrariesStart = Date.now()
     const jsLibraries = analyzeJSLibraries(crawlResult)
+    timings.jsLibraries = Date.now() - jsLibrariesStart
+
+    const techStackStart = Date.now()
     const techStack = analyzeTechStack(crawlResult)
+    timings.techStack = Date.now() - techStackStart
+
+    timings.totalAnalyzers = Date.now() - analyzerStart
 
     console.log(`[Worker] ✓ AI detected: ${aiDetection.hasAI}`)
     console.log(`[Worker] ✓ Providers: ${aiDetection.providers.join(', ') || 'none'}`)
@@ -71,6 +101,7 @@ async function processScanJob(data: { scanId: string; url: string }) {
 
     // Step 3: Calculate risk score
     console.log(`[Worker] Calculating risk score...`)
+    const riskScoreStart = Date.now()
     const riskScore = calculateRiskScore(
       aiDetection,
       securityHeaders,
@@ -79,9 +110,11 @@ async function processScanJob(data: { scanId: string; url: string }) {
       cookieSecurity,
       jsLibraries
     )
+    timings.riskScore = Date.now() - riskScoreStart
 
     // Step 4: Generate report
     console.log(`[Worker] Generating report...`)
+    const reportStart = Date.now()
     const report = generateReport(
       aiDetection,
       securityHeaders,
@@ -92,6 +125,39 @@ async function processScanJob(data: { scanId: string; url: string }) {
       jsLibraries,
       techStack
     )
+    timings.reportGeneration = Date.now() - reportStart
+
+    // Calculate total time
+    timings.total = Date.now() - startTime
+
+    // Add performance data to metadata
+    const performanceData = {
+      timings,
+      timestamp: new Date().toISOString(),
+      crawlerBreakdown: crawlResult.timingBreakdown || {}, // NEW: detailed crawler timing
+      analyzerBreakdown: {
+        aiDetection: timings.aiDetection,
+        securityHeaders: timings.securityHeaders,
+        clientRisks: timings.clientRisks,
+        sslTLS: timings.sslTLS,
+        cookieSecurity: timings.cookieSecurity,
+        jsLibraries: timings.jsLibraries,
+        techStack: timings.techStack,
+      }
+    }
+
+    console.log(`[Worker] 📊 Performance Summary:`)
+    console.log(`[Worker]   Crawl: ${timings.crawl}ms`)
+    if (crawlResult.timingBreakdown) {
+      console.log(`[Worker]     └─ Browser Init: ${crawlResult.timingBreakdown.browserInit}ms`)
+      console.log(`[Worker]     └─ Navigation: ${crawlResult.timingBreakdown.navigation}ms`)
+      console.log(`[Worker]     └─ Page Load: ${crawlResult.timingBreakdown.pageLoad}ms`)
+      console.log(`[Worker]     └─ Data Collection: ${crawlResult.timingBreakdown.dataCollection}ms`)
+    }
+    console.log(`[Worker]   Analyzers: ${timings.totalAnalyzers}ms`)
+    console.log(`[Worker]   Risk Score: ${timings.riskScore}ms`)
+    console.log(`[Worker]   Report Gen: ${timings.reportGeneration}ms`)
+    console.log(`[Worker]   TOTAL: ${timings.total}ms`)
 
     // Step 5: Save results
     console.log(`[Worker] Saving results...`)
@@ -103,6 +169,7 @@ async function processScanJob(data: { scanId: string; url: string }) {
         riskLevel: riskScore.level,
         detectedTech: JSON.stringify(report.detectedTech),
         findings: JSON.stringify(report),
+        metadata: JSON.stringify(performanceData),
         completedAt: new Date(),
       },
     })

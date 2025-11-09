@@ -60,6 +60,19 @@ export function analyzeCookieSecurity(crawlResult: CrawlResult): CookieSecurityR
     const cookieDomain = cookie.domain || ''
     const isThirdParty = !cookieDomain.includes(siteDomain) && !siteDomain.includes(cookieDomain)
 
+    // Track third-party cookies first
+    if (isThirdParty) {
+      result.thirdPartyCookies.push({
+        name: cookie.name,
+        domain: cookieDomain,
+        purpose: identifyCookiePurpose(cookie.name, cookieDomain),
+      })
+      // Skip security checks for 3rd party cookies - website owner can't control them
+      continue
+    }
+
+    // Only perform security checks on FIRST-PARTY cookies (under website owner's control)
+
     // Check 1: Secure flag
     if (!cookie.secure) {
       result.insecureCookies++
@@ -122,15 +135,6 @@ export function analyzeCookieSecurity(crawlResult: CrawlResult): CookieSecurityR
 
         scoreDeduction += 2
       }
-    }
-
-    // Track third-party cookies
-    if (isThirdParty) {
-      result.thirdPartyCookies.push({
-        name: cookie.name,
-        domain: cookieDomain,
-        purpose: identifyCookiePurpose(cookie.name, cookieDomain),
-      })
     }
   }
 

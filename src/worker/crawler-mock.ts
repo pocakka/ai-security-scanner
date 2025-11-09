@@ -8,6 +8,7 @@ export interface CrawlResult {
   scripts: string[]
   responseHeaders: Record<string, string>
   loadTime: number
+  timingBreakdown?: Record<string, number> // NEW: detailed timing breakdown
   finalUrl: string
   cookies?: CookieData[]
   metadata?: {

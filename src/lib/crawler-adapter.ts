@@ -35,6 +35,7 @@ export class CrawlerAdapter {
       finalUrl: playwrightResult.finalUrl,
       html: playwrightResult.html,
       loadTime: playwrightResult.loadTime,
+      timingBreakdown: playwrightResult.timingBreakdown, // NEW: pass through detailed timing
 
       // Convert network requests
       networkRequests: playwrightResult.responses.map((response) => ({
