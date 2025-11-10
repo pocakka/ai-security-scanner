@@ -173,32 +173,58 @@ export function analyzeSSLTLS(crawlResult: CrawlResult): SSLTLSResult {
  * Parse certificate information from metadata
  */
 function parseCertificateInfo(cert: any): CertificateInfo {
-  const validFrom = new Date(cert.validFrom || cert.valid_from)
-  const validTo = new Date(cert.validTo || cert.valid_to)
+  // Node.js tls module returns dates as:
+  // - valid_from: "Oct 28 21:07:54 2025 GMT" (string)
+  // - valid_to: "Jan 26 22:07:41 2026 GMT" (string)
+
+  // Try both snake_case and camelCase (for backwards compatibility)
+  const validFromStr = cert.valid_from || cert.validFrom
+  const validToStr = cert.valid_to || cert.validTo
+
+  let validFrom: Date
+  let validTo: Date
+
+  try {
+    validFrom = new Date(validFromStr)
+    validTo = new Date(validToStr)
+  } catch (error) {
+    // If parsing fails, return safe defaults
+    console.warn('[SSL/TLS] Failed to parse certificate dates:', error)
+    validFrom = new Date(0) // Epoch
+    validTo = new Date(0)
+  }
+
   const now = new Date()
 
   // Check if dates are valid
-  const isValidFromValid = !isNaN(validFrom.getTime())
-  const isValidToValid = !isNaN(validTo.getTime())
+  const isValidFromValid = !isNaN(validFrom.getTime()) && validFrom.getTime() > 0
+  const isValidToValid = !isNaN(validTo.getTime()) && validTo.getTime() > 0
 
   const daysUntilExpiry = isValidToValid
     ? Math.floor((validTo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
     : 0
-  const isExpired = daysUntilExpiry < 0
+  const isExpired = isValidToValid && daysUntilExpiry < 0
 
   // Check if self-signed (issuer === subject)
-  const issuer = cert.issuer?.CN || cert.issuer || 'Unknown'
-  const subject = cert.subject?.CN || cert.subject || 'Unknown'
-  const isSelfSigned = issuer === subject
+  // Extract CN (Common Name) from issuer and subject objects
+  const issuerCN = cert.issuer?.CN || cert.issuer || 'Unknown'
+  const subjectCN = cert.subject?.CN || cert.subject || 'Unknown'
+  const isSelfSigned = issuerCN === subjectCN && issuerCN !== 'Unknown'
+
+  // Format issuer name (include organization if available)
+  let issuerName = issuerCN
+  if (cert.issuer?.O) {
+    issuerName = `${cert.issuer.O} (${issuerCN})`
+  }
 
   return {
-    issuer,
+    issuer: issuerName,
     validFrom: isValidFromValid ? validFrom.toISOString().split('T')[0] : 'Unknown',
     validTo: isValidToValid ? validTo.toISOString().split('T')[0] : 'Unknown',
     daysUntilExpiry,
     isExpired,
     isSelfSigned,
-    subject,
+    subject: subjectCN,
   }
 }
 
