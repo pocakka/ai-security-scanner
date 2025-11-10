@@ -81,6 +81,91 @@ function cleanEvidence(evidence: string, maxLength: number = 100): string {
 }
 
 /**
+ * Extract meaningful information from evidence based on tech type
+ * For "Social Login (OAuth)" → extract provider name (Facebook, Google, Twitter)
+ * For most other tech → return empty string (don't show code snippets)
+ */
+function extractMeaningfulEvidence(techName: string, evidence: string, pattern: string): string | null {
+  if (!evidence) return null
+
+  // Special handling for Social Login (OAuth)
+  if (techName === 'Social Login (OAuth)') {
+    const lowerEvidence = evidence.toLowerCase()
+    const lowerPattern = pattern.toLowerCase()
+
+    // Extract provider name from pattern or evidence
+    if (lowerPattern.includes('facebook') || lowerEvidence.includes('facebook')) {
+      return 'Facebook'
+    }
+    if (lowerPattern.includes('google') || lowerEvidence.includes('google')) {
+      return 'Google'
+    }
+    if (lowerPattern.includes('twitter') || lowerEvidence.includes('twitter')) {
+      return 'Twitter'
+    }
+    if (lowerPattern.includes('github') || lowerEvidence.includes('github')) {
+      return 'GitHub'
+    }
+    if (lowerPattern.includes('linkedin') || lowerEvidence.includes('linkedin')) {
+      return 'LinkedIn'
+    }
+    if (lowerPattern.includes('apple') || lowerEvidence.includes('apple')) {
+      return 'Apple'
+    }
+    if (lowerPattern.includes('microsoft') || lowerEvidence.includes('microsoft')) {
+      return 'Microsoft'
+    }
+  }
+
+  // For tracking IDs (Google Analytics, Facebook Pixel, etc.) - show the ID
+  if (techName.includes('Analytics') || techName.includes('Pixel') || techName.includes('Tag Manager')) {
+    // Extract tracking ID patterns
+    const trackingIdMatch = evidence.match(/(?:UA|G|GTM|AW)-[A-Z0-9-]+/i)
+    if (trackingIdMatch) {
+      return trackingIdMatch[0]
+    }
+  }
+
+  // For most frameworks/libraries (Next.js, React, Bulma, etc.) - don't show evidence
+  // Just show the confidence level
+  const noEvidenceCategories = ['framework', 'cdn', 'hosting']
+  const noEvidenceTech = [
+    'Next.js',
+    'React',
+    'Vue.js',
+    'Angular',
+    'Bulma',
+    'Bootstrap',
+    'Tailwind CSS',
+    'jQuery',
+    'Webpack',
+    'Vite',
+  ]
+
+  if (noEvidenceTech.includes(techName)) {
+    return null // Don't show evidence for these
+  }
+
+  // For URLs (CDN, scripts) - don't show full URLs
+  if (evidence.includes('http://') || evidence.includes('https://') || evidence.includes('//')) {
+    return null // URLs are not meaningful to end users
+  }
+
+  // For CSS class names, variable names, etc - don't show
+  if (evidence.includes('class=') || evidence.includes('var(') || evidence.includes('{') || evidence.includes('}')) {
+    return null
+  }
+
+  // Default: clean and show if it's short enough
+  const cleaned = cleanEvidence(evidence, 50)
+  if (cleaned.length < 10) {
+    return null // Too short to be meaningful
+  }
+
+  return cleaned
+}
+
+/**
  * Tech Stack Analyzer
  *
  * Detects technologies used on a website similar to Wappalyzer.
@@ -281,17 +366,43 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
             website: tech.website,
           })
         } else {
-          // Add each unique match as a separate entry
-          for (const evidence of matches) {
-            detected.push({
-              name: tech.name,
-              category: tech.category,
-              confidence: tech.confidence,
-              version: extractedVersion,
-              description: tech.description,
-              website: tech.website,
-              evidence: cleanEvidence(evidence, 100), // Clean and truncate evidence
-            })
+          // Special handling for Social Login (OAuth) - aggregate providers
+          if (tech.name === 'Social Login (OAuth)') {
+            const providers = new Set<string>()
+            for (const evidence of matches) {
+              const meaningful = extractMeaningfulEvidence(tech.name, evidence, '')
+              if (meaningful) {
+                providers.add(meaningful)
+              }
+            }
+
+            // Add single entry with all providers
+            if (providers.size > 0) {
+              detected.push({
+                name: tech.name,
+                category: tech.category,
+                confidence: tech.confidence,
+                version: extractedVersion,
+                description: tech.description,
+                website: tech.website,
+                evidence: Array.from(providers).join(', '), // "Facebook, Google, Twitter"
+              })
+            }
+          } else {
+            // Add each unique match as a separate entry
+            for (const evidence of matches) {
+              const meaningful = extractMeaningfulEvidence(tech.name, evidence, '')
+
+              detected.push({
+                name: tech.name,
+                category: tech.category,
+                confidence: tech.confidence,
+                version: extractedVersion,
+                description: tech.description,
+                website: tech.website,
+                evidence: meaningful || undefined, // Only set if meaningful, otherwise undefined
+              })
+            }
           }
         }
       }
