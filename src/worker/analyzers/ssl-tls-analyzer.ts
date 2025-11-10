@@ -78,9 +78,10 @@ export function analyzeSSLTLS(crawlResult: CrawlResult): SSLTLSResult {
   // For HTTPS sites, analyze further
   let score = 100
 
-  // Check 2: Certificate information (from metadata if available)
-  if (crawlResult.metadata?.certificate) {
-    const cert = crawlResult.metadata.certificate
+  // Check 2: Certificate information (from crawler result)
+  // Note: Crawler stores certificate as sslCertificate (not in metadata.certificate)
+  if (crawlResult.sslCertificate) {
+    const cert = crawlResult.sslCertificate
     result.certificate = parseCertificateInfo(cert)
 
     // Check certificate expiry
@@ -170,7 +171,7 @@ export function analyzeSSLTLS(crawlResult: CrawlResult): SSLTLSResult {
 }
 
 /**
- * Parse certificate information from metadata
+ * Parse certificate information from crawler result
  */
 function parseCertificateInfo(cert: any): CertificateInfo {
   // Node.js tls module returns dates as:
