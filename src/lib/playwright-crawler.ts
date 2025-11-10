@@ -76,7 +76,13 @@ export class PlaywrightCrawler {
       const title = await this.page!.title()
       const finalUrl = this.page!.url()
       const cookies = await this.collectCookies()
-      const sslCertificate = this.parseSecurityDetails(securityDetails, finalUrl)
+
+      // Try Playwright securityDetails first, fallback to tls.connect if null
+      let sslCertificate = this.parseSecurityDetails(securityDetails, finalUrl)
+      if (!sslCertificate) {
+        console.log('[PlaywrightCrawler] ⚠️  securityDetails null, trying tls.connect fallback...')
+        sslCertificate = await this.collectSSLCertificate(finalUrl)
+      }
       const jsEvaluation = this.config.evaluateJavaScript
         ? await this.evaluateJavaScript()
         : undefined
@@ -399,8 +405,9 @@ export class PlaywrightCrawler {
   }
 
   /**
-   * DEPRECATED: Collect SSL/TLS certificate information using tls.connect
-   * Replaced by parseSecurityDetails which uses Playwright's built-in certificate data
+   * Collect SSL/TLS certificate information using tls.connect
+   * Used as FALLBACK when Playwright securityDetails returns null
+   * (e.g., for redirects, CDN, or non-main-frame responses)
    */
   private async collectSSLCertificate(url: string): Promise<any> {
     try {
