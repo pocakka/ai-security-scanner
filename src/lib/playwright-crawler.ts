@@ -62,6 +62,9 @@ export class PlaywrightCrawler {
       const statusCode = response?.status() || 0
       timingBreakdown.navigation = Date.now() - navigationStart
 
+      // Get SSL certificate from Playwright's securityDetails (MUCH more reliable than tls.connect)
+      const securityDetails = response ? await response.securityDetails() : null
+
       // Wait for page to stabilize (JS execution, resources loading)
       const pageLoadStart = Date.now()
       await this.waitForPageLoad()
@@ -73,7 +76,7 @@ export class PlaywrightCrawler {
       const title = await this.page!.title()
       const finalUrl = this.page!.url()
       const cookies = await this.collectCookies()
-      const sslCertificate = await this.collectSSLCertificate(finalUrl)
+      const sslCertificate = this.parseSecurityDetails(securityDetails, finalUrl)
       const jsEvaluation = this.config.evaluateJavaScript
         ? await this.evaluateJavaScript()
         : undefined
@@ -341,7 +344,63 @@ export class PlaywrightCrawler {
   }
 
   /**
-   * Collect SSL/TLS certificate information
+   * Parse Playwright securityDetails into our certificate format
+   * This is MUCH more reliable than tls.connect() because Playwright already has the certificate
+   */
+  private parseSecurityDetails(securityDetails: any, url: string): any {
+    if (!securityDetails) {
+      console.log(`[PlaywrightCrawler] ⚠️  No security details available for ${url}`)
+      return null
+    }
+
+    try {
+      console.log(`[PlaywrightCrawler] 🔒 Parsing SSL certificate from Playwright security details`)
+
+      // Playwright securityDetails returns:
+      // - issuer: string
+      // - protocol: string (e.g., "TLS 1.3")
+      // - subjectName: string
+      // - validFrom: number (Unix timestamp in seconds)
+      // - validTo: number (Unix timestamp in seconds)
+
+      const validFromTimestamp = securityDetails.validFrom
+      const validToTimestamp = securityDetails.validTo
+
+      // Convert Unix timestamps to Date objects
+      const validFromDate = new Date(validFromTimestamp * 1000)
+      const validToDate = new Date(validToTimestamp * 1000)
+
+      // Format as GMT string (matching Node.js tls format)
+      const valid_from = validFromDate.toUTCString().replace(/GMT$/, '').trim() + ' GMT'
+      const valid_to = validToDate.toUTCString().replace(/GMT$/, '').trim() + ' GMT'
+
+      const certInfo = {
+        subject: { CN: securityDetails.subjectName },
+        issuer: { CN: securityDetails.issuer },
+        // Store both snake_case and camelCase for compatibility
+        valid_from,
+        valid_to,
+        validFrom: valid_from,
+        validTo: valid_to,
+        protocol: securityDetails.protocol,
+      }
+
+      console.log(`[PlaywrightCrawler] ✅ SSL certificate parsed successfully`)
+      console.log(`[PlaywrightCrawler]   Issuer: ${securityDetails.issuer}`)
+      console.log(`[PlaywrightCrawler]   Subject: ${securityDetails.subjectName}`)
+      console.log(`[PlaywrightCrawler]   Valid to: ${valid_to}`)
+      console.log(`[PlaywrightCrawler]   Protocol: ${securityDetails.protocol}`)
+
+      return certInfo
+    } catch (error) {
+      console.error(`[PlaywrightCrawler] ❌ Failed to parse security details:`, error)
+      return null
+    }
+  }
+
+  /**
+   * DEPRECATED: Collect SSL/TLS certificate information using tls.connect
+   * Replaced by parseSecurityDetails which uses Playwright's built-in certificate data
    */
   private async collectSSLCertificate(url: string): Promise<any> {
     try {
