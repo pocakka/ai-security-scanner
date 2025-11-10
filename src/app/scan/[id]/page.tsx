@@ -76,10 +76,13 @@ export default function ScanResultPage() {
   // Regenerate report
   const [regenerating, setRegenerating] = useState(false)
 
-  // Random security tip for loading screen
-  const [securityTip] = useState(() => getRandomSecurityTip())
+  // Random security tip for loading screen (client-side only to avoid hydration mismatch)
+  const [securityTip, setSecurityTip] = useState<string>('')
 
   useEffect(() => {
+    // Set random tip only on client-side to avoid hydration error
+    setSecurityTip(getRandomSecurityTip())
+
     fetchScan()
     // Poll every 2 seconds if not completed
     const interval = setInterval(() => {
@@ -188,16 +191,18 @@ export default function ScanResultPage() {
           )}
           <p className="text-slate-400 text-sm mb-8">This may take a few moments</p>
 
-          {/* Random AI Security Tip */}
-          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6 mt-8">
-            <div className="flex items-start gap-3">
-              <Lightbulb className="w-6 h-6 text-yellow-400 flex-shrink-0 mt-1" />
-              <div className="text-left">
-                <p className="text-blue-300 text-sm font-semibold mb-2">Security Tip</p>
-                <p className="text-slate-300 text-sm leading-relaxed">{securityTip}</p>
+          {/* Random AI Security Tip - only show after client-side hydration */}
+          {securityTip && (
+            <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6 mt-8">
+              <div className="flex items-start gap-3">
+                <Lightbulb className="w-6 h-6 text-yellow-400 flex-shrink-0 mt-1" />
+                <div className="text-left">
+                  <p className="text-blue-300 text-sm font-semibold mb-2">Security Tip</p>
+                  <p className="text-slate-300 text-sm leading-relaxed">{securityTip}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     )
