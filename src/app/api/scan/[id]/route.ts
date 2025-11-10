@@ -9,6 +9,9 @@ export async function GET(
     const { id } = await params
     const scan = await prisma.scan.findUnique({
       where: { id },
+      include: {
+        aiTrustScorecard: true, // Include AI Trust Scorecard (1:1 relation)
+      },
     })
 
     if (!scan) {
@@ -24,6 +27,17 @@ export async function GET(
       detectedTech: scan.detectedTech ? JSON.parse(scan.detectedTech) : null,
       findings: scan.findings ? JSON.parse(scan.findings) : null,
       metadata: scan.metadata ? JSON.parse(scan.metadata) : null,
+
+      // Parse AI Trust Scorecard JSON fields
+      aiTrustScorecard: scan.aiTrustScorecard ? {
+        ...scan.aiTrustScorecard,
+        categoryScores: scan.aiTrustScorecard.categoryScores
+          ? JSON.parse(scan.aiTrustScorecard.categoryScores)
+          : null,
+        evidenceData: scan.aiTrustScorecard.evidenceData
+          ? JSON.parse(scan.aiTrustScorecard.evidenceData)
+          : null,
+      } : null,
     }
 
     return NextResponse.json(response)
