@@ -4843,12 +4843,15 @@ export const TECH_DETECTION_RULES: TechPattern[] = [
   {
     name: 'Email Share',
     category: 'social',
-    confidence: 'medium',
+    confidence: 'low',
     description: 'Email sharing links',
     website: '',
     patterns: [
-      { type: 'html', match: /mailto:.*subject=/i },
-      { type: 'html', match: /share.*email/i },
+      // Only match mailto links with subject parameter (actual email share buttons)
+      { type: 'html', match: /mailto:[^"'\s]*\?[^"'\s]*subject=/i },
+      // Specific share button HTML patterns
+      { type: 'html', match: /<a[^>]*class="[^"]*email[^"]*share[^"]*"[^>]*>/i },
+      { type: 'html', match: /<button[^>]*data-share[^>]*email[^>]*>/i },
     ],
   },
   {
