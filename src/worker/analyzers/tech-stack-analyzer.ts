@@ -44,6 +44,27 @@ function formatPluginName(slug: string): string {
 }
 
 /**
+ * Check if tech should aggregate multiple matches into single entry
+ * For social/sharing features - show once, not 3x for different mailto links
+ */
+function noEvidenceForMultipleMatches(techName: string): boolean {
+  const aggregateTech = [
+    'Email Share',
+    'Print Friendly',
+    'WhatsApp Share',
+    'Telegram Share',
+    'Viber Share',
+    'LinkedIn Share',
+    'Twitter Share',
+    'Facebook Share',
+    'Pinterest Share',
+    'Reddit Share',
+  ]
+
+  return aggregateTech.includes(techName)
+}
+
+/**
  * Clean evidence string for display
  * Removes HTML tags, limits length, and prettifies the output
  */
@@ -350,8 +371,9 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
             website: tech.website,
           })
         } else {
-          // Special handling for Social Login (OAuth) - aggregate providers
+          // Special handling for tech with multiple matches - aggregate into single entry
           if (tech.name === 'Social Login (OAuth)') {
+            // For OAuth, aggregate provider names
             const providers = new Set<string>()
             for (const evidence of matches) {
               const meaningful = extractMeaningfulEvidence(tech.name, tech.category, evidence)
@@ -372,8 +394,20 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
                 evidence: Array.from(providers).join(', '), // "Facebook, Google, Twitter"
               })
             }
+          } else if (matches.size > 1 && noEvidenceForMultipleMatches(tech.name)) {
+            // For tech that should show once regardless of multiple matches
+            // (Email Share, Print Friendly, Social Share buttons, etc.)
+            detected.push({
+              name: tech.name,
+              category: tech.category,
+              confidence: tech.confidence,
+              version: extractedVersion,
+              description: tech.description,
+              website: tech.website,
+              // No evidence - just show "✓ Confirmed" once
+            })
           } else {
-            // Add each unique match as a separate entry
+            // Add each unique match as a separate entry (WordPress plugins, etc.)
             for (const evidence of matches) {
               const meaningful = extractMeaningfulEvidence(tech.name, tech.category, evidence)
 
