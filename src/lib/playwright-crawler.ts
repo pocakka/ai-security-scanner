@@ -371,6 +371,10 @@ export class PlaywrightCrawler {
               const certInfo = {
                 subject: cert.subject,
                 issuer: cert.issuer,
+                // Node.js tls.getPeerCertificate() returns snake_case
+                valid_from: cert.valid_from,
+                valid_to: cert.valid_to,
+                // Keep camelCase for backwards compatibility
                 validFrom: cert.valid_from,
                 validTo: cert.valid_to,
                 fingerprint: cert.fingerprint,
