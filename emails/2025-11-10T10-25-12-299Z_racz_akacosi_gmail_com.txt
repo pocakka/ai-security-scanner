@@ -1,0 +1,32 @@
+
+To: racz.akacosi@gmail.com
+Subject: Your AI Security Scan Results for crazyegg.com
+
+
+AI Security Scanner - Scan Results
+
+Hi attila,
+
+Thank you for using AI Security Scanner! We've completed the security analysis of your website.
+
+SECURITY SCORE: 34/100
+Grade: F
+Risk Level: CRITICAL
+
+ISSUES FOUND:
+- Critical: 0
+- High: 3
+
+Scanned URL: https://crazyegg.com/
+
+---
+
+Want a Deeper Security Audit?
+
+This automated scan provides valuable insights, but cannot detect all AI-specific vulnerabilities like prompt injection, jailbreaking, or data leakage.
+
+Request a manual audit: security@aisecurityscanner.com
+
+© 2025 AI Security Scanner
+  
+  
