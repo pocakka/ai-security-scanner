@@ -5118,9 +5118,6 @@ export const TECH_DETECTION_RULES: TechPattern[] = [
     description: 'Modest JavaScript framework',
     website: 'https://stimulus.hotwired.dev',
     patterns: [
-      { type: 'html', match: /data-controller=/i },
-      { type: 'html', match: /data-action=/i },
-      { type: 'html', match: /data-target=/i },
       { type: 'js-global', match: /window\.Stimulus/i },
     ],
   },

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Shield, AlertTriangle, CheckCircle, XCircle, Mail, ArrowLeft, ArrowRight, TrendingUp, Download, Lock, Cookie, Code, Globe } from 'lucide-react'
+import { Shield, AlertTriangle, CheckCircle, XCircle, Mail, ArrowLeft, ArrowRight, TrendingUp, Download, Lock, Cookie, Code, Globe, RefreshCw } from 'lucide-react'
 import AdminDebugBar from './AdminDebugBar'
 
 interface Scan {
@@ -72,6 +72,9 @@ export default function ScanResultPage() {
   const [leadSubmitting, setLeadSubmitting] = useState(false)
   const [leadSubmitted, setLeadSubmitted] = useState(false)
 
+  // Regenerate report
+  const [regenerating, setRegenerating] = useState(false)
+
   useEffect(() => {
     fetchScan()
     // Poll every 2 seconds if not completed
@@ -131,6 +134,30 @@ export default function ScanResultPage() {
       console.error('Lead submission error:', err)
     } finally {
       setLeadSubmitting(false)
+    }
+  }
+
+  const handleRegenerateReport = async () => {
+    if (!scan?.url || regenerating) return
+
+    setRegenerating(true)
+    try {
+      // Create a new scan with the same URL
+      const response = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: scan.url }),
+      })
+
+      if (!response.ok) throw new Error('Failed to create new scan')
+
+      const data = await response.json()
+      // Redirect to the new scan page
+      window.location.href = `/scan/${data.scanId}`
+    } catch (err) {
+      console.error('Regenerate error:', err)
+      alert('Failed to regenerate report. Please try again.')
+      setRegenerating(false)
     }
   }
 
@@ -228,6 +255,15 @@ export default function ScanResultPage() {
               <span className="text-xl font-bold text-white">Security Report</span>
             </div>
             <div className="flex items-center gap-4">
+              <button
+                onClick={handleRegenerateReport}
+                disabled={regenerating}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
+                title="Run a fresh scan with the latest detection rules"
+              >
+                <RefreshCw className={`w-4 h-4 ${regenerating ? 'animate-spin' : ''}`} />
+                {regenerating ? 'Regenerating...' : 'Regenerate Report'}
+              </button>
               <a
                 href={`/api/scan/${scanId}/pdf`}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
