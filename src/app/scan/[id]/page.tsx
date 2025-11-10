@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { Shield, AlertTriangle, CheckCircle, XCircle, Mail, ArrowLeft, ArrowRight, TrendingUp, Download, Lock, Cookie, Code, Globe, RefreshCw, Lightbulb } from 'lucide-react'
 import AdminDebugBar from './AdminDebugBar'
 import { getRandomSecurityTip } from '@/data/ai-security-tips'
+import { AiTrustScore } from '@/components/AiTrustScore'
 
 interface Scan {
   id: string
@@ -16,6 +17,7 @@ interface Scan {
   detectedTech?: any
   metadata?: any // Already parsed by API
   completedAt?: string
+  aiTrustScorecard?: any // AI Trust Score data
 }
 
 // Category metadata (icon, title, description)
@@ -365,6 +367,22 @@ export default function ScanResultPage() {
             </div>
           </div>
         </div>
+
+        {/* AI Trust Score - NEW! */}
+        {scan.aiTrustScorecard && (
+          <div className="mb-8">
+            <AiTrustScore
+              score={scan.aiTrustScorecard.score}
+              weightedScore={scan.aiTrustScorecard.weightedScore}
+              categoryScores={scan.aiTrustScorecard.categoryScores}
+              passedChecks={scan.aiTrustScorecard.passedChecks}
+              totalChecks={scan.aiTrustScorecard.totalChecks}
+              detectedAiProvider={scan.aiTrustScorecard.detectedAiProvider}
+              detectedModel={scan.aiTrustScorecard.detectedModel}
+              detectedChatFramework={scan.aiTrustScorecard.detectedChatFramework}
+            />
+          </div>
+        )}
 
         {/* AI Detection Section - PRIORITIZED FIRST */}
         {(summary?.hasAI || aiFindings.length > 0) && (
