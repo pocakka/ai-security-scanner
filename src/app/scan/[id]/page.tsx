@@ -20,6 +20,18 @@ interface Scan {
   aiTrustScorecard?: any // AI Trust Score data
 }
 
+interface KnowledgeBaseEntry {
+  findingKey: string
+  category: string
+  severity: string
+  title: string
+  explanation: string
+  impact: string
+  solution: string
+  technicalDetails?: string
+  references: string[]
+}
+
 // Category metadata (icon, title, description)
 const CATEGORY_META = {
   ai: {
@@ -68,6 +80,9 @@ export default function ScanResultPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  // Knowledge base for E-E-A-T content
+  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBaseEntry[]>([])
+
   // Lead capture modal
   const [showLeadModal, setShowLeadModal] = useState(false)
   const [leadEmail, setLeadEmail] = useState('')
@@ -85,6 +100,9 @@ export default function ScanResultPage() {
     // Set random tip only on client-side to avoid hydration error
     setSecurityTip(getRandomSecurityTip())
 
+    // Fetch knowledge base once on mount
+    fetchKnowledgeBase()
+
     fetchScan()
     // Poll every 2 seconds if not completed
     const interval = setInterval(() => {
@@ -95,6 +113,18 @@ export default function ScanResultPage() {
 
     return () => clearInterval(interval)
   }, [scanId, scan?.status])
+
+  const fetchKnowledgeBase = async () => {
+    try {
+      const response = await fetch('/api/knowledge-base')
+      if (response.ok) {
+        const data = await response.json()
+        setKnowledgeBase(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch knowledge base:', error)
+    }
+  }
 
   const fetchScan = async () => {
     try {
@@ -445,7 +475,7 @@ export default function ScanResultPage() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-white border-t border-white/20 pt-4">Security Findings</h3>
                 {aiFindings.map((finding: any, index: number) => (
-                  <FindingCard key={index} finding={finding} />
+                  <FindingCard key={index} finding={finding} knowledgeBase={knowledgeBase} />
                 ))}
               </div>
             )}
@@ -596,7 +626,7 @@ export default function ScanResultPage() {
                   {/* Findings List */}
                   <div className="space-y-4">
                     {categoryFindings.map((finding: any, index: number) => (
-                      <FindingCard key={index} finding={finding} />
+                      <FindingCard key={index} finding={finding} knowledgeBase={knowledgeBase} />
                     ))}
                   </div>
                 </div>
@@ -736,7 +766,82 @@ function IssueCount({ label, count, color }: { label: string, count: number, col
   )
 }
 
-function FindingCard({ finding }: { finding: any }) {
+/**
+ * Map finding title to knowledge base findingKey
+ *
+ * Pairing Logic Documentation:
+ * - Security headers: "Missing: Content-Security-Policy" → "missing-content-security-policy"
+ * - SSL/TLS: Exact title match → kebab-case key
+ * - Cookies: "Cookie missing HttpOnly flag" → "cookie-missing-httponly"
+ * - AI: "AI Technology Detected" → "ai-technology-detected"
+ * - Client risks: "Exposed API Key" → "exposed-api-key"
+ */
+function findKnowledgeBaseEntry(finding: any, knowledgeBase: KnowledgeBaseEntry[]): KnowledgeBaseEntry | null {
+  const title = finding.title.toLowerCase()
+
+  // Security headers: "Missing: X-Frame-Options" → "missing-x-frame-options"
+  if (title.startsWith('missing:')) {
+    const headerName = title.replace('missing:', '').trim()
+    const key = `missing-${headerName.replace(/[^a-z0-9]+/g, '-')}`
+    return knowledgeBase.find(kb => kb.findingKey === key) || null
+  }
+
+  // SSL/TLS: Direct title mapping
+  const sslMapping: Record<string, string> = {
+    'no https encryption': 'no-https-encryption',
+    'ssl certificate expired': 'ssl-certificate-expired',
+    'ssl certificate expiring soon': 'ssl-certificate-expiring-soon',
+    'ssl certificate renewal recommended': 'ssl-certificate-renewal-recommended',
+    'self-signed ssl certificate': 'self-signed-ssl-certificate',
+  }
+  if (sslMapping[title]) {
+    return knowledgeBase.find(kb => kb.findingKey === sslMapping[title]) || null
+  }
+
+  // Cookie security
+  if (title.includes('cookie') && title.includes('httponly')) {
+    return knowledgeBase.find(kb => kb.findingKey === 'cookie-missing-httponly') || null
+  }
+  if (title.includes('cookie') && title.includes('secure')) {
+    return knowledgeBase.find(kb => kb.findingKey === 'cookie-missing-secure') || null
+  }
+  if (title.includes('cookie') && title.includes('samesite')) {
+    return knowledgeBase.find(kb => kb.findingKey === 'cookie-missing-samesite') || null
+  }
+
+  // JavaScript libraries
+  if (title.includes('cdn') && title.includes('integrity')) {
+    return knowledgeBase.find(kb => kb.findingKey === 'cdn-missing-sri') || null
+  }
+  if (title.includes('subresource integrity')) {
+    return knowledgeBase.find(kb => kb.findingKey === 'cdn-missing-sri') || null
+  }
+  if (title.includes('deprecated library')) {
+    return knowledgeBase.find(kb => kb.findingKey === 'deprecated-library') || null
+  }
+  if (title.includes('vulnerable version')) {
+    return knowledgeBase.find(kb => kb.findingKey === 'vulnerable-library-version') || null
+  }
+
+  // SSL/TLS additional
+  if (title.includes('mixed content')) {
+    return knowledgeBase.find(kb => kb.findingKey === 'mixed-content-detected') || null
+  }
+
+  // AI detection
+  if (title.includes('ai technology detected')) {
+    return knowledgeBase.find(kb => kb.findingKey === 'ai-technology-detected') || null
+  }
+
+  // Client risks: API keys
+  if (title.includes('exposed') && title.includes('api key')) {
+    return knowledgeBase.find(kb => kb.findingKey === 'exposed-api-key') || null
+  }
+
+  return null
+}
+
+function FindingCard({ finding, knowledgeBase }: { finding: any; knowledgeBase: KnowledgeBaseEntry[] }) {
   const severityColors: Record<string, string> = {
     critical: 'border-red-500/50 bg-red-500/10',
     high: 'border-orange-500/50 bg-orange-500/10',
@@ -759,6 +864,9 @@ function FindingCard({ finding }: { finding: any }) {
   }
 
   const [expanded, setExpanded] = useState(false)
+
+  // Try to find E-E-A-T content from knowledge base
+  const kbEntry = findKnowledgeBaseEntry(finding, knowledgeBase)
 
   return (
     <div className={`border-l-4 rounded-lg p-5 backdrop-blur-sm ${severityColors[finding.severity]}`}>
@@ -792,19 +900,74 @@ function FindingCard({ finding }: { finding: any }) {
             </div>
           )}
 
-          {/* Recommendation (Collapsible) */}
+          {/* E-E-A-T Content (Collapsible) - Professional explanations from knowledge base */}
           <button
             onClick={() => setExpanded(!expanded)}
             className="text-sm text-blue-300 hover:text-blue-200 font-semibold flex items-center gap-1 transition-colors"
           >
-            {expanded ? 'Hide solution' : 'View solution'}
+            {expanded ? 'Hide details' : 'How to fix this'}
             <ArrowRight className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`} />
           </button>
 
           {expanded && (
-            <div className="mt-3 pl-4 border-l-2 border-green-400/50 bg-green-500/10 rounded-r p-3">
-              <p className="text-xs text-green-200 mb-1 font-semibold">Recommended Solution:</p>
-              <p className="text-sm text-green-100 leading-relaxed">{finding.recommendation}</p>
+            <div className="mt-3 space-y-3">
+              {kbEntry ? (
+                // Professional E-E-A-T content from knowledge base
+                <>
+                  {/* What is this issue? */}
+                  <div className="pl-4 border-l-2 border-blue-400/50 bg-blue-500/10 rounded-r p-3">
+                    <p className="text-xs text-blue-200 mb-2 font-semibold">What is this issue?</p>
+                    <p className="text-sm text-blue-100 leading-relaxed">{kbEntry.explanation}</p>
+                  </div>
+
+                  {/* Why is this dangerous? (Impact) */}
+                  <div className="pl-4 border-l-2 border-orange-400/50 bg-orange-500/10 rounded-r p-3">
+                    <p className="text-xs text-orange-200 mb-2 font-semibold">Why is this dangerous?</p>
+                    <p className="text-sm text-orange-100 leading-relaxed">{kbEntry.impact}</p>
+                  </div>
+
+                  {/* How to fix it (Solution) */}
+                  <div className="pl-4 border-l-2 border-green-400/50 bg-green-500/10 rounded-r p-3">
+                    <p className="text-xs text-green-200 mb-2 font-semibold">How to fix it:</p>
+                    <p className="text-sm text-green-100 leading-relaxed">{kbEntry.solution}</p>
+                  </div>
+
+                  {/* Technical details (optional) */}
+                  {kbEntry.technicalDetails && (
+                    <div className="pl-4 border-l-2 border-purple-400/50 bg-purple-500/10 rounded-r p-3">
+                      <p className="text-xs text-purple-200 mb-2 font-semibold">Technical Details:</p>
+                      <p className="text-sm text-purple-100 leading-relaxed">{kbEntry.technicalDetails}</p>
+                    </div>
+                  )}
+
+                  {/* References */}
+                  {kbEntry.references && kbEntry.references.length > 0 && (
+                    <div className="pl-4 border-l-2 border-slate-400/50 bg-slate-500/10 rounded-r p-3">
+                      <p className="text-xs text-slate-200 mb-2 font-semibold">Learn more:</p>
+                      <ul className="space-y-1">
+                        {kbEntry.references.map((ref, idx) => (
+                          <li key={idx}>
+                            <a
+                              href={ref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-300 hover:text-blue-200 underline break-all"
+                            >
+                              {ref}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              ) : (
+                // Fallback to original recommendation if no KB entry found
+                <div className="pl-4 border-l-2 border-green-400/50 bg-green-500/10 rounded-r p-3">
+                  <p className="text-xs text-green-200 mb-2 font-semibold">Recommended Solution:</p>
+                  <p className="text-sm text-green-100 leading-relaxed">{finding.recommendation}</p>
+                </div>
+              )}
             </div>
           )}
         </div>

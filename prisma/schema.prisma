@@ -152,3 +152,44 @@ model AiTrustScorecard {
   @@index([score])
   @@index([weightedScore])
 }
+
+// ========================================
+// KNOWLEDGE BASE - FINDING EXPLANATIONS
+// ========================================
+// Professional E-E-A-T content for each finding type
+// ~200 words per finding explaining risks, impacts, and solutions
+model KnowledgeBaseFinding {
+  id          String @id @default(uuid())
+
+  // Unique identifier for finding type (e.g., "missing-csp", "expired-ssl-cert")
+  findingKey  String @unique
+
+  // Finding metadata
+  category    String // "security", "ssl", "cookie", "client", "library", "ai"
+  severity    String // "critical", "high", "medium", "low"
+  title       String // Human-readable title
+
+  // E-E-A-T Content (~200 words each section)
+  // What is this issue?
+  explanation String
+
+  // Why is this dangerous? (Consequences/Impact)
+  impact      String
+
+  // How to fix it? (Solution/Remediation)
+  solution    String
+
+  // Technical details (optional)
+  technicalDetails String?
+
+  // References (optional - links to documentation)
+  references  String? // JSON array of URLs
+
+  // SEO & Content Metadata
+  seoKeywords String? // Comma-separated for internal search
+  lastUpdated DateTime @default(now())
+
+  @@index([category])
+  @@index([severity])
+  @@index([findingKey])
+}
