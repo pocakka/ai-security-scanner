@@ -56,6 +56,9 @@ export class CrawlerAdapter {
       // Pass through cookies
       cookies: playwrightResult.cookies || [],
 
+      // Pass through SSL certificate (CRITICAL: analyzer expects this at top level!)
+      sslCertificate: playwrightResult.sslCertificate,
+
       // Pass through metadata (certificate info, etc.)
       metadata: this.extractMetadata(playwrightResult),
     }

@@ -11,6 +11,7 @@ export interface CrawlResult {
   timingBreakdown?: Record<string, number> // NEW: detailed timing breakdown
   finalUrl: string
   cookies?: CookieData[]
+  sslCertificate?: any // SSL certificate data from crawler
   metadata?: {
     certificate?: any
     [key: string]: any
