@@ -81,82 +81,66 @@ function cleanEvidence(evidence: string, maxLength: number = 100): string {
 }
 
 /**
- * Extract meaningful information from evidence based on tech type
- * For "Social Login (OAuth)" → extract provider name (Facebook, Google, Twitter)
- * For most other tech → return empty string (don't show code snippets)
+ * Extract meaningful information from evidence based on tech type and category
+ *
+ * WordPress plugins: Show formatted plugin name (kept from evidence)
+ * Social Login (OAuth): Extract provider names (Facebook, Google, Twitter)
+ * Analytics/Ads/CDN/Hosting/E-commerce/Framework: NO evidence (just confidence)
+ *
+ * This makes reports professional and user-friendly.
  */
-function extractMeaningfulEvidence(techName: string, evidence: string, pattern: string): string | null {
+function extractMeaningfulEvidence(
+  techName: string,
+  category: string,
+  evidence: string
+): string | null {
   if (!evidence) return null
 
-  // Special handling for Social Login (OAuth)
+  // Special handling for Social Login (OAuth) - extract provider names
   if (techName === 'Social Login (OAuth)') {
     const lowerEvidence = evidence.toLowerCase()
-    const lowerPattern = pattern.toLowerCase()
 
-    // Extract provider name from pattern or evidence
-    if (lowerPattern.includes('facebook') || lowerEvidence.includes('facebook')) {
-      return 'Facebook'
-    }
-    if (lowerPattern.includes('google') || lowerEvidence.includes('google')) {
-      return 'Google'
-    }
-    if (lowerPattern.includes('twitter') || lowerEvidence.includes('twitter')) {
-      return 'Twitter'
-    }
-    if (lowerPattern.includes('github') || lowerEvidence.includes('github')) {
-      return 'GitHub'
-    }
-    if (lowerPattern.includes('linkedin') || lowerEvidence.includes('linkedin')) {
-      return 'LinkedIn'
-    }
-    if (lowerPattern.includes('apple') || lowerEvidence.includes('apple')) {
-      return 'Apple'
-    }
-    if (lowerPattern.includes('microsoft') || lowerEvidence.includes('microsoft')) {
-      return 'Microsoft'
-    }
+    // Extract provider name from evidence
+    if (lowerEvidence.includes('facebook')) return 'Facebook'
+    if (lowerEvidence.includes('google')) return 'Google'
+    if (lowerEvidence.includes('twitter')) return 'Twitter'
+    if (lowerEvidence.includes('github')) return 'GitHub'
+    if (lowerEvidence.includes('linkedin')) return 'LinkedIn'
+    if (lowerEvidence.includes('apple')) return 'Apple'
+    if (lowerEvidence.includes('microsoft')) return 'Microsoft'
   }
 
-  // For tracking IDs (Google Analytics, Facebook Pixel, etc.) - show the ID
-  if (techName.includes('Analytics') || techName.includes('Pixel') || techName.includes('Tag Manager')) {
-    // Extract tracking ID patterns
-    const trackingIdMatch = evidence.match(/(?:UA|G|GTM|AW)-[A-Z0-9-]+/i)
-    if (trackingIdMatch) {
-      return trackingIdMatch[0]
-    }
-  }
-
-  // For most frameworks/libraries (Next.js, React, Bulma, etc.) - don't show evidence
-  // Just show the confidence level
-  const noEvidenceCategories = ['framework', 'cdn', 'hosting']
-  const noEvidenceTech = [
-    'Next.js',
-    'React',
-    'Vue.js',
-    'Angular',
-    'Bulma',
-    'Bootstrap',
-    'Tailwind CSS',
-    'jQuery',
-    'Webpack',
-    'Vite',
+  // CATEGORY-BASED LOGIC: Hide evidence for these categories
+  const noEvidenceCategories = [
+    'analytics',   // Google Analytics, Matomo, etc - just show "✓ Confirmed"
+    'ads',         // Google Ads, Facebook Pixel, etc - just show "✓ Confirmed"
+    'cdn',         // Cloudflare, jsDelivr, etc - just show "✓ Confirmed"
+    'hosting',     // Vercel, Netlify, AWS, etc - just show "✓ Confirmed"
+    'ecommerce',   // Stripe, PayPal, Shopify, etc - just show "✓ Confirmed"
+    'framework',   // Next.js, React, Vue, etc - just show "✓ Confirmed"
   ]
 
-  if (noEvidenceTech.includes(techName)) {
-    return null // Don't show evidence for these
+  if (noEvidenceCategories.includes(category)) {
+    return null // Don't show code snippets for these categories
   }
 
-  // For URLs (CDN, scripts) - don't show full URLs
-  if (evidence.includes('http://') || evidence.includes('https://') || evidence.includes('//')) {
-    return null // URLs are not meaningful to end users
-  }
+  // For WordPress plugins (CMS category) - keep the evidence
+  // This is handled separately in the main logic
 
-  // For CSS class names, variable names, etc - don't show
-  if (evidence.includes('class=') || evidence.includes('var(') || evidence.includes('{') || evidence.includes('}')) {
+  // For URLs, CSS, or code snippets - don't show
+  if (
+    evidence.includes('http://') ||
+    evidence.includes('https://') ||
+    evidence.includes('//') ||
+    evidence.includes('class=') ||
+    evidence.includes('var(') ||
+    evidence.includes('{') ||
+    evidence.includes('}')
+  ) {
     return null
   }
 
-  // Default: clean and show if it's short enough
+  // Default: clean and show if meaningful
   const cleaned = cleanEvidence(evidence, 50)
   if (cleaned.length < 10) {
     return null // Too short to be meaningful
@@ -370,7 +354,7 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
           if (tech.name === 'Social Login (OAuth)') {
             const providers = new Set<string>()
             for (const evidence of matches) {
-              const meaningful = extractMeaningfulEvidence(tech.name, evidence, '')
+              const meaningful = extractMeaningfulEvidence(tech.name, tech.category, evidence)
               if (meaningful) {
                 providers.add(meaningful)
               }
@@ -391,7 +375,7 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
           } else {
             // Add each unique match as a separate entry
             for (const evidence of matches) {
-              const meaningful = extractMeaningfulEvidence(tech.name, evidence, '')
+              const meaningful = extractMeaningfulEvidence(tech.name, tech.category, evidence)
 
               detected.push({
                 name: tech.name,
