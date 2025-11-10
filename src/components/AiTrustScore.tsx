@@ -40,35 +40,35 @@ export function AiTrustScore({
   const getGrade = (score: number): { label: string; color: string; bgColor: string } => {
     if (score >= 85) return {
       label: 'Excellent',
-      color: 'text-green-600',
-      bgColor: 'bg-green-100 text-green-800 border-green-300'
+      color: 'text-green-400',
+      bgColor: 'bg-green-500/20 text-green-300 border-green-400/30'
     }
     if (score >= 70) return {
       label: 'Good',
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100 text-blue-800 border-blue-300'
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-500/20 text-blue-300 border-blue-400/30'
     }
     if (score >= 50) return {
       label: 'Fair',
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-100 text-yellow-800 border-yellow-300'
+      color: 'text-yellow-400',
+      bgColor: 'bg-yellow-500/20 text-yellow-300 border-yellow-400/30'
     }
     return {
       label: 'Poor',
-      color: 'text-red-600',
-      bgColor: 'bg-red-100 text-red-800 border-red-300'
+      color: 'text-red-400',
+      bgColor: 'bg-red-500/20 text-red-300 border-red-400/30'
     }
   }
 
   const grade = getGrade(weightedScore)
 
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+    <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-xl p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/20">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">AI Trust Score</h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <h2 className="text-2xl font-bold text-white">AI Trust Score</h2>
+          <p className="text-sm text-slate-400 mt-1">
             Based on {totalChecks} automated checks
           </p>
         </div>
@@ -118,28 +118,28 @@ export function AiTrustScore({
 
       {/* Detected Technology */}
       {(detectedAiProvider || detectedModel || detectedChatFramework) && (
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="font-semibold text-sm text-blue-900 mb-2 flex items-center gap-2">
+        <div className="mt-6 p-4 bg-blue-500/10 border border-blue-400/30 rounded-lg">
+          <h3 className="font-semibold text-sm text-blue-200 mb-2 flex items-center gap-2">
             <span>🤖</span>
             Detected AI Technology
           </h3>
-          <div className="space-y-1 text-sm text-blue-700">
+          <div className="space-y-1 text-sm text-blue-300">
             {detectedAiProvider && (
               <div className="flex items-center gap-2">
                 <span className="font-medium">Provider:</span>
-                <span className="px-2 py-0.5 bg-blue-100 rounded">{detectedAiProvider}</span>
+                <span className="px-2 py-0.5 bg-blue-500/20 rounded">{detectedAiProvider}</span>
               </div>
             )}
             {detectedModel && (
               <div className="flex items-center gap-2">
                 <span className="font-medium">Model:</span>
-                <span className="px-2 py-0.5 bg-blue-100 rounded">{detectedModel}</span>
+                <span className="px-2 py-0.5 bg-blue-500/20 rounded">{detectedModel}</span>
               </div>
             )}
             {detectedChatFramework && (
               <div className="flex items-center gap-2">
                 <span className="font-medium">Framework:</span>
-                <span className="px-2 py-0.5 bg-blue-100 rounded">{detectedChatFramework}</span>
+                <span className="px-2 py-0.5 bg-blue-500/20 rounded">{detectedChatFramework}</span>
               </div>
             )}
           </div>
@@ -147,12 +147,12 @@ export function AiTrustScore({
       )}
 
       {/* Summary Footer */}
-      <div className="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between text-sm">
-        <div className="text-gray-600">
-          <span className="font-semibold text-gray-900">{passedChecks}</span> of{' '}
-          <span className="font-semibold text-gray-900">{totalChecks}</span> checks passed
+      <div className="mt-6 pt-4 border-t border-white/20 flex items-center justify-between text-sm">
+        <div className="text-slate-400">
+          <span className="font-semibold text-white">{passedChecks}</span> of{' '}
+          <span className="font-semibold text-white">{totalChecks}</span> checks passed
         </div>
-        <div className="text-gray-500">
+        <div className="text-slate-500">
           Weighted score emphasizes transparency & compliance
         </div>
       </div>
@@ -170,17 +170,17 @@ interface CategoryBarProps {
 
 function CategoryBar({ label, score, icon, description }: CategoryBarProps) {
   const getBarColor = (score: number): string => {
-    if (score >= 80) return 'bg-green-500'
-    if (score >= 60) return 'bg-blue-500'
-    if (score >= 40) return 'bg-yellow-500'
-    return 'bg-red-500'
+    if (score >= 80) return 'bg-green-400'
+    if (score >= 60) return 'bg-blue-400'
+    if (score >= 40) return 'bg-yellow-400'
+    return 'bg-red-400'
   }
 
   const getTextColor = (score: number): string => {
-    if (score >= 80) return 'text-green-700'
-    if (score >= 60) return 'text-blue-700'
-    if (score >= 40) return 'text-yellow-700'
-    return 'text-red-700'
+    if (score >= 80) return 'text-green-300'
+    if (score >= 60) return 'text-blue-300'
+    if (score >= 40) return 'text-yellow-300'
+    return 'text-red-300'
   }
 
   return (
@@ -189,8 +189,8 @@ function CategoryBar({ label, score, icon, description }: CategoryBarProps) {
         <div className="flex items-center gap-2">
           <span className="text-lg">{icon}</span>
           <div>
-            <span className="text-sm font-medium text-gray-800">{label}</span>
-            <p className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">
+            <span className="text-sm font-medium text-white">{label}</span>
+            <p className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
               {description}
             </p>
           </div>
@@ -199,7 +199,7 @@ function CategoryBar({ label, score, icon, description }: CategoryBarProps) {
           {score}%
         </span>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+      <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden">
         <div
           className={`${getBarColor(score)} h-2.5 rounded-full transition-all duration-700 ease-out`}
           style={{ width: `${score}%` }}
