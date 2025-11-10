@@ -1,6 +1,6 @@
 # AI Security Scanner - Fejlesztési Haladás
 
-> Utolsó frissítés: 2025-11-09 22:00
+> Utolsó frissítés: 2025-11-10 23:30
 
 ---
 
@@ -210,9 +210,51 @@
 
 ---
 
-## 🆕 RECENT UPDATES (2025-11-09)
+## 🆕 RECENT UPDATES
 
-### Performance Optimizations
+### 2025-11-10: Advanced AI Detection + UX Improvements
+
+1. **Advanced AI Detection System (100+ Technologies)**
+   - NEW FILES: `advanced-ai-detection-rules.ts` (520 lines), `advanced-api-key-patterns.ts` (271 lines)
+   - 80+ AI technology detection patterns across 8 categories
+   - 15+ AI provider-specific API key patterns with cost-risk classification
+   - Categories: AI API Providers (12), Vector Databases (4), ML Frameworks (4), Voice Services (4), Image AI (3), Security Tools (4)
+   - Provider identification for detected API keys (OpenAI, Anthropic, Pinecone, etc.)
+   - Cost risk classification: extreme/high/medium
+   - Environment variable exposure detection
+
+2. **False Positive Elimination (Consensus from 3 AI Experts)**
+   - Analyzed recommendations from Claude, Gemini, and GPT
+   - Removed generic patterns: Azure OpenAI 32-hex, AssemblyAI 32-hex, Pinecone UUID
+   - Removed port-based detection: 8080 (Weaviate), 6333 (Qdrant), 7860 (Stable Diffusion)
+   - Result: 24 false positives → 0 false positives on openai.com
+   - Kept only specific prefix patterns: sk-proj-, hf_, AIzaSy, pc-, xi_, pplx-, etc.
+
+3. **Context-Aware API Key Filtering**
+   - Image URL context detection (Contentful assets, CDN paths)
+   - False positive filtering for 32-hex strings in image URLs
+   - Duplicate key prevention with Set-based deduplication
+   - Result: openai.com scan reduced from 41 to 17 total findings
+
+4. **Frontend UX Enhancements**
+   - AI Detection section now FIRST (prioritized after Risk Score Card)
+   - "Regenerate Report" button (green, with animated spinner)
+   - Enhanced loading screen with URL display + random AI security tip
+   - NEW FILE: `ai-security-tips.ts` (60+ educational tips in 6 categories)
+   - Hydration error fix for client-side tip generation
+   - Elegant domain-based title: "Shop.cafefrei.hu Safety Report"
+
+5. **Badge Clarity for Non-Technical Users**
+   - Security findings: HIGH → **HIGH RISK**, MEDIUM → **MEDIUM RISK**
+   - Tech detection: high → **✓ Confirmed**, medium → **✓ Likely**, low → **✓ Possible**
+   - Added tooltips and visual distinction (checkmark vs severity emoji)
+   - Followed industry best practices (SecurityHeaders.com, Mozilla Observatory, Wappalyzer)
+
+6. **Bug Fixes**
+   - Fixed WordPress /wp-includes/ false positive showing as "wp Includes" plugin
+   - Removed non-plugin core folder pattern from detection rules
+
+### 2025-11-09: Performance Optimizations
 1. **Technology Detection Early Exit**
    - Prevents duplicate listings (4× Google Analytics → 1×)
    - Exception: WordPress plugins still list individually
