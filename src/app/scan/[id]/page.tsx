@@ -256,6 +256,20 @@ export default function ScanResultPage() {
   const aiFindings = findingsByCategory['ai'] || []
   const nonAICategories = Object.keys(findingsByCategory).filter(cat => cat !== 'ai')
 
+  // Extract domain from URL for elegant title
+  const getDomainTitle = (url: string): string => {
+    try {
+      const urlObj = new URL(url)
+      // Remove 'www.' if present and capitalize first letter
+      const domain = urlObj.hostname.replace(/^www\./, '')
+      return domain.charAt(0).toUpperCase() + domain.slice(1)
+    } catch {
+      return 'Website'
+    }
+  }
+
+  const domainTitle = getDomainTitle(scan.url)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Admin Debug Bar - only visible to logged-in admins */}
@@ -265,17 +279,24 @@ export default function ScanResultPage() {
       <div className="border-b border-white/10 bg-black/20 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <a
-                href="/"
-                className="text-blue-300 hover:text-blue-200 transition-colors flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                New Scan
-              </a>
-              <div className="w-px h-6 bg-white/20"></div>
-              <Shield className="w-6 h-6 text-blue-400" />
-              <span className="text-xl font-bold text-white">Security Report</span>
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <Shield className="w-8 h-8 text-blue-400" />
+                <h1 className="text-3xl font-bold text-white">
+                  {domainTitle} <span className="text-blue-300">Safety Report</span>
+                </h1>
+              </div>
+              <div className="flex items-center gap-3 ml-11">
+                <a
+                  href="/"
+                  className="text-blue-300 hover:text-blue-200 transition-colors flex items-center gap-1 text-sm"
+                >
+                  <ArrowLeft className="w-3 h-3" />
+                  New Scan
+                </a>
+                <span className="text-slate-500 text-xs">•</span>
+                <span className="text-slate-400 text-sm font-mono">{scan.url}</span>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <button
