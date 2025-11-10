@@ -21,6 +21,9 @@ export interface ScanReport {
     chatWidgets: string[]
   }
   techStack?: TechStackResult
+  sslTLS?: SSLTLSResult // Add SSL/TLS result for frontend display
+  cookieSecurity?: CookieSecurityResult // Add cookie security for frontend
+  jsLibraries?: JSLibrariesResult // Add JS libraries for frontend
   findings: Finding[]
 }
 
@@ -184,6 +187,9 @@ export function generateReport(
       chatWidgets: aiDetection.chatWidgets,
     },
     techStack,
+    sslTLS, // Pass SSL/TLS result to frontend
+    cookieSecurity, // Pass cookie security result to frontend
+    jsLibraries, // Pass JS libraries result to frontend
     findings,
   }
 }

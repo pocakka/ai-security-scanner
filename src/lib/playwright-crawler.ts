@@ -349,8 +349,11 @@ export class PlaywrightCrawler {
 
       // Only collect SSL info for HTTPS
       if (parsedUrl.protocol !== 'https:') {
+        console.log(`[PlaywrightCrawler] Skipping SSL collection for non-HTTPS URL: ${url}`)
         return null
       }
+
+      console.log(`[PlaywrightCrawler] 🔒 Collecting SSL certificate for: ${parsedUrl.hostname}`)
 
       // Use Node.js tls module to get certificate details
       const tls = await import('tls')
@@ -381,9 +384,14 @@ export class PlaywrightCrawler {
                 serialNumber: cert.serialNumber,
               }
 
+              console.log(`[PlaywrightCrawler] ✅ SSL certificate collected successfully`)
+              console.log(`[PlaywrightCrawler]   Issuer: ${cert.issuer?.CN || cert.issuer?.O || 'Unknown'}`)
+              console.log(`[PlaywrightCrawler]   Valid to: ${cert.valid_to}`)
+
               socket.end()
               resolve(certInfo)
             } else {
+              console.warn(`[PlaywrightCrawler] ⚠️  Empty certificate object`)
               socket.end()
               resolve(null)
             }
@@ -391,13 +399,14 @@ export class PlaywrightCrawler {
         )
 
         socket.on('error', (err) => {
-          console.error('[PlaywrightCrawler] SSL certificate collection failed:', err.message)
+          console.error(`[PlaywrightCrawler] ❌ SSL certificate collection failed:`, err.message)
           socket.end()
           resolve(null)
         })
 
         // Timeout after 5 seconds
         setTimeout(() => {
+          console.warn(`[PlaywrightCrawler] ⏱️  SSL certificate collection timeout (5s)`)
           socket.end()
           resolve(null)
         }, 5000)
