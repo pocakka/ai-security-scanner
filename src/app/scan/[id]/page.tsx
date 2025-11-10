@@ -734,10 +734,10 @@ function FindingCard({ finding }: { finding: any }) {
   }
 
   const severityLabels: Record<string, string> = {
-    critical: 'CRITICAL',
-    high: 'HIGH',
-    medium: 'MEDIUM',
-    low: 'LOW',
+    critical: 'CRITICAL RISK',
+    high: 'HIGH RISK',
+    medium: 'MEDIUM RISK',
+    low: 'LOW RISK',
   }
 
   const [expanded, setExpanded] = useState(false)
@@ -827,9 +827,15 @@ function TechCategory({
   const colors = colorClasses[color] || colorClasses.blue
 
   const confidenceColors: Record<string, string> = {
-    high: 'bg-green-500/20 text-green-300',
-    medium: 'bg-yellow-500/20 text-yellow-300',
-    low: 'bg-slate-500/20 text-slate-400',
+    high: 'bg-green-500/20 text-green-300 border border-green-400/30',
+    medium: 'bg-yellow-500/20 text-yellow-300 border border-yellow-400/30',
+    low: 'bg-slate-500/20 text-slate-400 border border-slate-400/30',
+  }
+
+  const confidenceLabels: Record<string, string> = {
+    high: 'Confirmed',
+    medium: 'Likely',
+    low: 'Possible',
   }
 
   return (
@@ -860,8 +866,8 @@ function TechCategory({
                   <span className="ml-2 text-xs text-slate-400 font-mono">v{tech.version}</span>
                 )}
               </div>
-              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${confidenceColors[tech.confidence]}`}>
-                {tech.confidence}
+              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${confidenceColors[tech.confidence]}`} title={`Detection confidence: ${tech.confidence}`}>
+                ✓ {confidenceLabels[tech.confidence]}
               </span>
             </div>
             {tech.evidence && (
