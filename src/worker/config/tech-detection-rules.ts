@@ -38,7 +38,8 @@ export const TECH_DETECTION_RULES: TechPattern[] = [
       { type: 'meta', match: /<meta name="generator" content="WordPress ([\d.]+)"/i, version: /WordPress ([\d.]+)/i },
       { type: 'script', match: /\/wp-content\/plugins\/([^\/]+)\//gi },
       { type: 'link', match: /\/wp-content\/plugins\/([^\/]+)\//gi },
-      { type: 'html', match: /\/wp-includes\//i },
+      // REMOVED: /\/wp-includes\//i - WordPress core folder, not a plugin
+      // This was causing false positives like "wp Includes" being detected as a plugin
       { type: 'header', match: /X-Powered-By: WordPress/i },
     ],
   },
