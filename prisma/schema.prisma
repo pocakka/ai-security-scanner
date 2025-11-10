@@ -26,7 +26,8 @@ model Scan {
   completedAt   DateTime?
 
   // Relations
-  leads         Lead[]
+  leads             Lead[]
+  aiTrustScorecard  AiTrustScorecard?
 }
 
 model Lead {
@@ -65,4 +66,89 @@ model Job {
   completedAt DateTime?
 
   @@index([status, createdAt])
+}
+
+// ========================================
+// AI TRUST SCORECARD
+// ========================================
+// Scamadviser-style trust scoring for AI implementations
+// Evaluates 27 checks across 5 categories
+model AiTrustScorecard {
+  id     String @id @default(uuid())
+  scan   Scan   @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  scanId String @unique // 1:1 relationship with Scan
+
+  // ========================================
+  // 1. TRANSPARENCY (Átláthatóság)
+  // ========================================
+  isProviderDisclosed      Boolean @default(false) // "Powered by OpenAI"
+  isIdentityDisclosed      Boolean @default(false) // "I am an AI assistant"
+  isAiPolicyLinked         Boolean @default(false) // Link to /ai-policy
+  isModelVersionDisclosed  Boolean @default(false) // "Using GPT-4"
+  isLimitationsDisclosed   Boolean @default(false) // "AI may make mistakes"
+  hasDataUsageDisclosure   Boolean @default(false) // "Data not used for training"
+
+  // ========================================
+  // 2. USER CONTROL (Felhasználói Kontroll)
+  // ========================================
+  hasFeedbackMechanism     Boolean @default(false) // Thumbs up/down
+  hasConversationReset     Boolean @default(false) // "New Chat" button
+  hasHumanEscalation       Boolean @default(false) // "Talk to human"
+  hasConversationExport    Boolean @default(false) // "Export chat" feature
+  hasDataDeletionOption    Boolean @default(false) // "Delete my data"
+
+  // ========================================
+  // 3. COMPLIANCE (Szabályozás - GDPR)
+  // ========================================
+  hasDpoContact            Boolean @default(false) // mailto:privacy@
+  hasCookieBanner          Boolean @default(false) // Cookie consent
+  hasPrivacyPolicyLink     Boolean @default(false) // /privacy link
+  hasTermsOfServiceLink    Boolean @default(false) // /terms link
+  hasGdprCompliance        Boolean @default(false) // "GDPR compliant" badge
+
+  // ========================================
+  // 4. SECURITY & RELIABILITY (Robusztusság)
+  // ========================================
+  hasBotProtection         Boolean @default(false) // reCAPTCHA, hCaptcha
+  hasAiRateLimitHeaders    Boolean @default(false) // X-RateLimit-* on AI endpoints
+  hasBasicWebSecurity      Boolean @default(false) // Overall security score > 70
+  hasInputLengthLimit      Boolean @default(false) // textarea maxlength
+  usesInputSanitization    Boolean @default(false) // DOMPurify detection
+  hasErrorHandling         Boolean @default(false) // Graceful error messages
+  hasSessionManagement     Boolean @default(false) // Secure session handling
+
+  // ========================================
+  // 5. ETHICAL AI (Etikus AI Gyakorlatok)
+  // ========================================
+  hasBiasDisclosure        Boolean @default(false) // "May contain biases"
+  hasContentModeration     Boolean @default(false) // Harmful content filter
+  hasAgeVerification       Boolean @default(false) // "Are you 18+"
+  hasAccessibilitySupport  Boolean @default(false) // ARIA labels, screen reader
+
+  // ========================================
+  // SCORES & METADATA
+  // ========================================
+  score            Int     @default(0) // Simple average: 0-100
+  weightedScore    Int     @default(0) // Weighted by category importance
+  categoryScores   String? // JSON: { transparency: 80, userControl: 60, ... }
+
+  passedChecks     Int     @default(0) // How many checks passed
+  totalChecks      Int     @default(0) // Total number of checks
+
+  // ========================================
+  // DETECTED AI TECHNOLOGY
+  // ========================================
+  detectedAiProvider       String? // "OpenAI", "Anthropic", "Google", etc.
+  detectedModel            String? // "GPT-4", "Claude-3-Opus", etc.
+  detectedChatFramework    String? // "Intercom", "Drift", "Custom"
+
+  // Evidence for transparency (JSON: { checkName: ["evidence1", "evidence2"] })
+  evidenceData     String? // JSON as text
+
+  // Timestamp
+  analyzedAt       DateTime @default(now())
+
+  @@index([scanId])
+  @@index([score])
+  @@index([weightedScore])
 }

@@ -8,6 +8,7 @@ import { analyzeClientRisks } from './analyzers/client-risks'
 import { analyzeSSLTLS } from './analyzers/ssl-tls-analyzer'
 import { analyzeCookieSecurity } from './analyzers/cookie-security-analyzer'
 import { analyzeJSLibraries } from './analyzers/js-libraries-analyzer'
+import { analyzeAiTrust } from './analyzers/ai-trust-analyzer'
 import { calculateRiskScore } from './scoring'
 import { generateReport } from './report-generator'
 
@@ -54,6 +55,15 @@ async function processScan(data: ScanJobData) {
     console.log(`[Worker] Cookies: ${cookieSecurity.totalCookies} (${cookieSecurity.insecureCookies} insecure)`)
     console.log(`[Worker] JS Libraries: ${jsLibraries.detected.length} (${jsLibraries.vulnerable.length} vulnerable)`)
 
+    // Step 2.5: Analyze AI Trust Score (NEW!)
+    console.log(`[Worker] Analyzing AI Trust Score...`)
+    const aiTrustResult = analyzeAiTrust(crawlResult, sslTLS.score)
+    console.log(`[Worker] AI Trust Score: ${aiTrustResult.weightedScore}/100 (${aiTrustResult.grade})`)
+    console.log(`[Worker] Trust checks: ${aiTrustResult.passedChecks}/${aiTrustResult.totalChecks} passed`)
+    if (aiTrustResult.detectedAiProvider) {
+      console.log(`[Worker] Detected AI Provider: ${aiTrustResult.detectedAiProvider}`)
+    }
+
     // Step 3: Calculate risk score
     console.log(`[Worker] Calculating risk score...`)
     const riskScore = calculateRiskScore(
@@ -90,6 +100,67 @@ async function processScan(data: ScanJobData) {
         completedAt: new Date(),
       },
     })
+
+    // Step 5.5: Save AI Trust Scorecard (NEW!)
+    console.log(`[Worker] Saving AI Trust Scorecard...`)
+    await prisma.aiTrustScorecard.create({
+      data: {
+        scanId: scanId,
+
+        // Transparency
+        isProviderDisclosed: aiTrustResult.checks.isProviderDisclosed,
+        isIdentityDisclosed: aiTrustResult.checks.isIdentityDisclosed,
+        isAiPolicyLinked: aiTrustResult.checks.isAiPolicyLinked,
+        isModelVersionDisclosed: aiTrustResult.checks.isModelVersionDisclosed,
+        isLimitationsDisclosed: aiTrustResult.checks.isLimitationsDisclosed,
+        hasDataUsageDisclosure: aiTrustResult.checks.hasDataUsageDisclosure,
+
+        // User Control
+        hasFeedbackMechanism: aiTrustResult.checks.hasFeedbackMechanism,
+        hasConversationReset: aiTrustResult.checks.hasConversationReset,
+        hasHumanEscalation: aiTrustResult.checks.hasHumanEscalation,
+        hasConversationExport: aiTrustResult.checks.hasConversationExport,
+        hasDataDeletionOption: aiTrustResult.checks.hasDataDeletionOption,
+
+        // Compliance
+        hasDpoContact: aiTrustResult.checks.hasDpoContact,
+        hasCookieBanner: aiTrustResult.checks.hasCookieBanner,
+        hasPrivacyPolicyLink: aiTrustResult.checks.hasPrivacyPolicyLink,
+        hasTermsOfServiceLink: aiTrustResult.checks.hasTermsOfServiceLink,
+        hasGdprCompliance: aiTrustResult.checks.hasGdprCompliance,
+
+        // Security & Reliability
+        hasBotProtection: aiTrustResult.checks.hasBotProtection,
+        hasAiRateLimitHeaders: aiTrustResult.checks.hasAiRateLimitHeaders,
+        hasBasicWebSecurity: aiTrustResult.checks.hasBasicWebSecurity,
+        hasInputLengthLimit: aiTrustResult.checks.hasInputLengthLimit,
+        usesInputSanitization: aiTrustResult.checks.usesInputSanitization,
+        hasErrorHandling: aiTrustResult.checks.hasErrorHandling,
+        hasSessionManagement: aiTrustResult.checks.hasSessionManagement,
+
+        // Ethical AI
+        hasBiasDisclosure: aiTrustResult.checks.hasBiasDisclosure,
+        hasContentModeration: aiTrustResult.checks.hasContentModeration,
+        hasAgeVerification: aiTrustResult.checks.hasAgeVerification,
+        hasAccessibilitySupport: aiTrustResult.checks.hasAccessibilitySupport,
+
+        // Scores
+        score: aiTrustResult.score,
+        weightedScore: aiTrustResult.weightedScore,
+        categoryScores: JSON.stringify(aiTrustResult.categoryScores),
+        passedChecks: aiTrustResult.passedChecks,
+        totalChecks: aiTrustResult.totalChecks,
+
+        // Detected AI Technology
+        detectedAiProvider: aiTrustResult.detectedAiProvider,
+        detectedModel: aiTrustResult.detectedModel,
+        detectedChatFramework: aiTrustResult.detectedChatFramework,
+
+        // Evidence
+        evidenceData: JSON.stringify(aiTrustResult.evidenceData),
+      },
+    })
+    console.log(`[Worker] ✅ AI Trust Scorecard saved`)
 
     console.log(`[Worker] ✅ Scan ${scanId} completed successfully`)
     console.log(`[Worker] Risk Score: ${riskScore.score}/100 (${riskScore.grade} - ${riskScore.level})`)
