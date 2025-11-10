@@ -44,6 +44,43 @@ function formatPluginName(slug: string): string {
 }
 
 /**
+ * Clean evidence string for display
+ * Removes HTML tags, limits length, and prettifies the output
+ */
+function cleanEvidence(evidence: string, maxLength: number = 100): string {
+  if (!evidence) return ''
+
+  // Remove HTML tags
+  let cleaned = evidence.replace(/<[^>]+>/g, '')
+
+  // Decode HTML entities
+  cleaned = cleaned
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+
+  // Remove excessive whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ').trim()
+
+  // Truncate if too long
+  if (cleaned.length > maxLength) {
+    // Try to cut at a word boundary
+    cleaned = cleaned.substring(0, maxLength)
+    const lastSpace = cleaned.lastIndexOf(' ')
+    if (lastSpace > maxLength * 0.7) {
+      // Only cut at space if it's not too far back
+      cleaned = cleaned.substring(0, lastSpace)
+    }
+    cleaned += '...'
+  }
+
+  return cleaned
+}
+
+/**
  * Tech Stack Analyzer
  *
  * Detects technologies used on a website similar to Wappalyzer.
@@ -253,7 +290,7 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
               version: extractedVersion,
               description: tech.description,
               website: tech.website,
-              evidence: evidence.length > 200 ? evidence.substring(0, 200) + '...' : evidence, // Truncate long URLs
+              evidence: cleanEvidence(evidence, 100), // Clean and truncate evidence
             })
           }
         }
