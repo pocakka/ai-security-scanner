@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Shield, AlertTriangle, CheckCircle, XCircle, Mail, ArrowLeft, ArrowRight, TrendingUp, Download, Lock, Cookie, Code, Globe, RefreshCw } from 'lucide-react'
+import { Shield, AlertTriangle, CheckCircle, XCircle, Mail, ArrowLeft, ArrowRight, TrendingUp, Download, Lock, Cookie, Code, Globe, RefreshCw, Lightbulb } from 'lucide-react'
 import AdminDebugBar from './AdminDebugBar'
+import { getRandomSecurityTip } from '@/data/ai-security-tips'
 
 interface Scan {
   id: string
@@ -74,6 +75,9 @@ export default function ScanResultPage() {
 
   // Regenerate report
   const [regenerating, setRegenerating] = useState(false)
+
+  // Random security tip for loading screen
+  const [securityTip] = useState(() => getRandomSecurityTip())
 
   useEffect(() => {
     fetchScan()
@@ -175,11 +179,25 @@ export default function ScanResultPage() {
 
   if (loading || !scan) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-4 border-white mb-4"></div>
-          <p className="text-white text-lg font-semibold">Scanning website security...</p>
-          <p className="text-slate-400 text-sm mt-2">This may take a few moments</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center px-4">
+        <div className="max-w-2xl w-full text-center">
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-4 border-white mb-6"></div>
+          <p className="text-white text-xl font-semibold mb-2">Scanning website security...</p>
+          {scan?.url && (
+            <p className="text-blue-300 text-sm font-mono mb-4 break-all">{scan.url}</p>
+          )}
+          <p className="text-slate-400 text-sm mb-8">This may take a few moments</p>
+
+          {/* Random AI Security Tip */}
+          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6 mt-8">
+            <div className="flex items-start gap-3">
+              <Lightbulb className="w-6 h-6 text-yellow-400 flex-shrink-0 mt-1" />
+              <div className="text-left">
+                <p className="text-blue-300 text-sm font-semibold mb-2">Security Tip</p>
+                <p className="text-slate-300 text-sm leading-relaxed">{securityTip}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
