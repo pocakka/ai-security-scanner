@@ -1,4 +1,14 @@
 import { CrawlResult } from '../crawler-mock'
+import {
+  analyzeCookiePrefixes,
+  analyzeCookieDomainScope,
+  analyzeCookiePaths,
+  analyzeCookieExpiry,
+  detectSessionFixation,
+  analyzeCookieSize,
+  detectCookiePoisoning,
+  EnhancedCookieFinding
+} from './cookie-security-enhanced'
 
 export interface CookieSecurityResult {
   totalCookies: number
@@ -6,6 +16,7 @@ export interface CookieSecurityResult {
   insecureCookies: number
   findings: CookieFinding[]
   thirdPartyCookies: ThirdPartyCookie[]
+  enhancedFindings?: EnhancedCookieFinding[] // New enhanced findings
   score: number // 0-100
 }
 
@@ -155,6 +166,63 @@ export function analyzeCookieSecurity(crawlResult: CrawlResult): CookieSecurityR
   }
 
   result.score = Math.max(0, 100 - scoreDeduction)
+
+  // Run enhanced cookie security analysis
+  const enhancedFindings: EnhancedCookieFinding[] = []
+
+  // Only analyze first-party cookies for enhanced checks
+  const firstPartyCookies = cookies.filter(cookie => {
+    const cookieDomain = cookie.domain || ''
+    const isThirdParty = !cookieDomain.includes(siteDomain) && !siteDomain.includes(cookieDomain)
+    return !isThirdParty
+  })
+
+  if (firstPartyCookies.length > 0) {
+    // 1. Cookie Prefix Validation
+    enhancedFindings.push(...analyzeCookiePrefixes(firstPartyCookies, siteDomain))
+
+    // 2. Cookie Domain Scope Analysis
+    enhancedFindings.push(...analyzeCookieDomainScope(firstPartyCookies, siteDomain))
+
+    // 3. Cookie Path Restrictions
+    enhancedFindings.push(...analyzeCookiePaths(firstPartyCookies))
+
+    // 4. Cookie Expiry Analysis
+    enhancedFindings.push(...analyzeCookieExpiry(firstPartyCookies))
+
+    // 5. Session Fixation Detection
+    enhancedFindings.push(...detectSessionFixation(firstPartyCookies, crawlResult.html || ''))
+
+    // 6. Cookie Size Optimization
+    enhancedFindings.push(...analyzeCookieSize(firstPartyCookies))
+
+    // 7. Cookie Poisoning Detection (doesn't need HTML)
+    enhancedFindings.push(...detectCookiePoisoning(firstPartyCookies))
+
+    // Add enhanced findings to result
+    result.enhancedFindings = enhancedFindings
+
+    // Adjust score based on enhanced findings
+    for (const finding of enhancedFindings) {
+      switch (finding.severity) {
+        case 'critical':
+          scoreDeduction += 15
+          break
+        case 'high':
+          scoreDeduction += 10
+          break
+        case 'medium':
+          scoreDeduction += 5
+          break
+        case 'low':
+          scoreDeduction += 2
+          break
+      }
+    }
+
+    // Recalculate score
+    result.score = Math.max(0, 100 - scoreDeduction)
+  }
 
   return result
 }
