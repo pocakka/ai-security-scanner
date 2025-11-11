@@ -1,5 +1,5 @@
 import { CrawlResult } from '../crawler-mock'
-import { ADVANCED_API_KEY_PATTERNS, detectExposedEnvVars, identifyProvider } from './advanced-api-key-patterns'
+import { detectAPIKeys, detectEnvVarExposure } from './api-key-detector-improved'
 
 export interface ClientRisksResult {
   apiKeysFound: APIKeyFinding[]
@@ -24,6 +24,7 @@ export interface ClientRiskFinding {
 }
 
 /**
+ * DEPRECATED: Using improved detector with entropy checking and better patterns
  * Check if a potential API key match is a false positive
  * (e.g., part of an image URL, asset ID, URL slug, or other non-sensitive context)
  */
@@ -160,88 +161,73 @@ export function analyzeClientRisks(crawlResult: CrawlResult): ClientRisksResult 
 
   const detectedKeys = new Set<string>() // Prevent duplicates
 
-  // Check all scripts for API keys using ADVANCED patterns
+  // Check all scripts for API keys using improved detector
   for (let i = 0; i < crawlResult.scripts.length; i++) {
     const script = crawlResult.scripts[i]
 
-    for (const apiKeyConfig of ADVANCED_API_KEY_PATTERNS) {
-      for (const pattern of apiKeyConfig.patterns) {
-        const matches = script.matchAll(pattern)
-        for (const match of matches) {
-          const key = match[0]
+    // Use the new improved detector
+    const detectedInScript = detectAPIKeys(script)
 
-          // Skip if already detected
-          if (detectedKeys.has(key)) continue
+    for (const detection of detectedInScript) {
+      // Create unique key signature to avoid duplicates
+      const keySignature = `${detection.provider}:${detection.key}`
 
-          // Check if this is a false positive (e.g., part of image URL)
-          if (isLikelyFalsePositive(key, script, apiKeyConfig.provider)) {
-            continue
-          }
+      // Skip if already detected
+      if (detectedKeys.has(keySignature)) continue
 
-          detectedKeys.add(key)
+      detectedKeys.add(keySignature)
 
-          const provider = identifyProvider(key)
+      result.apiKeysFound.push({
+        type: detection.provider,
+        location: 'script',
+        preview: detection.key,
+        provider: detection.provider,
+        costRisk: detection.severity === 'critical' ? 'extreme' :
+                  detection.severity === 'high' ? 'high' : 'medium'
+      })
 
-          result.apiKeysFound.push({
-            type: apiKeyConfig.provider,
-            location: 'script',
-            preview: `${key.substring(0, 15)}...${key.substring(key.length - 10)}`,
-            provider: provider?.provider,
-            costRisk: provider?.costRisk,
-          })
-
-          result.findings.push({
-            type: 'exposed_api_key',
-            severity: apiKeyConfig.severity,
-            description: apiKeyConfig.description,
-            evidence: `Script contains: ${key.substring(0, 25)}...`,
-            recommendation: apiKeyConfig.recommendation,
-          })
-        }
-      }
+      result.findings.push({
+        type: 'exposed_api_key',
+        severity: detection.severity as any,
+        description: detection.description,
+        evidence: `Script contains: ${detection.key}`,
+        recommendation: detection.recommendation,
+      })
     }
   }
 
-  // Check HTML for API keys (less common but possible)
-  for (const apiKeyConfig of ADVANCED_API_KEY_PATTERNS) {
-    for (const pattern of apiKeyConfig.patterns) {
-      const matches = crawlResult.html.matchAll(pattern)
-      for (const match of matches) {
-        const key = match[0]
+  // Check HTML for API keys using improved detector
+  const detectedInHTML = detectAPIKeys(crawlResult.html)
 
-        // Skip if already detected
-        if (detectedKeys.has(key)) continue
+  for (const detection of detectedInHTML) {
+    // Create unique key signature to avoid duplicates
+    const keySignature = `${detection.provider}:${detection.key}`
 
-        // Check if this is a false positive (e.g., part of image URL)
-        if (isLikelyFalsePositive(key, crawlResult.html, apiKeyConfig.provider)) {
-          continue
-        }
+    // Skip if already detected
+    if (detectedKeys.has(keySignature)) continue
 
-        detectedKeys.add(key)
+    detectedKeys.add(keySignature)
 
-        const provider = identifyProvider(key)
+    result.apiKeysFound.push({
+      type: detection.provider,
+      location: 'html',
+      preview: detection.key,
+      provider: detection.provider,
+      costRisk: detection.severity === 'critical' ? 'extreme' :
+                detection.severity === 'high' ? 'high' : 'medium'
+    })
 
-        result.apiKeysFound.push({
-          type: apiKeyConfig.provider,
-          location: 'html',
-          preview: `${key.substring(0, 15)}...${key.substring(key.length - 10)}`,
-          provider: provider?.provider,
-          costRisk: provider?.costRisk,
-        })
-
-        result.findings.push({
-          type: 'exposed_api_key_html',
-          severity: apiKeyConfig.severity,
-          description: `${apiKeyConfig.provider} API key found in HTML source`,
-          evidence: key.substring(0, 30) + '...',
-          recommendation: apiKeyConfig.recommendation,
-        })
-      }
-    }
+    result.findings.push({
+      type: 'exposed_api_key_html',
+      severity: detection.severity as any,
+      description: `${detection.provider} API key found in HTML source`,
+      evidence: detection.key,
+      recommendation: detection.recommendation,
+    })
   }
 
-  // NEW: Check for exposed environment variable names
-  const exposedEnvVars = detectExposedEnvVars(crawlResult.html)
+  // Check for exposed environment variable names using improved detector
+  const exposedEnvVars = detectEnvVarExposure(crawlResult.html)
   if (exposedEnvVars.length > 0) {
     result.exposedEnvVars = exposedEnvVars
 

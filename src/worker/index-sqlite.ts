@@ -16,6 +16,9 @@ import { analyzeCookieSecurity } from './analyzers/cookie-security-analyzer'
 import { analyzeJSLibraries } from './analyzers/js-libraries-analyzer'
 import { analyzeTechStack } from './analyzers/tech-stack-analyzer'
 import { analyzeAiTrust } from './analyzers/ai-trust-analyzer'
+import { analyzeReconnaissance } from './analyzers/reconnaissance-analyzer'
+import { analyzeAdminDetection } from './analyzers/admin-detection-analyzer'
+import { analyzeCORS, checkCORSBypassPatterns } from './analyzers/cors-analyzer'
 import { calculateRiskScore } from './scoring'
 import { generateReport } from './report-generator'
 
@@ -84,6 +87,22 @@ async function processScanJob(data: { scanId: string; url: string }) {
     const techStack = analyzeTechStack(crawlResult)
     timings.techStack = Date.now() - techStackStart
 
+    // NEW: Reconnaissance analyzer
+    const reconnaissanceStart = Date.now()
+    const reconnaissance = await analyzeReconnaissance(crawlResult)
+    timings.reconnaissance = Date.now() - reconnaissanceStart
+
+    // NEW: Admin Detection analyzer
+    const adminDetectionStart = Date.now()
+    const adminDetection = await analyzeAdminDetection(crawlResult)
+    timings.adminDetection = Date.now() - adminDetectionStart
+
+    // NEW: CORS analyzer
+    const corsStart = Date.now()
+    const corsAnalysis = analyzeCORS(crawlResult)
+    const corsBypassPatterns = checkCORSBypassPatterns(crawlResult)
+    timings.cors = Date.now() - corsStart
+
     timings.totalAnalyzers = Date.now() - analyzerStart
 
     console.log(`[Worker] ✓ AI detected: ${aiDetection.hasAI}`)
@@ -94,6 +113,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
     console.log(`[Worker] ✓ Cookies: ${cookieSecurity.totalCookies} (${cookieSecurity.insecureCookies} insecure)`)
     console.log(`[Worker] ✓ JS Libraries: ${jsLibraries.detected.length} (${jsLibraries.vulnerable.length} vulnerable)`)
     console.log(`[Worker] ✓ Tech Stack: ${techStack.totalCount} technologies detected`)
+    console.log(`[Worker] ✓ Reconnaissance: ${reconnaissance.findings.length} findings (${reconnaissance.summary.criticalExposures} critical)`)
+    console.log(`[Worker] ✓ Admin Detection: ${adminDetection.hasAdminPanel ? 'Admin panel found' : 'No admin panel'}, ${adminDetection.hasLoginForm ? 'Login form found' : 'No login form'}`)
+    console.log(`[Worker] ✓ CORS: ${corsAnalysis.findings.length} findings (wildcard: ${corsAnalysis.hasWildcardOrigin}, credentials: ${corsAnalysis.allowsCredentials})`)
     console.log(`[Worker]   - CMS: ${techStack.categories.cms.length}`)
     console.log(`[Worker]   - Analytics: ${techStack.categories.analytics.length}`)
     console.log(`[Worker]   - Ads: ${techStack.categories.ads.length}`)
@@ -135,7 +157,10 @@ async function processScanJob(data: { scanId: string; url: string }) {
       sslTLS,
       cookieSecurity,
       jsLibraries,
-      techStack
+      techStack,
+      reconnaissance,
+      adminDetection,
+      { ...corsAnalysis, bypassPatterns: corsBypassPatterns } // Combine CORS results
     )
     timings.reportGeneration = Date.now() - reportStart
 
@@ -156,6 +181,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
         jsLibraries: timings.jsLibraries,
         techStack: timings.techStack,
         aiTrust: timings.aiTrust,
+        reconnaissance: timings.reconnaissance,
+        adminDetection: timings.adminDetection,
+        cors: timings.cors,
       }
     }
 

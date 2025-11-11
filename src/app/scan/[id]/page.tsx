@@ -70,6 +70,24 @@ const CATEGORY_META = {
     description: 'Third-party code dependencies',
     explanation: 'External JavaScript libraries used on this site. Outdated versions may contain known security vulnerabilities.',
   },
+  reconnaissance: {
+    icon: '🔍',
+    title: 'Information Disclosure',
+    description: 'Exposed files and directories',
+    explanation: 'Sensitive files, directories, and configuration that should not be publicly accessible. These can provide attackers with valuable information about the system.',
+  },
+  admin: {
+    icon: '⚠️',
+    title: 'Admin & Authentication',
+    description: 'Administrative interfaces and login forms',
+    explanation: 'Admin panels and login forms are primary targets for attackers. These interfaces should be protected with strong authentication, rate limiting, and IP restrictions.',
+  },
+  cors: {
+    icon: '🌐',
+    title: 'Cross-Origin Resource Sharing (CORS)',
+    description: 'CORS configuration and cross-origin security',
+    explanation: 'CORS misconfigurations can allow unauthorized cross-origin access to sensitive data and APIs. Properly configured CORS prevents data theft across domains.',
+  },
 }
 
 export default function ScanResultPage() {
@@ -286,7 +304,10 @@ export default function ScanResultPage() {
 
   // Separate AI findings from other categories (for prioritized display)
   const aiFindings = findingsByCategory['ai'] || []
-  const nonAICategories = Object.keys(findingsByCategory).filter(cat => cat !== 'ai')
+
+  // Define logical order for security categories
+  const categoryOrder = ['reconnaissance', 'admin', 'client', 'ssl', 'cors', 'cookie', 'security', 'library']
+  const nonAICategories = categoryOrder.filter(cat => findingsByCategory[cat] && cat !== 'ai')
 
   // Extract domain from URL for elegant title
   const getDomainTitle = (url: string): string => {

@@ -178,6 +178,270 @@ export const ADVANCED_API_KEY_PATTERNS: APIKeyPattern[] = [
   },
 
   // ========================================================================
+  // CLOUD PROVIDERS (New additions from IMPLEMENTATION_2_EASY.md)
+  // ========================================================================
+  {
+    provider: 'Azure Storage',
+    patterns: [
+      /DefaultEndpointsProtocol=https;AccountName=([^;]+);AccountKey=([a-zA-Z0-9+/]{86}==)/g,
+      /(\?sv=[\d-]+&s[rst]=[\d\w-]+&se=[\d\w-]+&sp=[\w]+&sig=[a-zA-Z0-9%]+)/g, // SAS token
+      /managementcertificate="([a-zA-Z0-9+/]{100,}={0,2})"/gi,
+      /Ocp-Apim-Subscription-Key['":\s]+([a-f0-9]{32})/gi,
+    ],
+    severity: 'critical',
+    costRisk: 'extreme',
+    description: 'Azure Storage/API credentials exposed. Full cloud resource access risk.',
+    recommendation: 'Revoke immediately in Azure Portal. Use managed identities instead.',
+  },
+  {
+    provider: 'Cloudflare',
+    patterns: [
+      /CF_API_KEY['":\s]+([A-Za-z0-9_-]{37})/gi,
+      /CF_EMAIL['":\s]+([^\s'"]+@[^\s'"]+)/gi,
+      /[A-Za-z0-9_-]{40}/g, // When found near 'cloudflare' context
+    ],
+    severity: 'high',
+    costRisk: 'high',
+    description: 'Cloudflare API token detected. DNS and CDN control at risk.',
+    recommendation: 'Rotate token immediately. Use API tokens with limited scope.',
+  },
+  {
+    provider: 'DigitalOcean',
+    patterns: [
+      /dop_v1_[a-f0-9]{64}/g,
+      /DO_API_TOKEN['":\s]+([a-f0-9]{64})/gi,
+    ],
+    severity: 'critical',
+    costRisk: 'extreme',
+    description: 'DigitalOcean access token exposed. Full infrastructure access risk.',
+    recommendation: 'Revoke token immediately from DO control panel.',
+  },
+  {
+    provider: 'Heroku',
+    patterns: [
+      /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g, // When near 'heroku' context
+      /HEROKU_API_KEY['":\s]+([a-f0-9-]{36})/gi,
+    ],
+    severity: 'high',
+    costRisk: 'high',
+    description: 'Heroku API key detected. Application deployment at risk.',
+    recommendation: 'Regenerate API key from Heroku dashboard.',
+  },
+
+  // ========================================================================
+  // COMMUNICATION PLATFORMS (New additions)
+  // ========================================================================
+  {
+    provider: 'Slack',
+    patterns: [
+      /xoxb-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,34}/g, // Bot token
+      /xoxp-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,34}/g, // User token
+      /xoxa-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,34}/g, // App token
+      /xoxs-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,34}/g, // Workspace token
+      /https:\/\/hooks\.slack\.com\/services\/T[A-Z0-9]{8,10}\/B[A-Z0-9]{8,10}\/[a-zA-Z0-9]{24}/g,
+    ],
+    severity: 'high',
+    costRisk: 'medium',
+    description: 'Slack token exposed. Workspace access and data leak risk.',
+    recommendation: 'Revoke token from Slack App settings immediately.',
+  },
+  {
+    provider: 'Discord',
+    patterns: [
+      /[MN][a-zA-Z0-9_-]{23}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{27}/g, // Bot token
+      /discord\.com\/api\/webhooks\/[0-9]{17,19}\/[a-zA-Z0-9_-]{68}/g, // Webhook
+      /[a-zA-Z0-9_-]{24}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{27}/g, // OAuth token
+    ],
+    severity: 'high',
+    costRisk: 'medium',
+    description: 'Discord bot/webhook token exposed. Server control at risk.',
+    recommendation: 'Regenerate bot token in Discord Developer Portal.',
+  },
+  {
+    provider: 'Telegram',
+    patterns: [
+      /[0-9]{8,10}:[a-zA-Z0-9_-]{35}/g, // Bot token
+      /api_id['":\s]+([0-9]{5,7})/gi,
+      /api_hash['":\s]+([a-f0-9]{32})/gi,
+    ],
+    severity: 'high',
+    costRisk: 'medium',
+    description: 'Telegram bot credentials exposed.',
+    recommendation: 'Generate new bot token from @BotFather.',
+  },
+
+  // ========================================================================
+  // EMAIL SERVICE PROVIDERS (New additions)
+  // ========================================================================
+  {
+    provider: 'SendGrid',
+    patterns: [
+      /SG\.[a-zA-Z0-9_-]{22}\.[a-zA-Z0-9_-]{43}/g,
+      /SENDGRID_API_KEY['":\s]+([a-zA-Z0-9_-]{69})/gi,
+    ],
+    severity: 'high',
+    costRisk: 'high',
+    description: 'SendGrid API key exposed. Email sending abuse risk.',
+    recommendation: 'Revoke key from SendGrid dashboard. Implement IP restrictions.',
+  },
+  {
+    provider: 'Mailgun',
+    patterns: [
+      /key-[a-f0-9]{32}/g,
+      /MAILGUN_API_KEY['":\s]+([a-f0-9-]{35})/gi,
+      /pubkey-[a-f0-9]{32}/g,
+    ],
+    severity: 'high',
+    costRisk: 'high',
+    description: 'Mailgun API key detected. Email service abuse risk.',
+    recommendation: 'Regenerate key from Mailgun control panel.',
+  },
+  {
+    provider: 'Mailchimp',
+    patterns: [
+      /[a-f0-9]{32}-us[0-9]{1,2}/g,
+      /MAILCHIMP_API_KEY['":\s]+([a-f0-9]{32}-us[0-9]{1,2})/gi,
+    ],
+    severity: 'high',
+    costRisk: 'medium',
+    description: 'Mailchimp API key exposed. Marketing data at risk.',
+    recommendation: 'Revoke and regenerate API key from Account settings.',
+  },
+  {
+    provider: 'Twilio',
+    patterns: [
+      /AC[a-z0-9]{32}/gi, // Account SID
+      /SK[a-z0-9]{32}/gi, // Auth token
+      /TWILIO_AUTH_TOKEN['":\s]+([a-z0-9]{32})/gi,
+    ],
+    severity: 'critical',
+    costRisk: 'extreme',
+    description: 'Twilio credentials exposed. SMS/Voice abuse and cost explosion risk.',
+    recommendation: 'Rotate auth token immediately from Twilio Console.',
+  },
+
+  // ========================================================================
+  // FIREBASE & BACKEND SERVICES (New additions)
+  // ========================================================================
+  {
+    provider: 'Firebase',
+    patterns: [
+      /AIza[0-9A-Za-z\-_]{35}/g, // Firebase API key
+      /"private_key":\s*"-----BEGIN (?:RSA )?PRIVATE KEY-----[^"]+-----END (?:RSA )?PRIVATE KEY-----"/g,
+      /firebase[a-z0-9-]+\.firebaseapp\.com/gi,
+    ],
+    severity: 'high',
+    costRisk: 'high',
+    description: 'Firebase credentials exposed. Database access at risk.',
+    recommendation: 'Restrict API key in Firebase Console. Use security rules.',
+  },
+
+  // ========================================================================
+  // CRYPTOCURRENCY & FINANCIAL (New additions)
+  // ========================================================================
+  {
+    provider: 'Cryptocurrency Wallets',
+    patterns: [
+      /5[HJK][1-9A-HJ-NP-Za-km-z]{49,51}/g, // Bitcoin private key
+      /0x[a-fA-F0-9]{64}/g, // Ethereum private key (with context)
+      /[a-z0-9]{16}/g, // When near 'coinbase' context
+      /[A-Za-z0-9]{64}/g, // When near 'binance' context
+    ],
+    severity: 'critical',
+    costRisk: 'extreme',
+    description: 'Cryptocurrency private key or API detected. FUNDS AT RISK!',
+    recommendation: 'Move funds immediately! Never store crypto keys in code.',
+  },
+  {
+    provider: 'Stripe',
+    patterns: [
+      /sk_live_[a-zA-Z0-9]{99}/g, // Live secret key
+      /sk_test_[a-zA-Z0-9]{99}/g, // Test secret key
+      /rk_live_[a-zA-Z0-9]{99}/g, // Restricted key
+      /pk_live_[a-zA-Z0-9]{99}/g, // Publishable key (less sensitive)
+    ],
+    severity: 'critical',
+    costRisk: 'extreme',
+    description: 'Stripe secret key exposed. Payment processing at risk.',
+    recommendation: 'Roll key immediately in Stripe Dashboard. Audit recent charges.',
+  },
+
+  // ========================================================================
+  // AUTHENTICATION & SECRETS (New additions)
+  // ========================================================================
+  {
+    provider: 'JWT Secrets',
+    patterns: [
+      /jwt[_-]?secret['":\s]+['"]([^'"]{16,})['"]>/gi,
+      /JWT_SECRET['":\s]+['"]([^'"]{16,})['"]>/gi,
+      /eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, // Hardcoded JWT
+    ],
+    severity: 'critical',
+    costRisk: 'high',
+    description: 'JWT secret or token exposed. Authentication bypass risk.',
+    recommendation: 'Rotate JWT secret immediately. Invalidate all existing tokens.',
+  },
+  {
+    provider: 'SSH Keys',
+    patterns: [
+      /-----BEGIN (?:RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]+?-----END (?:RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----/g,
+      /ssh-rsa\s+[A-Za-z0-9+/]+[=]{0,2}/g,
+      /sshpass['":\s]+['"]([^'"]+)['"]/gi,
+    ],
+    severity: 'critical',
+    costRisk: 'extreme',
+    description: 'SSH private key exposed. Server access compromised.',
+    recommendation: 'Revoke key immediately. Audit server access logs.',
+  },
+  {
+    provider: 'OAuth Secrets',
+    patterns: [
+      /client[_-]?secret['":\s]+['"]([A-Za-z0-9\-_]{32,})['"]/gi,
+      /refresh[_-]?token['":\s]+['"]([A-Za-z0-9\-_]{20,})['"]/gi,
+      /access[_-]?token['":\s]+['"]([A-Za-z0-9\-_]{20,})['"]/gi,
+    ],
+    severity: 'high',
+    costRisk: 'high',
+    description: 'OAuth credentials exposed. Account takeover risk.',
+    recommendation: 'Revoke OAuth app and regenerate credentials.',
+  },
+
+  // ========================================================================
+  // DATABASE CONNECTIONS (Enhanced)
+  // ========================================================================
+  {
+    provider: 'Database Connection Strings',
+    patterns: [
+      /mongodb(?:\+srv)?:\/\/[^:]+:[^@]+@[^/]+/g,
+      /postgres(?:ql)?:\/\/[^:]+:[^@]+@[^/]+/g,
+      /mysql:\/\/[^:]+:[^@]+@[^/]+/g,
+      /redis:\/\/(?::[^@]+@)?[^/]+/g,
+      /Data Source=.*;User Id=.*;Password=.*/gi, // SQL Server
+    ],
+    severity: 'critical',
+    costRisk: 'extreme',
+    description: 'Database connection string exposed. Data breach risk.',
+    recommendation: 'Rotate database passwords immediately. Use environment variables.',
+  },
+
+  // ========================================================================
+  // WEBHOOK URLs (New additions)
+  // ========================================================================
+  {
+    provider: 'Webhook URLs',
+    patterns: [
+      /https?:\/\/[^/]+\/[^?\s]+\?(?:token|key|secret)=([A-Za-z0-9\-_]{16,})/g,
+      /https:\/\/hooks\.zapier\.com\/hooks\/catch\/[0-9]+\/[a-z0-9]+/g,
+      /https:\/\/maker\.ifttt\.com\/trigger\/[^/]+\/with\/key\/[A-Za-z0-9\-_]+/g,
+      /https:\/\/[^/]+\/webhooks\/[A-Za-z0-9\-_]{16,}/g,
+    ],
+    severity: 'medium',
+    costRisk: 'medium',
+    description: 'Webhook URL with embedded token exposed.',
+    recommendation: 'Regenerate webhook URL. Add request signing verification.',
+  },
+
+  // ========================================================================
   // GENERIC PATTERNS (Low specificity but important)
   // ========================================================================
   {
@@ -245,6 +509,7 @@ export function calculateAPIKeyRisk(keys: string[]): number {
  * Environment variable patterns (should NEVER be in client-side code)
  */
 export const EXPOSED_ENV_PATTERNS = [
+  // AI Providers
   /OPENAI_API_KEY/gi,
   /ANTHROPIC_API_KEY/gi,
   /GOOGLE_AI_API_KEY/gi,
@@ -257,6 +522,43 @@ export const EXPOSED_ENV_PATTERNS = [
   /PINECONE_ENVIRONMENT/gi,
   /ELEVENLABS_API_KEY/gi,
   /LANGCHAIN_API_KEY/gi,
+  // Cloud Providers
+  /AZURE_STORAGE_KEY/gi,
+  /CF_API_KEY/gi,
+  /CLOUDFLARE_API_TOKEN/gi,
+  /DO_API_TOKEN/gi,
+  /DIGITALOCEAN_ACCESS_TOKEN/gi,
+  /HEROKU_API_KEY/gi,
+  // Communication
+  /SLACK_TOKEN/gi,
+  /SLACK_BOT_TOKEN/gi,
+  /DISCORD_TOKEN/gi,
+  /DISCORD_BOT_TOKEN/gi,
+  /TELEGRAM_BOT_TOKEN/gi,
+  // Email Services
+  /SENDGRID_API_KEY/gi,
+  /MAILGUN_API_KEY/gi,
+  /MAILCHIMP_API_KEY/gi,
+  /TWILIO_AUTH_TOKEN/gi,
+  /TWILIO_ACCOUNT_SID/gi,
+  // Database
+  /DATABASE_URL/gi,
+  /MONGODB_URI/gi,
+  /POSTGRES_PASSWORD/gi,
+  /MYSQL_PASSWORD/gi,
+  /REDIS_URL/gi,
+  // Payments
+  /STRIPE_SECRET_KEY/gi,
+  /STRIPE_PUBLISHABLE_KEY/gi,
+  // Authentication
+  /JWT_SECRET/gi,
+  /SESSION_SECRET/gi,
+  /REFRESH_TOKEN_SECRET/gi,
+  /CLIENT_SECRET/gi,
+  // Firebase
+  /FIREBASE_API_KEY/gi,
+  /FIREBASE_PROJECT_ID/gi,
+  /FIREBASE_PRIVATE_KEY/gi,
 ]
 
 /**

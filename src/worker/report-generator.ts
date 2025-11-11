@@ -5,6 +5,9 @@ import { SSLTLSResult } from './analyzers/ssl-tls-analyzer'
 import { CookieSecurityResult } from './analyzers/cookie-security-analyzer'
 import { JSLibrariesResult } from './analyzers/js-libraries-analyzer'
 import { TechStackResult } from './analyzers/tech-stack-analyzer'
+import { ReconnaissanceResult } from './analyzers/reconnaissance-analyzer'
+import { AdminDetectionResult } from './analyzers/admin-detection-analyzer'
+import { CORSResult, CORSFinding } from './analyzers/cors-analyzer'
 import { RiskScore } from './scoring'
 
 export interface ScanReport {
@@ -24,12 +27,13 @@ export interface ScanReport {
   sslTLS?: SSLTLSResult // Add SSL/TLS result for frontend display
   cookieSecurity?: CookieSecurityResult // Add cookie security for frontend
   jsLibraries?: JSLibrariesResult // Add JS libraries for frontend
+  reconnaissance?: ReconnaissanceResult // Add reconnaissance for frontend
   findings: Finding[]
 }
 
 export interface Finding {
   id: string
-  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library'
+  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors'
   severity: 'low' | 'medium' | 'high' | 'critical'
   title: string
   description: string
@@ -46,7 +50,10 @@ export function generateReport(
   sslTLS?: SSLTLSResult,
   cookieSecurity?: CookieSecurityResult,
   jsLibraries?: JSLibrariesResult,
-  techStack?: TechStackResult
+  techStack?: TechStackResult,
+  reconnaissance?: ReconnaissanceResult,
+  adminDetection?: AdminDetectionResult,
+  corsAnalysis?: CORSResult & { bypassPatterns?: CORSFinding[] }
 ): ScanReport {
   const findings: Finding[] = []
 
@@ -173,6 +180,95 @@ export function generateReport(
     }
   }
 
+  // Reconnaissance findings
+  if (reconnaissance) {
+    for (const finding of reconnaissance.findings) {
+      findings.push({
+        id: `recon-${findings.length}`,
+        category: 'reconnaissance',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description || '',
+        evidence: Array.isArray(finding.evidence) ? finding.evidence.join(', ') : finding.evidence,
+        impact: finding.impact || 'Information disclosure may aid attackers in reconnaissance',
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
+  // Admin Detection findings
+  if (adminDetection) {
+    for (const finding of adminDetection.findings) {
+      findings.push({
+        id: `admin-${findings.length}`,
+        category: 'admin',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description || '',
+        evidence: Array.isArray(finding.evidence) ? finding.evidence.join(', ') : finding.evidence,
+        impact: finding.impact || 'Admin interfaces are prime targets for attacks',
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
+  // CORS findings
+  if (corsAnalysis) {
+    // Add main CORS findings
+    for (const finding of corsAnalysis.findings) {
+      // Skip info findings unless they're important
+      if (finding.severity === 'info' && !finding.title.includes('Good')) {
+        continue
+      }
+
+      findings.push({
+        id: `cors-${findings.length}`,
+        category: 'cors',
+        severity: finding.severity as 'low' | 'medium' | 'high' | 'critical',
+        title: finding.title,
+        description: finding.description || '',
+        evidence: finding.details ? JSON.stringify(finding.details) : undefined,
+        impact: finding.impact || 'Cross-origin resource sharing misconfiguration',
+        recommendation: finding.recommendation || 'Review CORS configuration',
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else if (finding.severity === 'low') lowCount++
+    }
+
+    // Add CORS bypass pattern findings
+    if (corsAnalysis.bypassPatterns) {
+      for (const finding of corsAnalysis.bypassPatterns) {
+        findings.push({
+          id: `cors-bypass-${findings.length}`,
+          category: 'cors',
+          severity: finding.severity as 'low' | 'medium' | 'high' | 'critical',
+          title: finding.title,
+          description: finding.description || '',
+          impact: finding.impact || 'Potential CORS bypass technique detected',
+          recommendation: finding.recommendation || 'Review and secure cross-origin communication',
+        })
+
+        if (finding.severity === 'critical') criticalCount++
+        else if (finding.severity === 'high') highCount++
+        else if (finding.severity === 'medium') mediumCount++
+        else if (finding.severity === 'low') lowCount++
+      }
+    }
+  }
+
   return {
     summary: {
       hasAI: aiDetection.hasAI,
@@ -190,6 +286,7 @@ export function generateReport(
     sslTLS, // Pass SSL/TLS result to frontend
     cookieSecurity, // Pass cookie security result to frontend
     jsLibraries, // Pass JS libraries result to frontend
+    reconnaissance, // Pass reconnaissance result to frontend
     findings,
   }
 }
