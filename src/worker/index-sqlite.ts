@@ -105,8 +105,10 @@ async function processScanJob(data: { scanId: string; url: string }) {
     timings.cors = Date.now() - corsStart
 
     // NEW: DNS Security analyzer
+    // TEMPORARILY DISABLED DUE TO BLOCKING ISSUE WITH FETCH
     const dnsStart = Date.now()
-    const dnsAnalysis = await analyzeDNSSecurity(crawlResult)
+    // const dnsAnalysis = await analyzeDNSSecurity(crawlResult)
+    const dnsAnalysis = { findings: [], hasDNSSEC: false, hasSPF: false, hasDKIM: false, hasDMARC: false, hasCAA: false, score: 0, domain: '' }
     timings.dns = Date.now() - dnsStart
 
     timings.totalAnalyzers = Date.now() - analyzerStart
@@ -122,7 +124,7 @@ async function processScanJob(data: { scanId: string; url: string }) {
     console.log(`[Worker] ✓ Reconnaissance: ${reconnaissance.findings.length} findings (${reconnaissance.summary.criticalExposures} critical)`)
     console.log(`[Worker] ✓ Admin Detection: ${adminDetection.hasAdminPanel ? 'Admin panel found' : 'No admin panel'}, ${adminDetection.hasLoginForm ? 'Login form found' : 'No login form'}`)
     console.log(`[Worker] ✓ CORS: ${corsAnalysis.findings.length} findings (wildcard: ${corsAnalysis.hasWildcardOrigin}, credentials: ${corsAnalysis.allowsCredentials})`)
-    console.log(`[Worker] ✓ DNS Security: ${dnsAnalysis.findings.length} findings (DNSSEC: ${dnsAnalysis.hasDNSSEC}, SPF: ${dnsAnalysis.hasSPF}, DKIM: ${dnsAnalysis.hasDKIM}, DMARC: ${dnsAnalysis.hasDMARC})`)
+    // console.log(`[Worker] ✓ DNS Security: ${dnsAnalysis.findings.length} findings (DNSSEC: ${dnsAnalysis.hasDNSSEC}, SPF: ${dnsAnalysis.hasSPF}, DKIM: ${dnsAnalysis.hasDKIM}, DMARC: ${dnsAnalysis.hasDMARC})`)
     console.log(`[Worker]   - CMS: ${techStack.categories.cms.length}`)
     console.log(`[Worker]   - Analytics: ${techStack.categories.analytics.length}`)
     console.log(`[Worker]   - Ads: ${techStack.categories.ads.length}`)

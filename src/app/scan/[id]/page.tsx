@@ -88,6 +88,12 @@ const CATEGORY_META = {
     description: 'CORS configuration and cross-origin security',
     explanation: 'CORS misconfigurations can allow unauthorized cross-origin access to sensitive data and APIs. Properly configured CORS prevents data theft across domains.',
   },
+  dns: {
+    icon: '🌍',
+    title: 'DNS & Email Security',
+    description: 'Domain name system and email authentication',
+    explanation: 'DNS security features like DNSSEC, SPF, DKIM, and DMARC protect against domain spoofing, email forgery, and DNS poisoning attacks. CAA records control which certificate authorities can issue SSL certificates.',
+  },
 }
 
 export default function ScanResultPage() {
@@ -306,7 +312,7 @@ export default function ScanResultPage() {
   const aiFindings = findingsByCategory['ai'] || []
 
   // Define logical order for security categories
-  const categoryOrder = ['reconnaissance', 'admin', 'client', 'ssl', 'cors', 'cookie', 'security', 'library']
+  const categoryOrder = ['reconnaissance', 'admin', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library']
   const nonAICategories = categoryOrder.filter(cat => findingsByCategory[cat] && cat !== 'ai')
 
   // Extract domain from URL for elegant title
