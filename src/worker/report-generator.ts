@@ -8,6 +8,7 @@ import { TechStackResult } from './analyzers/tech-stack-analyzer'
 import { ReconnaissanceResult } from './analyzers/reconnaissance-analyzer'
 import { AdminDetectionResult } from './analyzers/admin-detection-analyzer'
 import { CORSResult, CORSFinding } from './analyzers/cors-analyzer'
+import { DNSSecurityResult } from './analyzers/dns-security-analyzer'
 import { RiskScore } from './scoring'
 
 export interface ScanReport {
@@ -33,7 +34,7 @@ export interface ScanReport {
 
 export interface Finding {
   id: string
-  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors'
+  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors' | 'dns'
   severity: 'low' | 'medium' | 'high' | 'critical'
   title: string
   description: string
@@ -53,7 +54,8 @@ export function generateReport(
   techStack?: TechStackResult,
   reconnaissance?: ReconnaissanceResult,
   adminDetection?: AdminDetectionResult,
-  corsAnalysis?: CORSResult & { bypassPatterns?: CORSFinding[] }
+  corsAnalysis?: CORSResult & { bypassPatterns?: CORSFinding[] },
+  dnsAnalysis?: DNSSecurityResult
 ): ScanReport {
   const findings: Finding[] = []
 
@@ -266,6 +268,32 @@ export function generateReport(
         else if (finding.severity === 'medium') mediumCount++
         else if (finding.severity === 'low') lowCount++
       }
+    }
+  }
+
+  // DNS Security findings
+  if (dnsAnalysis) {
+    for (const finding of dnsAnalysis.findings) {
+      // Skip info findings unless they're important
+      if (finding.severity === 'info' && !finding.title.includes('configured')) {
+        continue
+      }
+
+      findings.push({
+        id: `dns-${findings.length}`,
+        category: 'dns',
+        severity: finding.severity as 'low' | 'medium' | 'high' | 'critical',
+        title: finding.title,
+        description: finding.description || '',
+        evidence: finding.details ? JSON.stringify(finding.details) : undefined,
+        impact: finding.impact || 'DNS security issue detected',
+        recommendation: finding.recommendation || 'Review DNS configuration',
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else if (finding.severity === 'low') lowCount++
     }
   }
 
