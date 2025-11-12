@@ -75,6 +75,36 @@ const PII_PATTERNS = [
   { type: 'passport', pattern: /\b[A-Z]{1,2}\d{6,9}\b/g, severity: 'high' as const },
 ]
 
+// Context patterns to EXCLUDE from PII detection (false positive filters)
+const PII_EXCLUSION_CONTEXTS = {
+  'credit-card': [
+    /fb:app_id/i,           // Facebook App ID (e.g., 1401488693436528)
+    /property=["']fb:/i,    // Facebook meta properties
+    /google-site-verification/i, // Google verification codes
+    /data-client-id/i,      // Client IDs
+    /clientId/i,            // Client IDs in JS
+    /app_id/i,              // Generic app IDs
+    /application_id/i,      // Application IDs
+    /version["\s:=]/i,      // Version numbers
+  ],
+  'phone': [
+    /\d{13,}/,              // Numbers longer than 13 digits (not phone numbers)
+    /\d{3}\d{3}\d{4}\d+/,   // Numbers with 10+ consecutive digits
+    /[a-f0-9]{10,}/i,       // Hex strings
+    /timestamp/i,           // Timestamp fields
+    /id["\s:=]/i,           // ID fields
+    /key["\s:=]/i,          // Key fields
+  ],
+  'email': [
+    /example\.com/i,        // Example emails
+    /test@/i,               // Test emails
+    /noreply@/i,            // No-reply emails (legitimate)
+    /support@/i,            // Support emails (legitimate)
+    /info@/i,               // Info emails (legitimate)
+    /contact@/i,            // Contact emails (legitimate)
+  ],
+}
+
 // Internal endpoint patterns
 const INTERNAL_ENDPOINT_PATTERNS = [
   /(?:https?:)?\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+):\d+/gi,
@@ -180,8 +210,14 @@ export async function analyzeLLM06SensitiveInfo(
     piiPattern.pattern.lastIndex = 0
 
     while ((match = piiPattern.pattern.exec(html)) !== null) {
-      // Filter out common false positives
-      if (shouldSkipPII(match[0], piiPattern.type)) continue
+      // Extract surrounding context (200 chars before and after match)
+      const matchIndex = match.index
+      const contextStart = Math.max(0, matchIndex - 200)
+      const contextEnd = Math.min(html.length, matchIndex + match[0].length + 200)
+      const htmlContext = html.substring(contextStart, contextEnd)
+
+      // Filter out common false positives using context-aware analysis
+      if (shouldSkipPII(match[0], piiPattern.type, htmlContext)) continue
 
       hasPII = true
       exposedDataTypes.push(`pii-${piiPattern.type}`)
@@ -407,7 +443,7 @@ function redactPII(value: string, type: string): string {
 }
 
 // Helper: Skip false positive PII patterns
-function shouldSkipPII(value: string, type: string): boolean {
+function shouldSkipPII(value: string, type: string, htmlContext?: string): boolean {
   // Skip example/placeholder values
   if (type === 'email' && /example\.com|test\.com|domain\.com/.test(value)) return true
   if (type === 'phone' && /555-?0{4}|123-?4567/.test(value)) return true
@@ -416,5 +452,46 @@ function shouldSkipPII(value: string, type: string): boolean {
   // Skip version numbers that look like phone numbers
   if (type === 'phone' && /\d\.\d\.\d/.test(value)) return true
 
+  // NEW: Context-aware exclusions using surrounding HTML
+  if (htmlContext) {
+    const exclusions = PII_EXCLUSION_CONTEXTS[type as keyof typeof PII_EXCLUSION_CONTEXTS]
+    if (exclusions) {
+      for (const exclusionPattern of exclusions) {
+        if (exclusionPattern.test(htmlContext)) {
+          return true // Skip this match - it's in an excluded context
+        }
+      }
+    }
+  }
+
+  // Additional credit card false positive filters
+  if (type === 'credit-card') {
+    // Skip if the number doesn't pass Luhn algorithm (basic credit card validation)
+    const digitsOnly = value.replace(/\D/g, '')
+    if (!passesLuhnCheck(digitsOnly)) return true
+  }
+
   return false
+}
+
+// Luhn algorithm for credit card validation (reduces false positives)
+function passesLuhnCheck(cardNumber: string): boolean {
+  if (!/^\d+$/.test(cardNumber)) return false
+
+  let sum = 0
+  let isEven = false
+
+  for (let i = cardNumber.length - 1; i >= 0; i--) {
+    let digit = parseInt(cardNumber[i], 10)
+
+    if (isEven) {
+      digit *= 2
+      if (digit > 9) digit -= 9
+    }
+
+    sum += digit
+    isEven = !isEven
+  }
+
+  return sum % 10 === 0
 }
