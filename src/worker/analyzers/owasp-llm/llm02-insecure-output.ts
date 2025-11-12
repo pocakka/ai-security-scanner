@@ -258,6 +258,36 @@ function extractSnippet(html: string, match: string, contextLength: number = 100
   return snippet.replace(/\s+/g, ' ').trim()
 }
 
+// Helper: Format CSP policy for readable evidence
+function formatCSPEvidence(cspHeader: string, maxLength: number = 200): string {
+  if (!cspHeader || cspHeader.length === 0) {
+    return 'No CSP header present'
+  }
+
+  // If CSP is short enough, return as-is
+  if (cspHeader.length <= maxLength) {
+    return cspHeader
+  }
+
+  // Split into directives and show first few
+  const directives = cspHeader.split(';').map(d => d.trim()).filter(Boolean)
+
+  if (directives.length === 0) {
+    return cspHeader.substring(0, maxLength) + '...'
+  }
+
+  // Show first 3-4 directives and count remaining
+  const previewCount = 3
+  const preview = directives.slice(0, previewCount).join('; ')
+  const remaining = directives.length - previewCount
+
+  if (remaining > 0) {
+    return `${preview}; ... (${remaining} more directives)`
+  }
+
+  return preview
+}
+
 export async function analyzeLLM02InsecureOutput(
   html: string,
   responseHeaders: Record<string, string> = {}
@@ -282,7 +312,7 @@ export async function analyzeLLM02InsecureOutput(
       description: cspStrength === 'none'
         ? 'No Content-Security-Policy header detected. This leaves the application vulnerable to XSS attacks.'
         : `Weak Content-Security-Policy detected. Issues: ${cspAnalysis.issues.join(', ')}`,
-      evidence: cspHeader || 'No CSP header present',
+      evidence: formatCSPEvidence(cspHeader, 200),
       impact: 'Without strong CSP, XSS attacks through AI-generated content can execute malicious scripts, steal credentials, and compromise user sessions.',
       recommendation: cspStrength === 'none'
         ? "Implement a strong CSP with 'script-src: self' or nonce-based approach. Consider using 'strict-dynamic' for modern applications."
