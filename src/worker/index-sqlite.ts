@@ -30,6 +30,8 @@ import { analyzeRateLimiting } from './analyzers/rate-limiting-analyzer'
 import { analyzeGraphQL } from './analyzers/graphql-analyzer'
 import { analyzeErrorDisclosure } from './analyzers/error-disclosure-analyzer'
 import { analyzeSpaApi } from './analyzers/spa-api-analyzer'
+import { analyzeLLM01PromptInjection } from './analyzers/owasp-llm/llm01-prompt-injection'
+import { analyzeLLM02InsecureOutput } from './analyzers/owasp-llm/llm02-insecure-output'
 import { calculateRiskScore } from './scoring'
 import { generateReport } from './report-generator'
 
@@ -213,6 +215,22 @@ async function processScanJob(data: { scanId: string; url: string }) {
     )
     timings.spaApi = Date.now() - spaStart
 
+    // NEW: OWASP LLM01 - Prompt Injection Risk analyzer (HIGH)
+    const llm01Start = Date.now()
+    const llm01PromptInjection = await analyzeLLM01PromptInjection(
+      crawlResult.html,
+      crawlResult.responseHeaders || {}
+    )
+    timings.llm01 = Date.now() - llm01Start
+
+    // NEW: OWASP LLM02 - Insecure Output Handling analyzer (CRITICAL)
+    const llm02Start = Date.now()
+    const llm02InsecureOutput = await analyzeLLM02InsecureOutput(
+      crawlResult.html,
+      crawlResult.responseHeaders || {}
+    )
+    timings.llm02 = Date.now() - llm02Start
+
     // Calculate total time before DNS (everything except DNS)
     timings.totalAnalyzersBeforeDNS = Date.now() - analyzerStart
 
@@ -234,6 +252,8 @@ async function processScanJob(data: { scanId: string; url: string }) {
     console.log(`[Worker] ✓ MFA/2FA: ${mfaDetection.hasMFA ? `${mfaDetection.detectedMethods.length} methods detected` : 'No MFA detected'} (OAuth: ${mfaDetection.hasOAuth}, WebAuthn: ${mfaDetection.hasWebAuthn}, TOTP: ${mfaDetection.hasTOTP})`)
     console.log(`[Worker] ✓ Error Disclosure: ${errorDisclosure.findings.length} findings (Stack traces: ${errorDisclosure.hasStackTraces}, DB errors: ${errorDisclosure.hasDatabaseErrors}, Risk: ${errorDisclosure.riskLevel})`)
     console.log(`[Worker] ✓ SPA/API: ${spaApi.isSPA ? `${spaApi.detectedFramework} detected` : 'Not SPA'} (${spaApi.apiEndpoints.length} API endpoints, ${spaApi.hasUnprotectedEndpoints ? 'UNPROTECTED ENDPOINTS!' : 'Protected'})`)
+    console.log(`[Worker] ✓ LLM01 (Prompt Injection): ${llm01PromptInjection.findings.length} findings (System prompts: ${llm01PromptInjection.hasSystemPromptLeaks}, Risky assembly: ${llm01PromptInjection.hasRiskyPromptAssembly}, AI context: ${llm01PromptInjection.hasAIContext}, Risk: ${llm01PromptInjection.overallRisk})`)
+    console.log(`[Worker] ✓ LLM02 (Insecure Output): ${llm02InsecureOutput.findings.length} findings (DOM: ${llm02InsecureOutput.hasDangerousDOM}, Unsafe MD: ${llm02InsecureOutput.hasUnsafeMarkdown}, eval(): ${llm02InsecureOutput.hasEvalUsage}, CSP: ${llm02InsecureOutput.cspStrength}, Risk: ${llm02InsecureOutput.overallRisk})`)
     console.log(`[Worker]   - CMS: ${techStack.categories.cms.length}`)
     console.log(`[Worker]   - Analytics: ${techStack.categories.analytics.length}`)
     console.log(`[Worker]   - Ads: ${techStack.categories.ads.length}`)
@@ -308,7 +328,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
       rateLimiting, // Rate Limiting analyzer
       graphqlSecurity, // GraphQL Security analyzer
       errorDisclosure, // Error Disclosure analyzer
-      spaApi // SPA/API Detection analyzer
+      spaApi, // SPA/API Detection analyzer
+      llm01PromptInjection, // OWASP LLM01 - Prompt Injection Risk
+      llm02InsecureOutput // OWASP LLM02 - Insecure Output Handling
     )
     timings.reportGeneration = Date.now() - reportStart
 
@@ -334,6 +356,8 @@ async function processScanJob(data: { scanId: string; url: string }) {
         adminDiscovery: timings.adminDiscovery,
         cors: timings.cors,
         portScan: timings.portScan,
+        llm01: timings.llm01,
+        llm02: timings.llm02,
       }
     }
 
@@ -465,7 +489,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
         rateLimiting, // Rate Limiting analyzer
         graphqlSecurity, // GraphQL Security analyzer
         errorDisclosure, // Error Disclosure analyzer
-        spaApi // SPA/API Detection analyzer
+        spaApi, // SPA/API Detection analyzer
+        llm01PromptInjection, // OWASP LLM01 - Prompt Injection Risk
+        llm02InsecureOutput // OWASP LLM02 - Insecure Output Handling
       )
 
       // Update the saved scan with DNS results

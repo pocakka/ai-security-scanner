@@ -142,6 +142,18 @@ const CATEGORY_META = {
     description: 'Single Page Application framework and API endpoints',
     explanation: 'Modern SPAs (React, Vue, Angular, Next.js) rely heavily on APIs for data. This analyzer identifies your SPA framework, discovers API endpoints, and checks for security issues like unprotected endpoints, API keys in URLs, or missing authentication. WebSocket connections are also analyzed for proper security implementation.',
   },
+  'owasp-llm01': {
+    icon: '💉',
+    title: 'OWASP LLM01: Prompt Injection Risk',
+    description: 'Manipulation of AI system prompts via user input',
+    explanation: 'Prompt injection allows attackers to manipulate AI behavior by crafting malicious inputs that override system instructions. This analyzer detects exposed system prompts in client code, risky prompt assembly patterns (user input concatenation), and missing input sanitization near AI endpoints. When system prompts are visible or user input is directly concatenated without validation, attackers can inject commands like "Ignore previous instructions and..." to extract sensitive data, bypass safety controls, or manipulate AI responses.',
+  },
+  'owasp-llm02': {
+    icon: '🚨',
+    title: 'OWASP LLM02: Insecure Output Handling',
+    description: 'XSS vulnerabilities in AI-generated content',
+    explanation: 'AI-generated output can contain malicious scripts (XSS attacks) if rendered without proper sanitization. This analyzer detects dangerous DOM manipulation patterns (innerHTML, dangerouslySetInnerHTML, eval), unsafe markdown configurations, and weak Content Security Policies. When AI output is directly injected into HTML without sanitization and CSP protection, attackers can execute malicious code in user browsers, steal sessions, or hijack accounts.',
+  },
 }
 
 export default function ScanResultPage() {
@@ -393,8 +405,8 @@ export default function ScanResultPage() {
   // Separate AI findings from other categories (for prioritized display)
   const aiFindings = findingsByCategory['ai'] || []
 
-  // Define logical order for security categories
-  const categoryOrder = ['reconnaissance', 'admin', 'port', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library', 'compliance', 'waf', 'mfa', 'rate-limit', 'graphql', 'error-disclosure', 'spa-api']
+  // Define logical order for security categories (OWASP LLM categories prioritized at top)
+  const categoryOrder = ['owasp-llm01', 'owasp-llm02', 'reconnaissance', 'admin', 'port', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library', 'compliance', 'waf', 'mfa', 'rate-limit', 'graphql', 'error-disclosure', 'spa-api']
 
   // In full report mode, show ALL categories even if no findings
   // In normal mode, only show categories with findings

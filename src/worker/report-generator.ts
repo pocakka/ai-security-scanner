@@ -18,6 +18,8 @@ import { RateLimitResult } from './analyzers/rate-limiting-analyzer'
 import { GraphQLResult } from './analyzers/graphql-analyzer'
 import { ErrorDisclosureResult } from './analyzers/error-disclosure-analyzer'
 import { SpaApiResult } from './analyzers/spa-api-analyzer'
+import { PromptInjectionResult } from './analyzers/owasp-llm/llm01-prompt-injection'
+import { InsecureOutputResult } from './analyzers/owasp-llm/llm02-insecure-output'
 import { RiskScore } from './scoring'
 
 export interface ScanReport {
@@ -49,12 +51,14 @@ export interface ScanReport {
   graphqlSecurity?: GraphQLResult // Add GraphQL security for frontend
   errorDisclosure?: ErrorDisclosureResult // Add error disclosure for frontend
   spaApi?: SpaApiResult // Add SPA/API detection for frontend
+  llm01PromptInjection?: PromptInjectionResult // Add LLM01 for frontend
+  llm02InsecureOutput?: InsecureOutputResult // Add LLM02 for frontend
   findings: Finding[]
 }
 
 export interface Finding {
   id: string
-  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors' | 'dns' | 'port' | 'compliance' | 'waf' | 'mfa' | 'rate-limit' | 'graphql' | 'error-disclosure' | 'spa-api'
+  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors' | 'dns' | 'port' | 'compliance' | 'waf' | 'mfa' | 'rate-limit' | 'graphql' | 'error-disclosure' | 'spa-api' | 'owasp-llm01' | 'owasp-llm02'
   severity: 'low' | 'medium' | 'high' | 'critical' | 'info'
   title: string
   description: string
@@ -84,7 +88,9 @@ export function generateReport(
   rateLimiting?: RateLimitResult,
   graphqlSecurity?: GraphQLResult,
   errorDisclosure?: ErrorDisclosureResult,
-  spaApi?: SpaApiResult
+  spaApi?: SpaApiResult,
+  llm01PromptInjection?: PromptInjectionResult,
+  llm02InsecureOutput?: InsecureOutputResult
 ): ScanReport {
   const findings: Finding[] = []
 
@@ -532,6 +538,48 @@ export function generateReport(
     }
   }
 
+  // OWASP LLM01 - Prompt Injection Risk findings (HIGH PRIORITY)
+  if (llm01PromptInjection) {
+    for (const finding of llm01PromptInjection.findings) {
+      findings.push({
+        id: `owasp-llm01-${findings.length}`,
+        category: 'owasp-llm01',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description,
+        evidence: finding.evidence || finding.codeSnippet,
+        impact: finding.impact,
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
+  // OWASP LLM02 - Insecure Output Handling findings (CRITICAL PRIORITY)
+  if (llm02InsecureOutput) {
+    for (const finding of llm02InsecureOutput.findings) {
+      findings.push({
+        id: `owasp-llm02-${findings.length}`,
+        category: 'owasp-llm02',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description,
+        evidence: finding.evidence || finding.codeSnippet,
+        impact: finding.impact,
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
   return {
     summary: {
       hasAI: aiDetection.hasAI,
@@ -561,6 +609,8 @@ export function generateReport(
     graphqlSecurity, // Pass GraphQL security result to frontend
     errorDisclosure, // Pass error disclosure result to frontend
     spaApi, // Pass SPA/API detection result to frontend
+    llm01PromptInjection, // Pass LLM01 Prompt Injection Risk result to frontend
+    llm02InsecureOutput, // Pass LLM02 Insecure Output Handling result to frontend
     findings,
   }
 }
