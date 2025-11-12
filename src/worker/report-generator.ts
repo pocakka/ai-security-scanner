@@ -11,6 +11,11 @@ import { AdminDiscoveryResult } from './analyzers/admin-discovery-analyzer'
 import { CORSResult, CORSFinding } from './analyzers/cors-analyzer'
 import { DNSSecurityResult } from './analyzers/dns-security-analyzer'
 import { PortScanResult } from './analyzers/port-scanner-analyzer'
+import { ComplianceResult } from './analyzers/compliance-analyzer'
+import { WAFResult } from './analyzers/waf-detection-analyzer'
+import { MFAResult } from './analyzers/mfa-detection-analyzer'
+import { RateLimitResult } from './analyzers/rate-limiting-analyzer'
+import { GraphQLResult } from './analyzers/graphql-analyzer'
 import { RiskScore } from './scoring'
 
 export interface ScanReport {
@@ -35,13 +40,18 @@ export interface ScanReport {
   corsAnalysis?: CORSResult // Add CORS analysis for frontend
   dnsAnalysis?: DNSSecurityResult // Add DNS analysis for frontend
   portScan?: PortScanResult // Add port scan for frontend
+  compliance?: ComplianceResult // Add compliance analysis for frontend
+  wafDetection?: WAFResult // Add WAF detection for frontend
+  mfaDetection?: MFAResult // Add MFA detection for frontend
+  rateLimiting?: RateLimitResult // Add rate limiting for frontend
+  graphqlSecurity?: GraphQLResult // Add GraphQL security for frontend
   findings: Finding[]
 }
 
 export interface Finding {
   id: string
-  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors' | 'dns' | 'port'
-  severity: 'low' | 'medium' | 'high' | 'critical'
+  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors' | 'dns' | 'port' | 'compliance' | 'waf' | 'mfa' | 'rate-limit' | 'graphql'
+  severity: 'low' | 'medium' | 'high' | 'critical' | 'info'
   title: string
   description: string
   evidence?: string
@@ -63,7 +73,12 @@ export function generateReport(
   adminDiscovery?: AdminDiscoveryResult,
   corsAnalysis?: CORSResult & { bypassPatterns?: CORSFinding[] },
   dnsAnalysis?: DNSSecurityResult,
-  portScan?: PortScanResult
+  portScan?: PortScanResult,
+  compliance?: ComplianceResult,
+  wafDetection?: WAFResult,
+  mfaDetection?: MFAResult,
+  rateLimiting?: RateLimitResult,
+  graphqlSecurity?: GraphQLResult
 ): ScanReport {
   const findings: Finding[] = []
 
@@ -353,6 +368,121 @@ export function generateReport(
     }
   }
 
+  // Compliance findings (GDPR, CCPA, PCI DSS, HIPAA)
+  if (compliance) {
+    for (const finding of compliance.findings) {
+      // Convert info severity to match Finding interface
+      const severity = finding.severity === 'info' ? 'low' : finding.severity
+
+      findings.push({
+        id: `compliance-${findings.length}`,
+        category: 'compliance',
+        severity: severity as 'low' | 'medium' | 'high' | 'critical',
+        title: finding.title,
+        description: finding.details || finding.evidence || '',
+        evidence: finding.evidence || finding.indicator,
+        impact: finding.impact || 'Compliance consideration',
+        recommendation: finding.recommendation || 'Review compliance requirements',
+      })
+
+      // Count severity (treat 'info' as low for statistics)
+      if (severity === 'critical') criticalCount++
+      else if (severity === 'high') highCount++
+      else if (severity === 'medium') mediumCount++
+      else if (severity === 'low') lowCount++
+    }
+  }
+
+  // WAF Detection findings
+  if (wafDetection) {
+    for (const finding of wafDetection.findings) {
+      // Convert info severity to match Finding interface
+      const severity = finding.severity === 'info' ? 'low' : finding.severity
+
+      findings.push({
+        id: `waf-${findings.length}`,
+        category: 'waf',
+        severity: severity as 'low' | 'medium' | 'high' | 'critical',
+        title: finding.title,
+        description: finding.evidence || finding.provider || '',
+        evidence: finding.evidence,
+        impact: finding.impact || 'WAF security consideration',
+        recommendation: finding.recommendation || 'Review WAF configuration',
+      })
+
+      // WAF findings are never critical (info/low/medium/high only)
+      if (severity === 'high') highCount++
+      else if (severity === 'medium') mediumCount++
+      else lowCount++ // info → low
+    }
+  }
+
+  // MFA Detection findings
+  if (mfaDetection) {
+    for (const finding of mfaDetection.findings) {
+      const severity = finding.severity === 'info' ? 'low' : finding.severity
+
+      findings.push({
+        id: `mfa-${findings.length}`,
+        category: 'mfa',
+        severity: severity as 'low' | 'medium' | 'high' | 'critical',
+        title: finding.title,
+        description: finding.evidence || finding.method || '',
+        evidence: finding.evidence,
+        impact: finding.impact || 'MFA security consideration',
+        recommendation: finding.recommendation || 'Review MFA implementation',
+      })
+
+      if (severity === 'high') highCount++
+      else if (severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
+  // Rate Limiting findings
+  if (rateLimiting) {
+    for (const finding of rateLimiting.findings) {
+      const severity = finding.severity === 'info' ? 'low' : finding.severity
+
+      findings.push({
+        id: `ratelimit-${findings.length}`,
+        category: 'rate-limit',
+        severity: severity as 'low' | 'medium' | 'high' | 'critical',
+        title: finding.title,
+        description: finding.evidence || finding.provider || '',
+        evidence: finding.evidence,
+        impact: finding.impact || 'Rate limiting consideration',
+        recommendation: finding.recommendation || 'Review rate limiting configuration',
+      })
+
+      if (severity === 'high') highCount++
+      else if (severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
+  // GraphQL Security findings
+  if (graphqlSecurity) {
+    for (const finding of graphqlSecurity.findings) {
+      const severity = finding.severity === 'info' ? 'low' : finding.severity
+
+      findings.push({
+        id: `graphql-${findings.length}`,
+        category: 'graphql',
+        severity: severity as 'low' | 'medium' | 'high' | 'critical',
+        title: finding.title,
+        description: finding.evidence || finding.endpoint || '',
+        evidence: finding.evidence,
+        impact: finding.impact || 'GraphQL security consideration',
+        recommendation: finding.recommendation || 'Review GraphQL security',
+      })
+
+      if (severity === 'high') highCount++
+      else if (severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
   return {
     summary: {
       hasAI: aiDetection.hasAI,
@@ -375,6 +505,11 @@ export function generateReport(
     corsAnalysis, // Pass CORS analysis result to frontend
     dnsAnalysis, // Pass DNS analysis result to frontend
     portScan, // Pass port scan result to frontend
+    compliance, // Pass compliance analysis result to frontend
+    wafDetection, // Pass WAF detection result to frontend
+    mfaDetection, // Pass MFA detection result to frontend
+    rateLimiting, // Pass rate limiting result to frontend
+    graphqlSecurity, // Pass GraphQL security result to frontend
     findings,
   }
 }

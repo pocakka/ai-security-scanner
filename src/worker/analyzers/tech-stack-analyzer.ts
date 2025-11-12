@@ -427,21 +427,51 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
     }
   }
 
+  // Deduplicate detected technologies by name
+  // Keep first occurrence with highest confidence and version info
+  const seen = new Map<string, DetectedTech>()
+  for (const tech of detected) {
+    const existing = seen.get(tech.name)
+
+    // If not seen yet, add it
+    if (!existing) {
+      seen.set(tech.name, tech)
+      continue
+    }
+
+    // Replace if new entry has better confidence
+    if (tech.confidence === 'high' && existing.confidence !== 'high') {
+      seen.set(tech.name, tech)
+      continue
+    }
+
+    // Replace if new entry has version and existing doesn't
+    if (tech.version && !existing.version) {
+      seen.set(tech.name, tech)
+      continue
+    }
+
+    // Otherwise keep existing entry (first occurrence)
+  }
+
+  // Convert back to array
+  const deduplicated = Array.from(seen.values())
+
   // Group by category
   const categories = {
-    cms: detected.filter((t) => t.category === 'cms'),
-    analytics: detected.filter((t) => t.category === 'analytics'),
-    ads: detected.filter((t) => t.category === 'ads'),
-    cdn: detected.filter((t) => t.category === 'cdn'),
-    social: detected.filter((t) => t.category === 'social'),
-    ecommerce: detected.filter((t) => t.category === 'ecommerce'),
-    framework: detected.filter((t) => t.category === 'framework'),
-    hosting: detected.filter((t) => t.category === 'hosting'),
+    cms: deduplicated.filter((t) => t.category === 'cms'),
+    analytics: deduplicated.filter((t) => t.category === 'analytics'),
+    ads: deduplicated.filter((t) => t.category === 'ads'),
+    cdn: deduplicated.filter((t) => t.category === 'cdn'),
+    social: deduplicated.filter((t) => t.category === 'social'),
+    ecommerce: deduplicated.filter((t) => t.category === 'ecommerce'),
+    framework: deduplicated.filter((t) => t.category === 'framework'),
+    hosting: deduplicated.filter((t) => t.category === 'hosting'),
   }
 
   return {
-    detected,
+    detected: deduplicated,
     categories,
-    totalCount: detected.length,
+    totalCount: deduplicated.length,
   }
 }

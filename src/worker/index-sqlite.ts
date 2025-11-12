@@ -23,6 +23,11 @@ import { analyzeAdminDiscovery } from './analyzers/admin-discovery-analyzer'
 import { analyzeCORS, checkCORSBypassPatterns } from './analyzers/cors-analyzer'
 import { analyzeDNSSecurity } from './analyzers/dns-security-analyzer'
 import { analyzePortScan } from './analyzers/port-scanner-analyzer'
+import { analyzeCompliance } from './analyzers/compliance-analyzer'
+import { analyzeWAFDetection } from './analyzers/waf-detection-analyzer'
+import { analyzeMFADetection } from './analyzers/mfa-detection-analyzer'
+import { analyzeRateLimiting } from './analyzers/rate-limiting-analyzer'
+import { analyzeGraphQL } from './analyzers/graphql-analyzer'
 import { calculateRiskScore } from './scoring'
 import { generateReport } from './report-generator'
 
@@ -159,6 +164,39 @@ async function processScanJob(data: { scanId: string; url: string }) {
     }
     timings.portScan = Date.now() - portScanStart
 
+    // NEW: Compliance analyzer (GDPR, CCPA, PCI DSS, HIPAA)
+    const complianceStart = Date.now()
+    const compliance = await analyzeCompliance(
+      crawlResult.html,
+      crawlResult.cookies || [],
+      crawlResult.responseHeaders || {}
+    )
+    timings.compliance = Date.now() - complianceStart
+
+    // NEW: WAF Detection analyzer (Cloudflare, AWS, Akamai, etc.)
+    const wafStart = Date.now()
+    const wafDetection = await analyzeWAFDetection(
+      crawlResult.responseHeaders || {},
+      crawlResult.cookies || [],
+      crawlResult.html
+    )
+    timings.waf = Date.now() - wafStart
+
+    // NEW: MFA/2FA Detection analyzer (OAuth, SAML, WebAuthn, TOTP)
+    const mfaStart = Date.now()
+    const mfaDetection = await analyzeMFADetection(crawlResult.html)
+    timings.mfa = Date.now() - mfaStart
+
+    // NEW: Rate Limiting analyzer
+    const rateLimitStart = Date.now()
+    const rateLimiting = await analyzeRateLimiting(crawlResult.responseHeaders || {}, crawlResult.html)
+    timings.rateLimit = Date.now() - rateLimitStart
+
+    // NEW: GraphQL Security analyzer
+    const graphqlStart = Date.now()
+    const graphqlSecurity = await analyzeGraphQL(crawlResult.html)
+    timings.graphql = Date.now() - graphqlStart
+
     // Calculate total time before DNS (everything except DNS)
     timings.totalAnalyzersBeforeDNS = Date.now() - analyzerStart
 
@@ -175,6 +213,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
     console.log(`[Worker] ✓ Admin Discovery: ${adminDiscovery.findings.length} findings (${adminDiscovery.adminUrls.length} admin URLs)`)
     console.log(`[Worker] ✓ CORS: ${corsAnalysis.findings.length} findings (wildcard: ${corsAnalysis.hasWildcardOrigin}, credentials: ${corsAnalysis.allowsCredentials})`)
     console.log(`[Worker] ✓ Port Scanner: ${portScan.findings.length} findings (DB interfaces: ${portScan.exposedInterfaces}, Dev servers: ${portScan.exposedDevServers})`)
+    console.log(`[Worker] ✓ Compliance: ${compliance.findings.length} findings (GDPR: ${compliance.gdprScore}%, CCPA: ${compliance.ccpaScore}%, ${compliance.overallCompliance})`)
+    console.log(`[Worker] ✓ WAF Detection: ${wafDetection.hasWAF ? `${wafDetection.primaryWAF} detected` : 'No WAF detected'} (${wafDetection.detectedWAFs.length} WAFs)`)
+    console.log(`[Worker] ✓ MFA/2FA: ${mfaDetection.hasMFA ? `${mfaDetection.detectedMethods.length} methods detected` : 'No MFA detected'} (OAuth: ${mfaDetection.hasOAuth}, WebAuthn: ${mfaDetection.hasWebAuthn}, TOTP: ${mfaDetection.hasTOTP})`)
     console.log(`[Worker]   - CMS: ${techStack.categories.cms.length}`)
     console.log(`[Worker]   - Analytics: ${techStack.categories.analytics.length}`)
     console.log(`[Worker]   - Ads: ${techStack.categories.ads.length}`)
@@ -242,7 +283,12 @@ async function processScanJob(data: { scanId: string; url: string }) {
       adminDiscovery, // NEW: Admin Discovery analyzer
       { ...corsAnalysis, bypassPatterns: corsBypassPatterns }, // Combine CORS results
       dnsAnalysis, // Use empty DNS for initial report
-      portScan // NEW: Port Scanner analyzer
+      portScan, // NEW: Port Scanner analyzer
+      compliance, // Compliance analyzer
+      wafDetection, // WAF Detection analyzer
+      mfaDetection, // MFA Detection analyzer
+      rateLimiting, // Rate Limiting analyzer
+      graphqlSecurity // GraphQL Security analyzer
     )
     timings.reportGeneration = Date.now() - reportStart
 
@@ -392,7 +438,12 @@ async function processScanJob(data: { scanId: string; url: string }) {
         adminDiscovery, // Admin Discovery analyzer
         { ...corsAnalysis, bypassPatterns: corsBypassPatterns },
         dnsAnalysis, // Use actual DNS results
-        portScan // Port Scanner analyzer
+        portScan, // Port Scanner analyzer
+        compliance, // Compliance analyzer
+        wafDetection, // WAF Detection analyzer
+        mfaDetection, // MFA Detection analyzer
+        rateLimiting, // Rate Limiting analyzer
+        graphqlSecurity // GraphQL Security analyzer
       )
 
       // Update the saved scan with DNS results

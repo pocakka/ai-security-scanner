@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Shield, AlertTriangle, CheckCircle, XCircle, Mail, ArrowLeft, ArrowRight, TrendingUp, Download, Lock, Cookie, Code, Globe, RefreshCw, Lightbulb, Search } from 'lucide-react'
 import AdminDebugBar from './AdminDebugBar'
 import { getRandomSecurityTip } from '@/data/ai-security-tips'
@@ -100,12 +100,46 @@ const CATEGORY_META = {
     description: 'Exposed network services and database interfaces',
     explanation: 'Open network ports can expose databases, development servers, and management interfaces to the internet. Critical services like MySQL, PostgreSQL, Redis should never be publicly accessible.',
   },
+  compliance: {
+    icon: '📋',
+    title: 'Privacy & Compliance',
+    description: 'GDPR, CCPA, PCI DSS, HIPAA compliance indicators',
+    explanation: 'Privacy regulations like GDPR and CCPA require websites to protect user data, provide transparency, and obtain consent. PCI DSS governs payment card security, while HIPAA protects health information. This analysis checks for compliance indicators like privacy policies, cookie consent, and data protection measures.',
+  },
+  waf: {
+    icon: '🛡️',
+    title: 'Web Application Firewall',
+    description: 'WAF protection and CDN security features',
+    explanation: 'Web Application Firewalls (WAF) protect against common web attacks like SQL injection, XSS, and DDoS. Popular providers include Cloudflare, AWS WAF, Akamai, Imperva, and F5. WAFs filter malicious traffic before it reaches your application.',
+  },
+  mfa: {
+    icon: '🔐',
+    title: 'Multi-Factor Authentication',
+    description: 'MFA and 2FA implementation methods',
+    explanation: 'Multi-Factor Authentication adds an extra layer of security beyond passwords. Methods include OAuth (Google, Facebook), SAML (enterprise SSO), WebAuthn (hardware keys, biometrics), TOTP (authenticator apps), SMS, and push notifications. MFA significantly reduces account takeover risk.',
+  },
+  'rate-limit': {
+    icon: '⏱️',
+    title: 'Rate Limiting & Bot Protection',
+    description: 'API rate limits and bot detection mechanisms',
+    explanation: 'Rate limiting prevents API abuse and brute-force attacks by restricting request frequency. Bot protection (reCAPTCHA, hCaptcha, Cloudflare Turnstile) blocks automated attacks and scraping. Together they protect against DDoS and credential stuffing.',
+  },
+  graphql: {
+    icon: '🔮',
+    title: 'GraphQL Security',
+    description: 'GraphQL endpoint security configuration',
+    explanation: 'GraphQL APIs require special security considerations. Exposed introspection reveals your entire schema to attackers. GraphQL Playground and GraphiQL should be disabled in production. Query depth limiting and cost analysis prevent DoS attacks.',
+  },
 }
 
 export default function ScanResultPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const scanId = params.id as string
+
+  // Check if full report mode is enabled
+  const isFullReport = searchParams.get('report') === 'full_report'
 
   const [scan, setScan] = useState<Scan | null>(null)
   const [loading, setLoading] = useState(true)
@@ -348,8 +382,13 @@ export default function ScanResultPage() {
   const aiFindings = findingsByCategory['ai'] || []
 
   // Define logical order for security categories
-  const categoryOrder = ['reconnaissance', 'admin', 'port', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library']
-  const nonAICategories = categoryOrder.filter(cat => findingsByCategory[cat] && cat !== 'ai')
+  const categoryOrder = ['reconnaissance', 'admin', 'port', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library', 'compliance', 'waf', 'mfa', 'rate-limit', 'graphql']
+
+  // In full report mode, show ALL categories even if no findings
+  // In normal mode, only show categories with findings
+  const nonAICategories = isFullReport
+    ? categoryOrder.filter(cat => cat !== 'ai')
+    : categoryOrder.filter(cat => findingsByCategory[cat] && cat !== 'ai')
 
   // Extract domain from URL for elegant title
   const getDomainTitle = (url: string): string => {
@@ -698,8 +737,9 @@ export default function ScanResultPage() {
             </div>
           ) : (
             nonAICategories.map((category: string) => {
-              const categoryFindings = findingsByCategory[category]
+              const categoryFindings = findingsByCategory[category] || []
               const meta = CATEGORY_META[category as keyof typeof CATEGORY_META] || CATEGORY_META.security
+              const hasFindings = categoryFindings.length > 0
 
               return (
                 <div key={category} className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-xl p-6">
@@ -712,8 +752,12 @@ export default function ScanResultPage() {
                         <p className="text-sm text-slate-400 mb-2">{meta.description}</p>
                       </div>
                       <div className="text-right">
-                        <div className="text-3xl font-bold text-white">{categoryFindings.length}</div>
-                        <div className="text-xs text-slate-400">issues</div>
+                        <div className={`text-3xl font-bold ${hasFindings ? 'text-white' : 'text-green-400'}`}>
+                          {hasFindings ? categoryFindings.length : '✓'}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {hasFindings ? 'issues' : 'passed'}
+                        </div>
                       </div>
                     </div>
                     <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-3">
@@ -725,9 +769,17 @@ export default function ScanResultPage() {
 
                   {/* Findings List */}
                   <div className="space-y-4">
-                    {categoryFindings.map((finding: any, index: number) => (
-                      <FindingCard key={index} finding={finding} knowledgeBase={knowledgeBase} />
-                    ))}
+                    {hasFindings ? (
+                      categoryFindings.map((finding: any, index: number) => (
+                        <FindingCard key={index} finding={finding} knowledgeBase={knowledgeBase} />
+                      ))
+                    ) : (
+                      <div className="bg-green-500/10 border border-green-400/30 rounded-lg p-6 text-center">
+                        <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-3" />
+                        <p className="text-green-200 font-semibold">No issues found in this category</p>
+                        <p className="text-green-300/70 text-sm mt-1">All checks passed successfully</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )
