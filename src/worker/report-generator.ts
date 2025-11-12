@@ -20,6 +20,8 @@ import { ErrorDisclosureResult } from './analyzers/error-disclosure-analyzer'
 import { SpaApiResult } from './analyzers/spa-api-analyzer'
 import { PromptInjectionResult } from './analyzers/owasp-llm/llm01-prompt-injection'
 import { InsecureOutputResult } from './analyzers/owasp-llm/llm02-insecure-output'
+import { SupplyChainResult } from './analyzers/owasp-llm/llm05-supply-chain'
+import { SensitiveInfoResult } from './analyzers/owasp-llm/llm06-sensitive-info'
 import { PluginDesignResult } from './analyzers/owasp-llm/llm07-plugin-design'
 import { ExcessiveAgencyResult } from './analyzers/owasp-llm/llm08-excessive-agency'
 import { RiskScore } from './scoring'
@@ -55,6 +57,8 @@ export interface ScanReport {
   spaApi?: SpaApiResult // Add SPA/API detection for frontend
   llm01PromptInjection?: PromptInjectionResult // Add LLM01 for frontend
   llm02InsecureOutput?: InsecureOutputResult // Add LLM02 for frontend
+  llm05SupplyChain?: SupplyChainResult // Add LLM05 for frontend
+  llm06SensitiveInfo?: SensitiveInfoResult // Add LLM06 for frontend
   llm07PluginDesign?: PluginDesignResult // Add LLM07 for frontend
   llm08ExcessiveAgency?: ExcessiveAgencyResult // Add LLM08 for frontend
   findings: Finding[]
@@ -62,7 +66,7 @@ export interface ScanReport {
 
 export interface Finding {
   id: string
-  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors' | 'dns' | 'port' | 'compliance' | 'waf' | 'mfa' | 'rate-limit' | 'graphql' | 'error-disclosure' | 'spa-api' | 'owasp-llm01' | 'owasp-llm02' | 'owasp-llm07' | 'owasp-llm08'
+  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors' | 'dns' | 'port' | 'compliance' | 'waf' | 'mfa' | 'rate-limit' | 'graphql' | 'error-disclosure' | 'spa-api' | 'owasp-llm01' | 'owasp-llm02' | 'owasp-llm05' | 'owasp-llm06' | 'owasp-llm07' | 'owasp-llm08'
   severity: 'low' | 'medium' | 'high' | 'critical' | 'info'
   title: string
   description: string
@@ -95,6 +99,8 @@ export function generateReport(
   spaApi?: SpaApiResult,
   llm01PromptInjection?: PromptInjectionResult,
   llm02InsecureOutput?: InsecureOutputResult,
+  llm05SupplyChain?: SupplyChainResult,
+  llm06SensitiveInfo?: SensitiveInfoResult,
   llm07PluginDesign?: PluginDesignResult,
   llm08ExcessiveAgency?: ExcessiveAgencyResult
 ): ScanReport {
@@ -607,6 +613,69 @@ export function generateReport(
     }
   }
 
+  // OWASP LLM05 - Supply Chain Vulnerabilities findings (HIGH PRIORITY)
+  if (llm05SupplyChain) {
+    for (const finding of llm05SupplyChain.findings) {
+      findings.push({
+        id: `owasp-llm05-${findings.length}`,
+        category: 'owasp-llm05',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description,
+        evidence: finding.evidence,
+        impact: finding.impact,
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
+  // OWASP LLM06 - Sensitive Information Disclosure findings (CRITICAL PRIORITY)
+  if (llm06SensitiveInfo) {
+    for (const finding of llm06SensitiveInfo.findings) {
+      findings.push({
+        id: `owasp-llm06-${findings.length}`,
+        category: 'owasp-llm06',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description,
+        evidence: finding.evidence,
+        impact: finding.impact,
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
+  // OWASP LLM07 - Insecure Plugin Design findings (MEDIUM PRIORITY)
+  if (llm07PluginDesign) {
+    for (const finding of llm07PluginDesign.findings) {
+      findings.push({
+        id: `owasp-llm07-${findings.length}`,
+        category: 'owasp-llm07',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description,
+        evidence: finding.evidence,
+        impact: finding.impact,
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
   // OWASP LLM08 - Excessive Agency findings (MEDIUM PRIORITY)
   if (llm08ExcessiveAgency) {
     for (const finding of llm08ExcessiveAgency.findings) {
@@ -659,6 +728,8 @@ export function generateReport(
     spaApi, // Pass SPA/API detection result to frontend
     llm01PromptInjection, // Pass LLM01 Prompt Injection Risk result to frontend
     llm02InsecureOutput, // Pass LLM02 Insecure Output Handling result to frontend
+    llm05SupplyChain, // Pass LLM05 Supply Chain Vulnerabilities result to frontend
+    llm06SensitiveInfo, // Pass LLM06 Sensitive Information Disclosure result to frontend
     llm07PluginDesign, // Pass LLM07 Insecure Plugin Design result to frontend
     llm08ExcessiveAgency, // Pass LLM08 Excessive Agency result to frontend
     findings,

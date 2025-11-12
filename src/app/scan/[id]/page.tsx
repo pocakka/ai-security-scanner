@@ -160,6 +160,24 @@ const CATEGORY_META = {
     description: 'AI tools with dangerous capabilities without proper controls',
     explanation: 'AI agents often use "tools" or "plugins" to interact with external systems (OpenAI Function Calling, LangChain tools). This analyzer detects tool definitions with dangerous capabilities like code execution (exec, eval), file system access (writeFile, deleteFile), or database operations without proper security controls. When AI agents have access to critical tools without sandboxing or approval mechanisms, prompt injection attacks can manipulate the AI to execute malicious operations.',
   },
+  'owasp-llm05': {
+    icon: '📦',
+    title: 'OWASP LLM05: Supply Chain Vulnerabilities',
+    description: 'Vulnerable dependencies and untrusted model sources',
+    explanation: 'AI applications rely on complex supply chains including npm packages, CDN resources, and pre-trained models. This analyzer detects vulnerable AI/ML library versions (openai, langchain, transformers), missing Subresource Integrity (SRI) hashes on CDN scripts, untrusted model sources (HuggingFace, custom URLs), and dependency confusion risks. Compromised supply chain components can inject backdoors into AI systems, steal API keys, or manipulate model behavior.',
+  },
+  'owasp-llm06': {
+    icon: '🔐',
+    title: 'OWASP LLM06: Sensitive Information Disclosure',
+    description: 'Exposure of secrets, PII, and proprietary AI data',
+    explanation: 'AI applications often expose sensitive information in client-side code including system prompts, training data, API keys, PII (emails, phone numbers), internal endpoints, and model configurations. This analyzer uses pattern matching and entropy analysis to detect exposed secrets, validates PII against privacy regulations (GDPR, CCPA), and identifies proprietary information like business logic, pricing algorithms, and model hyperparameters that reveal competitive advantages.',
+  },
+  'owasp-llm07': {
+    icon: '🔌',
+    title: 'OWASP LLM07: Insecure Plugin Design',
+    description: 'AI tools with dangerous capabilities without proper controls',
+    explanation: 'AI agents often use "tools" or "plugins" to interact with external systems (OpenAI Function Calling, LangChain tools). This analyzer detects tool definitions with dangerous capabilities like code execution (exec, eval), file system access (writeFile, deleteFile), or database operations without proper security controls. When AI agents have access to critical tools without sandboxing or approval mechanisms, prompt injection attacks can manipulate the AI to execute malicious operations.',
+  },
   'owasp-llm08': {
     icon: '🤖',
     title: 'OWASP LLM08: Excessive Agency',
@@ -418,7 +436,7 @@ export default function ScanResultPage() {
   const aiFindings = findingsByCategory['ai'] || []
 
   // Define logical order for security categories (OWASP LLM categories prioritized at top)
-  const categoryOrder = ['owasp-llm01', 'owasp-llm02', 'owasp-llm07', 'owasp-llm08', 'reconnaissance', 'admin', 'port', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library', 'compliance', 'waf', 'mfa', 'rate-limit', 'graphql', 'error-disclosure', 'spa-api']
+  const categoryOrder = ['owasp-llm01', 'owasp-llm02', 'owasp-llm05', 'owasp-llm06', 'owasp-llm07', 'owasp-llm08', 'reconnaissance', 'admin', 'port', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library', 'compliance', 'waf', 'mfa', 'rate-limit', 'graphql', 'error-disclosure', 'spa-api']
 
   // In full report mode, show ALL categories even if no findings
   // In normal mode, only show categories with findings
