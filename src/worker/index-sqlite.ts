@@ -32,6 +32,8 @@ import { analyzeErrorDisclosure } from './analyzers/error-disclosure-analyzer'
 import { analyzeSpaApi } from './analyzers/spa-api-analyzer'
 import { analyzeLLM01PromptInjection } from './analyzers/owasp-llm/llm01-prompt-injection'
 import { analyzeLLM02InsecureOutput } from './analyzers/owasp-llm/llm02-insecure-output'
+import { analyzeLLM07PluginDesign } from './analyzers/owasp-llm/llm07-plugin-design'
+import { analyzeLLM08ExcessiveAgency } from './analyzers/owasp-llm/llm08-excessive-agency'
 import { calculateRiskScore } from './scoring'
 import { generateReport } from './report-generator'
 
@@ -231,6 +233,22 @@ async function processScanJob(data: { scanId: string; url: string }) {
     )
     timings.llm02 = Date.now() - llm02Start
 
+    // NEW: OWASP LLM07 - Insecure Plugin Design analyzer (MEDIUM)
+    const llm07Start = Date.now()
+    const llm07PluginDesign = await analyzeLLM07PluginDesign(
+      crawlResult.html,
+      crawlResult.responseHeaders || {}
+    )
+    timings.llm07 = Date.now() - llm07Start
+
+    // NEW: OWASP LLM08 - Excessive Agency analyzer (MEDIUM)
+    const llm08Start = Date.now()
+    const llm08ExcessiveAgency = await analyzeLLM08ExcessiveAgency(
+      crawlResult.html,
+      crawlResult.responseHeaders || {}
+    )
+    timings.llm08 = Date.now() - llm08Start
+
     // Calculate total time before DNS (everything except DNS)
     timings.totalAnalyzersBeforeDNS = Date.now() - analyzerStart
 
@@ -254,6 +272,8 @@ async function processScanJob(data: { scanId: string; url: string }) {
     console.log(`[Worker] ✓ SPA/API: ${spaApi.isSPA ? `${spaApi.detectedFramework} detected` : 'Not SPA'} (${spaApi.apiEndpoints.length} API endpoints, ${spaApi.hasUnprotectedEndpoints ? 'UNPROTECTED ENDPOINTS!' : 'Protected'})`)
     console.log(`[Worker] ✓ LLM01 (Prompt Injection): ${llm01PromptInjection.findings.length} findings (System prompts: ${llm01PromptInjection.hasSystemPromptLeaks}, Risky assembly: ${llm01PromptInjection.hasRiskyPromptAssembly}, AI context: ${llm01PromptInjection.hasAIContext}, Risk: ${llm01PromptInjection.overallRisk})`)
     console.log(`[Worker] ✓ LLM02 (Insecure Output): ${llm02InsecureOutput.findings.length} findings (DOM: ${llm02InsecureOutput.hasDangerousDOM}, Unsafe MD: ${llm02InsecureOutput.hasUnsafeMarkdown}, eval(): ${llm02InsecureOutput.hasEvalUsage}, CSP: ${llm02InsecureOutput.cspStrength}, Risk: ${llm02InsecureOutput.overallRisk})`)
+    console.log(`[Worker] ✓ LLM07 (Plugin Design): ${llm07PluginDesign.findings.length} findings (Critical tools: ${llm07PluginDesign.hasCriticalTools}, High risk: ${llm07PluginDesign.hasHighRiskTools}, Detected: ${llm07PluginDesign.detectedTools.length} tools, Risk: ${llm07PluginDesign.overallRisk})`)
+    console.log(`[Worker] ✓ LLM08 (Excessive Agency): ${llm08ExcessiveAgency.findings.length} findings (Auto-exec: ${llm08ExcessiveAgency.hasAutoExecute}, Sandbox: ${llm08ExcessiveAgency.hasSandbox}, Approval: ${llm08ExcessiveAgency.hasApproval}, Logging: ${llm08ExcessiveAgency.hasLogging}, Risk: ${llm08ExcessiveAgency.overallRisk})`)
     console.log(`[Worker]   - CMS: ${techStack.categories.cms.length}`)
     console.log(`[Worker]   - Analytics: ${techStack.categories.analytics.length}`)
     console.log(`[Worker]   - Ads: ${techStack.categories.ads.length}`)
@@ -330,7 +350,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
       errorDisclosure, // Error Disclosure analyzer
       spaApi, // SPA/API Detection analyzer
       llm01PromptInjection, // OWASP LLM01 - Prompt Injection Risk
-      llm02InsecureOutput // OWASP LLM02 - Insecure Output Handling
+      llm02InsecureOutput, // OWASP LLM02 - Insecure Output Handling
+      llm07PluginDesign, // OWASP LLM07 - Insecure Plugin Design
+      llm08ExcessiveAgency // OWASP LLM08 - Excessive Agency
     )
     timings.reportGeneration = Date.now() - reportStart
 
@@ -358,6 +380,8 @@ async function processScanJob(data: { scanId: string; url: string }) {
         portScan: timings.portScan,
         llm01: timings.llm01,
         llm02: timings.llm02,
+        llm07: timings.llm07,
+        llm08: timings.llm08,
       }
     }
 
@@ -491,7 +515,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
         errorDisclosure, // Error Disclosure analyzer
         spaApi, // SPA/API Detection analyzer
         llm01PromptInjection, // OWASP LLM01 - Prompt Injection Risk
-        llm02InsecureOutput // OWASP LLM02 - Insecure Output Handling
+        llm02InsecureOutput, // OWASP LLM02 - Insecure Output Handling
+        llm07PluginDesign, // OWASP LLM07 - Insecure Plugin Design
+        llm08ExcessiveAgency // OWASP LLM08 - Excessive Agency
       )
 
       // Update the saved scan with DNS results

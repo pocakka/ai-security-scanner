@@ -154,6 +154,18 @@ const CATEGORY_META = {
     description: 'XSS vulnerabilities in AI-generated content',
     explanation: 'AI-generated output can contain malicious scripts (XSS attacks) if rendered without proper sanitization. This analyzer detects dangerous DOM manipulation patterns (innerHTML, dangerouslySetInnerHTML, eval), unsafe markdown configurations, and weak Content Security Policies. When AI output is directly injected into HTML without sanitization and CSP protection, attackers can execute malicious code in user browsers, steal sessions, or hijack accounts.',
   },
+  'owasp-llm07': {
+    icon: '🔌',
+    title: 'OWASP LLM07: Insecure Plugin Design',
+    description: 'AI tools with dangerous capabilities without proper controls',
+    explanation: 'AI agents often use "tools" or "plugins" to interact with external systems (OpenAI Function Calling, LangChain tools). This analyzer detects tool definitions with dangerous capabilities like code execution (exec, eval), file system access (writeFile, deleteFile), or database operations without proper security controls. When AI agents have access to critical tools without sandboxing or approval mechanisms, prompt injection attacks can manipulate the AI to execute malicious operations.',
+  },
+  'owasp-llm08': {
+    icon: '🤖',
+    title: 'OWASP LLM08: Excessive Agency',
+    description: 'AI agents with excessive permissions without human oversight',
+    explanation: 'AI agents configured with excessive permissions or autonomy can be exploited through prompt injection to perform unauthorized actions. This analyzer detects dangerous functions (shell execution, file operations, database access) without adequate security controls like sandboxing, human approval, audit logging, or rate limiting. It also identifies auto-execute configurations and privilege escalation patterns where AI agents ignore user context or bypass permission checks.',
+  },
 }
 
 export default function ScanResultPage() {
@@ -406,7 +418,7 @@ export default function ScanResultPage() {
   const aiFindings = findingsByCategory['ai'] || []
 
   // Define logical order for security categories (OWASP LLM categories prioritized at top)
-  const categoryOrder = ['owasp-llm01', 'owasp-llm02', 'reconnaissance', 'admin', 'port', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library', 'compliance', 'waf', 'mfa', 'rate-limit', 'graphql', 'error-disclosure', 'spa-api']
+  const categoryOrder = ['owasp-llm01', 'owasp-llm02', 'owasp-llm07', 'owasp-llm08', 'reconnaissance', 'admin', 'port', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library', 'compliance', 'waf', 'mfa', 'rate-limit', 'graphql', 'error-disclosure', 'spa-api']
 
   // In full report mode, show ALL categories even if no findings
   // In normal mode, only show categories with findings
