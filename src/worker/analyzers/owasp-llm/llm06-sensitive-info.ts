@@ -25,6 +25,7 @@
 export interface SensitiveInfoFinding {
   type: 'api-key' | 'system-prompt' | 'training-data' | 'pii' | 'internal-endpoint' | 'model-info' | 'business-logic' | 'debug-info'
   severity: 'critical' | 'high' | 'medium' | 'low'
+  confidence: 'confirmed' | 'high' | 'medium' | 'low' // NEW: Confidence level like Technology Stack
   title: string
   description: string
   evidence: string
@@ -33,6 +34,7 @@ export interface SensitiveInfoFinding {
   location: string
   impact: string
   recommendation: string
+  confidenceReason?: string // NEW: Why this confidence level?
 }
 
 export interface SensitiveInfoResult {
@@ -72,7 +74,46 @@ const PII_PATTERNS = [
   { type: 'phone', pattern: /(?:\+?1[-.]?)?\(?\d{3}\)?[-.]?\d{3}[-.]?\d{4}/g, severity: 'high' as const },
   { type: 'ssn', pattern: /\b\d{3}-\d{2}-\d{4}\b/g, severity: 'critical' as const },
   { type: 'credit-card', pattern: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g, severity: 'critical' as const },
-  { type: 'passport', pattern: /\b[A-Z]{1,2}\d{6,9}\b/g, severity: 'high' as const },
+  // More restrictive passport pattern - real passports are typically 6-9 chars with specific formats
+  // UK: AA123456 (2 letters + 6 digits)
+  // US: starts with letter, typically 9 chars
+  // This pattern is intentionally conservative to avoid false positives on order numbers
+  { type: 'passport', pattern: /\b[A-Z]{2}\d{6,7}\b/g, severity: 'high' as const },
+]
+
+// Context patterns that indicate DEMO/EXAMPLE data (reduces confidence)
+const DEMO_CONTEXT_PATTERNS = [
+  // Chat conversation examples/logs
+  /["'](?:thinking|message|response|reply|question|answer|conversation|dialog)["']\s*:\s*["']/i,
+  /["'](?:user|assistant|system|bot|human|ai)["']\s*:\s*["']/i,
+  /conversationHistory/i,
+  /chatLog/i,
+  /exampleConversation/i,
+
+  // Order/transaction examples
+  /["']order_number["']\s*:/i,
+  /["']tracking_?(?:number|id|code)["']\s*:/i,
+  /["']transaction_?(?:id|number)["']\s*:/i,
+  /["']invoice_?(?:id|number)["']\s*:/i,
+
+  // Test/demo/placeholder markers
+  /test[-_]?data/i,
+  /demo[-_]?data/i,
+  /sample[-_]?data/i,
+  /placeholder/i,
+  /example/i,
+  /mock[-_]?data/i,
+  /"Lorem ipsum"/i,
+
+  // Documentation/tutorial context
+  /\/\*\s*Example:/i,
+  /\/\/\s*Example:/i,
+  /["']description["']\s*:\s*["'].*example/i,
+
+  // JSON schemas and type definitions
+  /type\s*[:=]\s*["']string["']/i,
+  /"properties"\s*:/i,
+  /"schema"\s*:/i,
 ]
 
 // Context patterns to EXCLUDE from PII detection (false positive filters)
@@ -102,6 +143,24 @@ const PII_EXCLUSION_CONTEXTS = {
     /support@/i,            // Support emails (legitimate)
     /info@/i,               // Info emails (legitimate)
     /contact@/i,            // Contact emails (legitimate)
+  ],
+  'passport': [
+    // Order numbers, tracking IDs, invoice numbers (NOT passports)
+    /order[-_]?(?:number|id|code)/i,
+    /tracking[-_]?(?:number|id|code)/i,
+    /invoice[-_]?(?:number|id)/i,
+    /transaction[-_]?(?:id|number)/i,
+    /confirmation[-_]?(?:number|code)/i,
+    /reference[-_]?(?:number|code)/i,
+    /ticket[-_]?(?:number|id)/i,
+    // Common order number prefixes (ORD, EL, TRK, INV, etc.)
+    /["'][A-Z]{2,4}\d{4,}/i, // Generic alphanumeric IDs in quotes
+  ],
+  'ssn': [
+    /\d{3}-\d{2}-\d{4}/,    // Exact SSN pattern in demo contexts
+    /example/i,
+    /sample/i,
+    /test/i,
   ],
 }
 
@@ -139,6 +198,111 @@ const DEBUG_PATTERNS = [
   /debug:\s*true/gi,
 ]
 
+/**
+ * Determine confidence level based on context analysis
+ * Similar to Technology Stack analyzer's "Confirmed" / "High" / "Medium" / "Low"
+ */
+function determineConfidenceLevel(
+  value: string,
+  context: string,
+  findingType: string
+): { confidence: 'confirmed' | 'high' | 'medium' | 'low', reason: string } {
+
+  // Check if this is in a demo/example/test context
+  let demoContextMatches = 0
+  const matchedDemoPatterns: string[] = []
+
+  for (const pattern of DEMO_CONTEXT_PATTERNS) {
+    if (pattern.test(context)) {
+      demoContextMatches++
+      matchedDemoPatterns.push(pattern.source.substring(0, 30))
+    }
+  }
+
+  // DEMO/EXAMPLE DATA = LOW confidence
+  if (demoContextMatches >= 2) {
+    return {
+      confidence: 'low',
+      reason: `Found in demo/example context (${demoContextMatches} indicators: ${matchedDemoPatterns.slice(0, 2).join(', ')})`
+    }
+  }
+
+  if (demoContextMatches === 1) {
+    return {
+      confidence: 'medium',
+      reason: `Possible demo/example data (1 indicator: ${matchedDemoPatterns[0]})`
+    }
+  }
+
+  // CONFIRMED = Multiple verification signals
+  if (findingType === 'api-key') {
+    // High entropy + specific API key pattern = CONFIRMED
+    const entropy = calculateEntropy(value)
+    const hasApiKeyPrefix = /^(sk|pk|Bearer|token|key)[-_]/i.test(value)
+    const isVeryLong = value.length > 40
+
+    if (entropy > 4.5 && (hasApiKeyPrefix || isVeryLong)) {
+      return {
+        confidence: 'confirmed',
+        reason: `High entropy (${entropy.toFixed(2)}) + API key pattern + length ${value.length}`
+      }
+    }
+
+    if (entropy > 4.0) {
+      return {
+        confidence: 'high',
+        reason: `High entropy (${entropy.toFixed(2)}), likely cryptographic key`
+      }
+    }
+
+    return {
+      confidence: 'medium',
+      reason: `Moderate entropy (${entropy.toFixed(2)}), potential secret`
+    }
+  }
+
+  // SYSTEM PROMPTS
+  if (findingType === 'system-prompt') {
+    const hasExplicitMarker = /systemPrompt|system:|instructions:/i.test(context)
+    const isLongEnough = value.length > 200
+    const hasAIKeywords = /you are|act as|your role|assistant|AI/i.test(value)
+
+    if (hasExplicitMarker && isLongEnough && hasAIKeywords) {
+      return {
+        confidence: 'confirmed',
+        reason: 'Explicit system prompt marker + length + AI keywords'
+      }
+    }
+
+    if (hasExplicitMarker || (isLongEnough && hasAIKeywords)) {
+      return {
+        confidence: 'high',
+        reason: 'Strong indicators of system prompt'
+      }
+    }
+
+    return {
+      confidence: 'medium',
+      reason: 'Possible system prompt, but weak signals'
+    }
+  }
+
+  // PII
+  if (findingType === 'pii') {
+    // If value passed all exclusion filters, it's likely real PII
+    return {
+      confidence: 'high',
+      reason: 'Passed all false positive filters, likely real PII'
+    }
+  }
+
+  // DEFAULT: Medium confidence
+  return {
+    confidence: 'medium',
+    reason: 'Standard detection, no strong confidence signals'
+  }
+}
+
 export async function analyzeLLM06SensitiveInfo(
   html: string,
   headers: Record<string, string>
@@ -165,9 +329,19 @@ export async function analyzeLLM06SensitiveInfo(
       const prompt = match[1] || match[0]
       const redacted = prompt.substring(0, 50) + '...'
 
+      // Extract context for confidence determination
+      const matchIndex = match.index
+      const contextStart = Math.max(0, matchIndex - 200)
+      const contextEnd = Math.min(html.length, matchIndex + prompt.length + 200)
+      const context = html.substring(contextStart, contextEnd)
+
+      // NEW: Determine confidence level
+      const confidenceResult = determineConfidenceLevel(prompt, context, 'system-prompt')
+
       findings.push({
         type: 'system-prompt',
         severity: 'high',
+        confidence: confidenceResult.confidence, // NEW
         title: `Exposed System Prompt in Client Code`,
         description: `System prompt or instructions are exposed in client-side JavaScript. Attackers can read these to understand AI behavior and craft better prompt injection attacks.`,
         evidence: redacted,
@@ -175,6 +349,7 @@ export async function analyzeLLM06SensitiveInfo(
         location: 'JavaScript code',
         impact: `Exposing system prompts reveals the AI's persona, limitations, and safety instructions. Attackers can use this knowledge to craft targeted prompt injection attacks that exploit specific weaknesses in the system instructions.`,
         recommendation: `Move all system prompts to server-side code. Only send user-facing prompts to the client. Use environment variables for sensitive prompt templates. Implement prompt obfuscation if client-side AI is required.`,
+        confidenceReason: confidenceResult.reason, // NEW
       })
     }
   }
@@ -190,9 +365,19 @@ export async function analyzeLLM06SensitiveInfo(
 
       const snippet = match[0].substring(0, 100) + '...'
 
+      // Extract context
+      const matchIndex = match.index
+      const contextStart = Math.max(0, matchIndex - 200)
+      const contextEnd = Math.min(html.length, matchIndex + match[0].length + 200)
+      const context = html.substring(contextStart, contextEnd)
+
+      // NEW: Determine confidence level
+      const confidenceResult = determineConfidenceLevel(snippet, context, 'training-data')
+
       findings.push({
         type: 'training-data',
         severity: 'high',
+        confidence: confidenceResult.confidence, // NEW
         title: `Exposed Training Data or Examples`,
         description: `Training data, few-shot examples, or conversation history is exposed in client-side code. This may contain proprietary data, user conversations, or sensitive business information.`,
         evidence: snippet,
@@ -200,6 +385,7 @@ export async function analyzeLLM06SensitiveInfo(
         location: 'JavaScript code',
         impact: `Exposed training data can reveal proprietary business logic, user behavior patterns, internal terminology, and potentially sensitive user data used for fine-tuning. Competitors can reverse-engineer your AI's capabilities.`,
         recommendation: `Store training data server-side only. Load examples dynamically via authenticated APIs. Sanitize any client-side examples to remove sensitive information. Use encrypted storage for training datasets.`,
+        confidenceReason: confidenceResult.reason, // NEW
       })
     }
   }
@@ -224,9 +410,13 @@ export async function analyzeLLM06SensitiveInfo(
 
       const redacted = redactPII(match[0], piiPattern.type)
 
+      // NEW: Determine confidence level based on context
+      const confidenceResult = determineConfidenceLevel(match[0], htmlContext, 'pii')
+
       findings.push({
         type: 'pii',
         severity: piiPattern.severity,
+        confidence: confidenceResult.confidence, // NEW
         title: `Exposed PII: ${piiPattern.type.toUpperCase()}`,
         description: `Personally Identifiable Information (${piiPattern.type}) found in client-side code. This violates privacy regulations (GDPR, CCPA) and exposes user data.`,
         evidence: redacted,
@@ -237,6 +427,7 @@ export async function analyzeLLM06SensitiveInfo(
           ? `Critical PII exposure (${piiPattern.type}) violates GDPR, CCPA, and other privacy laws. Can lead to identity theft, fraud, and legal penalties up to 4% of annual revenue. User trust will be severely damaged.`
           : `PII exposure violates privacy regulations and user trust. ${piiPattern.type} data should never be in client-side code without explicit consent and encryption.`,
         recommendation: `Remove all PII from client-side code immediately. Use server-side processing for user data. Implement data masking/tokenization for any necessary client display. Conduct a privacy impact assessment.`,
+        confidenceReason: confidenceResult.reason, // NEW
       })
     }
   }
@@ -250,15 +441,24 @@ export async function analyzeLLM06SensitiveInfo(
       hasInternalEndpoints = true
       exposedDataTypes.push('internal-endpoint')
 
+      // Extract context
+      const matchIndex = match.index
+      const contextStart = Math.max(0, matchIndex - 200)
+      const contextEnd = Math.min(html.length, matchIndex + match[0].length + 200)
+      const context = html.substring(contextStart, contextEnd)
+      const confidenceResult = determineConfidenceLevel(match[0], context, 'internal-endpoint')
+
       findings.push({
         type: 'internal-endpoint',
         severity: 'high',
+        confidence: confidenceResult.confidence,
         title: `Exposed Internal Endpoint`,
         description: `Internal API endpoint, localhost URL, or private IP address found in client code. This exposes your infrastructure architecture to attackers.`,
         evidence: match[0],
         location: 'JavaScript/HTML',
         impact: `Exposed internal endpoints reveal infrastructure details, development/staging environments, and internal services. Attackers can map your network topology, discover hidden APIs, and attempt to access internal systems.`,
         recommendation: `Remove all references to internal endpoints, localhost, and private IPs from client code. Use environment-specific configuration. Implement API gateway patterns to abstract internal services.`,
+        confidenceReason: confidenceResult.reason,
       })
     }
   }
@@ -272,9 +472,16 @@ export async function analyzeLLM06SensitiveInfo(
       hasModelInfo = true
       exposedDataTypes.push(`model-${modelPattern.type}`)
 
+      const matchIndex = match.index
+      const contextStart = Math.max(0, matchIndex - 200)
+      const contextEnd = Math.min(html.length, matchIndex + match[0].length + 200)
+      const context = html.substring(contextStart, contextEnd)
+      const confidenceResult = determineConfidenceLevel(match[0], context, 'model-info')
+
       findings.push({
         type: 'model-info',
         severity: 'medium',
+        confidence: confidenceResult.confidence,
         title: `Exposed Model Information: ${modelPattern.type}`,
         description: `AI model details (${modelPattern.type}) are exposed in client-side code. This reveals your AI architecture and configuration to competitors and attackers.`,
         evidence: match[0],
@@ -282,6 +489,7 @@ export async function analyzeLLM06SensitiveInfo(
         location: 'JavaScript code',
         impact: `Exposing model details like ${modelPattern.type} helps attackers understand your AI's capabilities, cost structure, and potential weaknesses. Competitors can copy your model selection and configuration. Can enable targeted adversarial attacks.`,
         recommendation: `Move model configuration to server-side environment variables. Use generic API abstractions that don't reveal underlying model details. Implement model selection logic server-side only.`,
+        confidenceReason: confidenceResult.reason,
       })
     }
   }
@@ -296,15 +504,23 @@ export async function analyzeLLM06SensitiveInfo(
 
       const snippet = match[0].substring(0, 150)
 
+      const matchIndex = match.index
+      const contextStart = Math.max(0, matchIndex - 200)
+      const contextEnd = Math.min(html.length, matchIndex + snippet.length + 200)
+      const context = html.substring(contextStart, contextEnd)
+      const confidenceResult = determineConfidenceLevel(snippet, context, 'business-logic')
+
       findings.push({
         type: 'business-logic',
         severity: 'medium',
+        confidence: confidenceResult.confidence,
         title: `Exposed Business Logic`,
         description: `Business logic, internal comments, or proprietary algorithms found in client-side code. This reveals competitive advantages and internal processes.`,
         evidence: snippet,
         location: 'JavaScript comments/code',
         impact: `Exposed business logic reveals pricing strategies, algorithmic approaches, and internal decision-making processes. Competitors can reverse-engineer your competitive advantages. May also expose security TODOs and known weaknesses.`,
         recommendation: `Remove all internal comments and TODO items from production builds. Minify and obfuscate client-side code. Keep proprietary algorithms server-side. Use build tools to strip development comments.`,
+        confidenceReason: confidenceResult.reason,
       })
     }
   }
@@ -317,15 +533,23 @@ export async function analyzeLLM06SensitiveInfo(
     while ((match = pattern.exec(html)) !== null) {
       exposedDataTypes.push('debug-info')
 
+      const matchIndex = match.index
+      const contextStart = Math.max(0, matchIndex - 200)
+      const contextEnd = Math.min(html.length, matchIndex + match[0].length + 200)
+      const context = html.substring(contextStart, contextEnd)
+      const confidenceResult = determineConfidenceLevel(match[0], context, 'debug-info')
+
       findings.push({
         type: 'debug-info',
         severity: 'low',
+        confidence: confidenceResult.confidence,
         title: `Debug Information Enabled`,
         description: `Debug code, console logging, or verbose error messages found in production. This can leak sensitive runtime information.`,
         evidence: match[0],
         location: 'JavaScript code',
         impact: `Debug code in production can leak API keys, user data, stack traces, and internal state information through browser console logs. Attackers with browser access can gather reconnaissance data.`,
         recommendation: `Disable debug mode in production. Remove console.log statements. Use proper error handling without exposing stack traces. Implement environment-based logging (only in development).`,
+        confidenceReason: confidenceResult.reason,
       })
     }
   }
@@ -342,9 +566,19 @@ export async function analyzeLLM06SensitiveInfo(
     hasAPIKeys = true
     exposedDataTypes.push('high-entropy-secret')
 
+    // Extract context for this high-entropy string (we need to find it again in HTML)
+    const stringIndex = html.indexOf(entropyString.value)
+    const contextStart = Math.max(0, stringIndex - 200)
+    const contextEnd = Math.min(html.length, stringIndex + entropyString.value.length + 200)
+    const context = stringIndex >= 0 ? html.substring(contextStart, contextEnd) : ''
+
+    // NEW: Determine confidence level
+    const confidenceResult = determineConfidenceLevel(entropyString.value, context, 'api-key')
+
     findings.push({
       type: 'api-key',
       severity: 'critical',
+      confidence: confidenceResult.confidence, // NEW
       title: `Potential Secret: High-Entropy String`,
       description: `Detected high-entropy string (${entropyString.entropy.toFixed(2)} bits) that may be an API key, token, or secret. High entropy indicates randomness typical of cryptographic keys.`,
       evidence: entropyString.value.substring(0, 20) + '***',
@@ -352,6 +586,7 @@ export async function analyzeLLM06SensitiveInfo(
       location: 'JavaScript code',
       impact: `High-entropy strings are likely cryptographic keys, API tokens, or secrets. If exposed, attackers can authenticate as your application, access AI services, or compromise user accounts.`,
       recommendation: `Investigate this string immediately. If it's a secret, rotate it and move to environment variables. Use secret scanning tools (git-secrets, trufflehog) to detect leaked credentials.`,
+      confidenceReason: confidenceResult.reason, // NEW
     })
   }
 

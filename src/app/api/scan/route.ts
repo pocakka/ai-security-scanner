@@ -4,6 +4,7 @@ import { jobQueue } from '@/lib/queue-sqlite'
 import { z } from 'zod'
 import { spawn } from 'child_process'
 import path from 'path'
+import { validateDomain, getDomainValidationErrorMessage } from '@/lib/domain-validator'
 
 const ScanRequestSchema = z.object({
   url: z.string().url('Invalid URL format'),
@@ -18,6 +19,28 @@ export async function POST(request: NextRequest) {
     const urlObj = new URL(url)
     const normalizedUrl = `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`
     const domain = urlObj.hostname
+
+    // Validate domain existence BEFORE creating scan
+    console.log(`[API] Validating domain: ${domain}`)
+    const domainValidation = await validateDomain(domain)
+
+    if (!domainValidation.valid) {
+      console.log(`[API] ❌ Domain validation failed: ${domain}`, domainValidation)
+      return NextResponse.json(
+        {
+          error: 'Domain validation failed',
+          message: getDomainValidationErrorMessage(domainValidation),
+          details: {
+            domain,
+            errorCode: domainValidation.errorCode,
+            errorMessage: domainValidation.error
+          }
+        },
+        { status: 400 }
+      )
+    }
+
+    console.log(`[API] ✅ Domain validated: ${domain} (${domainValidation.resolvedAddresses?.join(', ')})`)
 
     // Create scan record
     const scan = await prisma.scan.create({

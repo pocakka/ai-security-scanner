@@ -144,12 +144,17 @@ async function processScan(data: ScanJobData) {
         hasAgeVerification: aiTrustResult.checks.hasAgeVerification,
         hasAccessibilitySupport: aiTrustResult.checks.hasAccessibilitySupport,
 
-        // Scores
-        score: aiTrustResult.score,
-        weightedScore: aiTrustResult.weightedScore,
+        // Scores (handle null values when no AI detected)
+        score: aiTrustResult.score ?? 0,
+        weightedScore: aiTrustResult.weightedScore ?? 0,
         categoryScores: JSON.stringify(aiTrustResult.categoryScores),
         passedChecks: aiTrustResult.passedChecks,
         totalChecks: aiTrustResult.totalChecks,
+        relevantChecks: aiTrustResult.relevantChecks || 0, // NEW
+
+        // AI Detection Status (NEW)
+        hasAiImplementation: aiTrustResult.hasAiImplementation || false,
+        aiConfidenceLevel: aiTrustResult.aiConfidenceLevel || 'none',
 
         // Detected AI Technology
         detectedAiProvider: aiTrustResult.detectedAiProvider,
@@ -158,6 +163,10 @@ async function processScan(data: ScanJobData) {
 
         // Evidence
         evidenceData: JSON.stringify(aiTrustResult.evidenceData),
+
+        // NEW: Detailed checks and summary
+        detailedChecks: JSON.stringify(aiTrustResult.detailedChecks || {}),
+        summary: JSON.stringify(aiTrustResult.summary || {}),
       },
     })
     console.log(`[Worker] ✅ AI Trust Scorecard saved`)

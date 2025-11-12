@@ -37,6 +37,12 @@ export async function GET(
         evidenceData: scan.aiTrustScorecard.evidenceData
           ? JSON.parse(scan.aiTrustScorecard.evidenceData)
           : null,
+        detailedChecks: scan.aiTrustScorecard.detailedChecks
+          ? JSON.parse(scan.aiTrustScorecard.detailedChecks)
+          : null,
+        summary: scan.aiTrustScorecard.summary
+          ? JSON.parse(scan.aiTrustScorecard.summary)
+          : null,
       } : null,
     }
 

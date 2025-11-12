@@ -145,6 +145,15 @@ model AiTrustScorecard {
   // Evidence for transparency (JSON: { checkName: ["evidence1", "evidence2"] })
   evidenceData     String? // JSON as text
 
+  // ========================================
+  // NEW FIELDS (Nov 12, 2025 - Enhanced AI Trust Score)
+  // ========================================
+  hasAiImplementation  Boolean @default(false) // Is AI actually detected?
+  aiConfidenceLevel    String? // "none" | "low" | "medium" | "high"
+  relevantChecks       Int     @default(0) // How many checks are relevant
+  detailedChecks       String? // JSON: CheckResult objects with explanations
+  summary              String? // JSON: { message, strengths, weaknesses, criticalIssues }
+
   // Timestamp
   analyzedAt       DateTime @default(now())
 

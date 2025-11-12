@@ -32,7 +32,9 @@ export default function Home() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to start scan')
+        // Use the user-friendly message from domain validation if available
+        const errorMessage = data.message || data.error || 'Failed to start scan'
+        throw new Error(errorMessage)
       }
 
       // Redirect to results page

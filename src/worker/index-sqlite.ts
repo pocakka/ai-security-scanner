@@ -9,7 +9,7 @@ import { jobQueue } from '../lib/queue-sqlite'
 import { MockCrawler } from './crawler-mock'
 import { CrawlerAdapter } from '../lib/crawler-adapter'
 import { WorkerManager } from './worker-manager'
-import { analyzeAIDetection } from './analyzers/ai-detection'
+import { AIDetectionResult } from './analyzers/ai-detection' // Import only the type, not the function
 import { analyzeSecurityHeaders } from './analyzers/security-headers'
 import { analyzeClientRisks } from './analyzers/client-risks'
 import { analyzeSSLTLS } from './analyzers/ssl-tls-analyzer'
@@ -78,9 +78,7 @@ async function processScanJob(data: { scanId: string; url: string }) {
     console.log(`[Worker] Running analyzers...`)
     const analyzerStart = Date.now()
 
-    const aiDetectionStart = Date.now()
-    const aiDetection = analyzeAIDetection(crawlResult)
-    timings.aiDetection = Date.now() - aiDetectionStart
+    // NOTE: AI Detection moved to after AI Trust Score (line 237) to ensure consistency
 
     const securityHeadersStart = Date.now()
     const securityHeaders = analyzeSecurityHeaders(crawlResult)
@@ -219,59 +217,170 @@ async function processScanJob(data: { scanId: string; url: string }) {
     )
     timings.spaApi = Date.now() - spaStart
 
-    // NEW: OWASP LLM01 - Prompt Injection Risk analyzer (HIGH)
-    const llm01Start = Date.now()
-    const llm01PromptInjection = await analyzeLLM01PromptInjection(
-      crawlResult.html,
-      crawlResult.responseHeaders || {}
-    )
-    timings.llm01 = Date.now() - llm01Start
+    // Step 2.5: Analyze AI Trust Score (MOVED HERE - BEFORE OWASP LLM!)
+    console.log(`[Worker] Analyzing AI Trust Score...`)
+    const aiTrustStart = Date.now()
+    const aiTrustResult = analyzeAiTrust(crawlResult, sslTLS.score)
+    timings.aiTrust = Date.now() - aiTrustStart
+    console.log(`[Worker] ✓ AI Trust Score: ${aiTrustResult.weightedScore ?? 0}/100 (${aiTrustResult.grade})`)
+    console.log(`[Worker]   - Has AI Implementation: ${aiTrustResult.hasAiImplementation}`)
+    console.log(`[Worker]   - AI Confidence Level: ${aiTrustResult.aiConfidenceLevel}`)
+    console.log(`[Worker]   - Trust checks: ${aiTrustResult.passedChecks}/${aiTrustResult.totalChecks} passed`)
+    if (aiTrustResult.detectedAiProvider) {
+      console.log(`[Worker]   - Detected AI Provider: ${aiTrustResult.detectedAiProvider}`)
+    }
 
-    // NEW: OWASP LLM02 - Insecure Output Handling analyzer (CRITICAL)
-    const llm02Start = Date.now()
-    const llm02InsecureOutput = await analyzeLLM02InsecureOutput(
-      crawlResult.html,
-      crawlResult.responseHeaders || {}
-    )
-    timings.llm02 = Date.now() - llm02Start
+    // REPLACE OLD AI DETECTION: Use AI Trust Score detection as the source of truth
+    // This ensures consistency between AI Trust Score and the "AI Detection" section in the report
+    const aiDetection: AIDetectionResult = {
+      hasAI: aiTrustResult.hasAiImplementation || false,
+      providers: aiTrustResult.detectedAiProvider ? [aiTrustResult.detectedAiProvider] : [],
+      chatWidgets: aiTrustResult.detectedChatFramework ? [aiTrustResult.detectedChatFramework] : [],
+      apiEndpoints: [], // AI Trust Score doesn't track endpoints separately
+      jsLibraries: [], // AI Trust Score doesn't track libraries separately
+      vectorDatabases: [],
+      mlFrameworks: [],
+      voiceServices: [],
+      imageServices: [],
+      securityTools: [],
+      detailedFindings: []
+    }
 
-    // NEW: OWASP LLM07 - Insecure Plugin Design analyzer (MEDIUM)
-    const llm07Start = Date.now()
-    const llm07PluginDesign = await analyzeLLM07PluginDesign(
-      crawlResult.html,
-      crawlResult.responseHeaders || {}
-    )
-    timings.llm07 = Date.now() - llm07Start
+    // CONDITIONAL: OWASP LLM analyzers ONLY if AI is detected
+    let llm01PromptInjection, llm02InsecureOutput, llm05SupplyChain, llm06SensitiveInfo, llm07PluginDesign, llm08ExcessiveAgency
 
-    // NEW: OWASP LLM08 - Excessive Agency analyzer (MEDIUM)
-    const llm08Start = Date.now()
-    const llm08ExcessiveAgency = await analyzeLLM08ExcessiveAgency(
-      crawlResult.html,
-      crawlResult.responseHeaders || {}
-    )
-    timings.llm08 = Date.now() - llm08Start
+    if (aiTrustResult.hasAiImplementation && (aiTrustResult.aiConfidenceLevel === 'medium' || aiTrustResult.aiConfidenceLevel === 'high')) {
+      console.log(`[Worker] 🤖 AI detected! Running OWASP LLM security analyzers...`)
 
-    // NEW: OWASP LLM05 - Supply Chain Vulnerabilities analyzer (HIGH)
-    const llm05Start = Date.now()
-    const llm05SupplyChain = await analyzeLLM05SupplyChain(
-      crawlResult.html,
-      crawlResult.responseHeaders || {}
-    )
-    timings.llm05 = Date.now() - llm05Start
+      // NEW: OWASP LLM01 - Prompt Injection Risk analyzer (HIGH)
+      const llm01Start = Date.now()
+      llm01PromptInjection = await analyzeLLM01PromptInjection(
+        crawlResult.html,
+        crawlResult.responseHeaders || {}
+      )
+      timings.llm01 = Date.now() - llm01Start
 
-    // NEW: OWASP LLM06 - Sensitive Information Disclosure analyzer (CRITICAL)
-    const llm06Start = Date.now()
-    const llm06SensitiveInfo = await analyzeLLM06SensitiveInfo(
-      crawlResult.html,
-      crawlResult.responseHeaders || {}
-    )
-    timings.llm06 = Date.now() - llm06Start
+      // NEW: OWASP LLM02 - Insecure Output Handling analyzer (CRITICAL)
+      const llm02Start = Date.now()
+      llm02InsecureOutput = await analyzeLLM02InsecureOutput(
+        crawlResult.html,
+        crawlResult.responseHeaders || {}
+      )
+      timings.llm02 = Date.now() - llm02Start
+
+      // NEW: OWASP LLM07 - Insecure Plugin Design analyzer (MEDIUM)
+      const llm07Start = Date.now()
+      llm07PluginDesign = await analyzeLLM07PluginDesign(
+        crawlResult.html,
+        crawlResult.responseHeaders || {}
+      )
+      timings.llm07 = Date.now() - llm07Start
+
+      // NEW: OWASP LLM08 - Excessive Agency analyzer (MEDIUM)
+      const llm08Start = Date.now()
+      llm08ExcessiveAgency = await analyzeLLM08ExcessiveAgency(
+        crawlResult.html,
+        crawlResult.responseHeaders || {}
+      )
+      timings.llm08 = Date.now() - llm08Start
+
+      // NEW: OWASP LLM05 - Supply Chain Vulnerabilities analyzer (HIGH)
+      const llm05Start = Date.now()
+      llm05SupplyChain = await analyzeLLM05SupplyChain(
+        crawlResult.html,
+        crawlResult.responseHeaders || {}
+      )
+      timings.llm05 = Date.now() - llm05Start
+
+      // NEW: OWASP LLM06 - Sensitive Information Disclosure analyzer (CRITICAL)
+      const llm06Start = Date.now()
+      llm06SensitiveInfo = await analyzeLLM06SensitiveInfo(
+        crawlResult.html,
+        crawlResult.responseHeaders || {}
+      )
+      timings.llm06 = Date.now() - llm06Start
+    } else {
+      // NO AI detected - return empty/N/A results for all OWASP LLM analyzers
+      console.log(`[Worker] ⚪ No AI implementation detected - Skipping OWASP LLM analyzers`)
+
+      llm01PromptInjection = {
+        findings: [],
+        hasSystemPromptLeaks: false,
+        hasRiskyPromptAssembly: false,
+        hasMissingSanitization: false,
+        hasAIContext: false,
+        sanitizationMethods: [],
+        overallRisk: 'none' as const,
+        aiEndpointsDetected: []
+      }
+
+      llm02InsecureOutput = {
+        findings: [],
+        hasDangerousDOM: false,
+        hasUnsafeMarkdown: false,
+        hasEvalUsage: false,
+        cspStrength: 'none' as const,
+        sanitizationLibraries: [],
+        overallRisk: 'none' as const
+      }
+
+      llm05SupplyChain = {
+        findings: [],
+        hasVulnerablePackages: false,
+        hasMissingSRI: false,
+        hasUntrustedModels: false,
+        vulnerablePackages: [],
+        missingIntegrity: 0,
+        untrustedModelSources: [],
+        overallRisk: 'none' as const
+      }
+
+      llm06SensitiveInfo = {
+        findings: [],
+        hasAPIKeys: false,
+        hasSystemPrompts: false,
+        hasTrainingData: false,
+        hasPII: false,
+        hasInternalEndpoints: false,
+        hasModelInfo: false,
+        exposedDataTypes: [],
+        overallRisk: 'none' as const
+      }
+
+      llm07PluginDesign = {
+        findings: [],
+        hasCriticalTools: false,
+        hasHighRiskTools: false,
+        detectedTools: [],
+        toolArchitectures: [],
+        overallRisk: 'none' as const
+      }
+
+      llm08ExcessiveAgency = {
+        findings: [],
+        hasAutoExecute: false,
+        hasSandbox: false,
+        hasApproval: false,
+        hasLogging: false,
+        hasRateLimiting: false,
+        overallRisk: 'none' as const
+      }
+
+      timings.llm01 = 0
+      timings.llm02 = 0
+      timings.llm05 = 0
+      timings.llm06 = 0
+      timings.llm07 = 0
+      timings.llm08 = 0
+    }
 
     // Calculate total time before DNS (everything except DNS)
     timings.totalAnalyzersBeforeDNS = Date.now() - analyzerStart
 
-    console.log(`[Worker] ✓ AI detected: ${aiDetection.hasAI}`)
+    // AI Detection summary (now based on AI Trust Score)
+    console.log(`[Worker] ✓ AI detected: ${aiDetection.hasAI} (based on AI Trust Score)`)
     console.log(`[Worker] ✓ Providers: ${aiDetection.providers.join(', ') || 'none'}`)
+    console.log(`[Worker] ✓ Chat Widgets: ${aiDetection.chatWidgets.join(', ') || 'none'}`)
     console.log(`[Worker] ✓ API keys found: ${clientRisks.apiKeysFound.length}`)
     console.log(`[Worker] ✓ Missing headers: ${securityHeaders.missing.length}`)
     console.log(`[Worker] ✓ SSL/TLS score: ${sslTLS.score}/100`)
@@ -288,30 +397,26 @@ async function processScanJob(data: { scanId: string; url: string }) {
     console.log(`[Worker] ✓ MFA/2FA: ${mfaDetection.hasMFA ? `${mfaDetection.detectedMethods.length} methods detected` : 'No MFA detected'} (OAuth: ${mfaDetection.hasOAuth}, WebAuthn: ${mfaDetection.hasWebAuthn}, TOTP: ${mfaDetection.hasTOTP})`)
     console.log(`[Worker] ✓ Error Disclosure: ${errorDisclosure.findings.length} findings (Stack traces: ${errorDisclosure.hasStackTraces}, DB errors: ${errorDisclosure.hasDatabaseErrors}, Risk: ${errorDisclosure.riskLevel})`)
     console.log(`[Worker] ✓ SPA/API: ${spaApi.isSPA ? `${spaApi.detectedFramework} detected` : 'Not SPA'} (${spaApi.apiEndpoints.length} API endpoints, ${spaApi.hasUnprotectedEndpoints ? 'UNPROTECTED ENDPOINTS!' : 'Protected'})`)
-    console.log(`[Worker] ✓ LLM01 (Prompt Injection): ${llm01PromptInjection.findings.length} findings (System prompts: ${llm01PromptInjection.hasSystemPromptLeaks}, Risky assembly: ${llm01PromptInjection.hasRiskyPromptAssembly}, AI context: ${llm01PromptInjection.hasAIContext}, Risk: ${llm01PromptInjection.overallRisk})`)
-    console.log(`[Worker] ✓ LLM02 (Insecure Output): ${llm02InsecureOutput.findings.length} findings (DOM: ${llm02InsecureOutput.hasDangerousDOM}, Unsafe MD: ${llm02InsecureOutput.hasUnsafeMarkdown}, eval(): ${llm02InsecureOutput.hasEvalUsage}, CSP: ${llm02InsecureOutput.cspStrength}, Risk: ${llm02InsecureOutput.overallRisk})`)
-    console.log(`[Worker] ✓ LLM05 (Supply Chain): ${llm05SupplyChain.findings.length} findings (Vulnerable pkgs: ${llm05SupplyChain.hasVulnerablePackages}, Missing SRI: ${llm05SupplyChain.hasMissingSRI}, Untrusted models: ${llm05SupplyChain.hasUntrustedModels}, Risk: ${llm05SupplyChain.overallRisk})`)
-    console.log(`[Worker] ✓ LLM06 (Sensitive Info): ${llm06SensitiveInfo.findings.length} findings (API keys: ${llm06SensitiveInfo.hasAPIKeys}, System prompts: ${llm06SensitiveInfo.hasSystemPrompts}, PII: ${llm06SensitiveInfo.hasPII}, Model info: ${llm06SensitiveInfo.hasModelInfo}, Risk: ${llm06SensitiveInfo.overallRisk})`)
-    console.log(`[Worker] ✓ LLM07 (Plugin Design): ${llm07PluginDesign.findings.length} findings (Critical tools: ${llm07PluginDesign.hasCriticalTools}, High risk: ${llm07PluginDesign.hasHighRiskTools}, Detected: ${llm07PluginDesign.detectedTools.length} tools, Risk: ${llm07PluginDesign.overallRisk})`)
-    console.log(`[Worker] ✓ LLM08 (Excessive Agency): ${llm08ExcessiveAgency.findings.length} findings (Auto-exec: ${llm08ExcessiveAgency.hasAutoExecute}, Sandbox: ${llm08ExcessiveAgency.hasSandbox}, Approval: ${llm08ExcessiveAgency.hasApproval}, Logging: ${llm08ExcessiveAgency.hasLogging}, Risk: ${llm08ExcessiveAgency.overallRisk})`)
+
+    // OWASP LLM analyzer logs - only if AI was detected
+    if (aiTrustResult.hasAiImplementation && (aiTrustResult.aiConfidenceLevel === 'medium' || aiTrustResult.aiConfidenceLevel === 'high')) {
+      console.log(`[Worker] ✓ LLM01 (Prompt Injection): ${llm01PromptInjection.findings.length} findings (System prompts: ${llm01PromptInjection.hasSystemPromptLeaks}, Risky assembly: ${llm01PromptInjection.hasRiskyPromptAssembly}, AI context: ${llm01PromptInjection.hasAIContext}, Risk: ${llm01PromptInjection.overallRisk})`)
+      console.log(`[Worker] ✓ LLM02 (Insecure Output): ${llm02InsecureOutput.findings.length} findings (DOM: ${llm02InsecureOutput.hasDangerousDOM}, Unsafe MD: ${llm02InsecureOutput.hasUnsafeMarkdown}, eval(): ${llm02InsecureOutput.hasEvalUsage}, CSP: ${llm02InsecureOutput.cspStrength}, Risk: ${llm02InsecureOutput.overallRisk})`)
+      console.log(`[Worker] ✓ LLM05 (Supply Chain): ${llm05SupplyChain.findings.length} findings (Vulnerable pkgs: ${llm05SupplyChain.hasVulnerablePackages}, Missing SRI: ${llm05SupplyChain.hasMissingSRI}, Untrusted models: ${llm05SupplyChain.hasUntrustedModels}, Risk: ${llm05SupplyChain.overallRisk})`)
+      console.log(`[Worker] ✓ LLM06 (Sensitive Info): ${llm06SensitiveInfo.findings.length} findings (API keys: ${llm06SensitiveInfo.hasAPIKeys}, System prompts: ${llm06SensitiveInfo.hasSystemPrompts}, PII: ${llm06SensitiveInfo.hasPII}, Model info: ${llm06SensitiveInfo.hasModelInfo}, Risk: ${llm06SensitiveInfo.overallRisk})`)
+      console.log(`[Worker] ✓ LLM07 (Plugin Design): ${llm07PluginDesign.findings.length} findings (Critical tools: ${llm07PluginDesign.hasCriticalTools}, High risk: ${llm07PluginDesign.hasHighRiskTools}, Detected: ${llm07PluginDesign.detectedTools.length} tools, Risk: ${llm07PluginDesign.overallRisk})`)
+      console.log(`[Worker] ✓ LLM08 (Excessive Agency): ${llm08ExcessiveAgency.findings.length} findings (Auto-exec: ${llm08ExcessiveAgency.hasAutoExecute}, Sandbox: ${llm08ExcessiveAgency.hasSandbox}, Approval: ${llm08ExcessiveAgency.hasApproval}, Logging: ${llm08ExcessiveAgency.hasLogging}, Risk: ${llm08ExcessiveAgency.overallRisk})`)
+    } else {
+      console.log(`[Worker] ⚪ OWASP LLM analyzers skipped (No AI implementation detected)`)
+    }
+
     console.log(`[Worker]   - CMS: ${techStack.categories.cms.length}`)
     console.log(`[Worker]   - Analytics: ${techStack.categories.analytics.length}`)
     console.log(`[Worker]   - Ads: ${techStack.categories.ads.length}`)
     console.log(`[Worker]   - CDN: ${techStack.categories.cdn.length}`)
     console.log(`[Worker]   - Social: ${techStack.categories.social.length}`)
 
-    // Step 2.5: Analyze AI Trust Score (NEW!)
-    console.log(`[Worker] Analyzing AI Trust Score...`)
-    const aiTrustStart = Date.now()
-    const aiTrustResult = analyzeAiTrust(crawlResult, sslTLS.score)
-    timings.aiTrust = Date.now() - aiTrustStart
-    console.log(`[Worker] ✓ AI Trust Score: ${aiTrustResult.weightedScore}/100 (${aiTrustResult.grade})`)
-    console.log(`[Worker]   - Trust checks: ${aiTrustResult.passedChecks}/${aiTrustResult.totalChecks} passed`)
-    if (aiTrustResult.detectedAiProvider) {
-      console.log(`[Worker]   - Detected AI Provider: ${aiTrustResult.detectedAiProvider}`)
-    }
-
-    // Step 3: Calculate risk score
+    // Step 3: Calculate risk score (AI Trust Score already analyzed above)
     console.log(`[Worker] Calculating risk score...`)
     const riskScoreStart = Date.now()
     const riskScore = calculateRiskScore(
@@ -387,14 +492,13 @@ async function processScanJob(data: { scanId: string; url: string }) {
       timestamp: new Date().toISOString(),
       crawlerBreakdown: crawlResult.timingBreakdown || {}, // NEW: detailed crawler timing
       analyzerBreakdown: {
-        aiDetection: timings.aiDetection,
+        aiTrust: timings.aiTrust, // AI Detection now part of AI Trust Score
         securityHeaders: timings.securityHeaders,
         clientRisks: timings.clientRisks,
         sslTLS: timings.sslTLS,
         cookieSecurity: timings.cookieSecurity,
         jsLibraries: timings.jsLibraries,
         techStack: timings.techStack,
-        aiTrust: timings.aiTrust,
         reconnaissance: timings.reconnaissance,
         adminDetection: timings.adminDetection,
         adminDiscovery: timings.adminDiscovery,
@@ -480,12 +584,17 @@ async function processScanJob(data: { scanId: string; url: string }) {
         hasAgeVerification: aiTrustResult.checks.hasAgeVerification,
         hasAccessibilitySupport: aiTrustResult.checks.hasAccessibilitySupport,
 
-        // Scores
-        score: aiTrustResult.score,
-        weightedScore: aiTrustResult.weightedScore,
+        // Scores (handle null values when no AI detected)
+        score: aiTrustResult.score ?? 0,
+        weightedScore: aiTrustResult.weightedScore ?? 0,
         categoryScores: JSON.stringify(aiTrustResult.categoryScores),
         passedChecks: aiTrustResult.passedChecks,
         totalChecks: aiTrustResult.totalChecks,
+        relevantChecks: aiTrustResult.relevantChecks || 0, // NEW
+
+        // AI Detection Status (NEW)
+        hasAiImplementation: aiTrustResult.hasAiImplementation || false,
+        aiConfidenceLevel: aiTrustResult.aiConfidenceLevel || 'none',
 
         // Detected AI Technology
         detectedAiProvider: aiTrustResult.detectedAiProvider,
@@ -494,6 +603,10 @@ async function processScanJob(data: { scanId: string; url: string }) {
 
         // Evidence
         evidenceData: JSON.stringify(aiTrustResult.evidenceData || {}),
+
+        // NEW: Detailed checks and summary
+        detailedChecks: JSON.stringify(aiTrustResult.detailedChecks || {}),
+        summary: JSON.stringify(aiTrustResult.summary || {}),
       },
     })
     console.log(`[Worker] ✅ AI Trust Scorecard saved`)

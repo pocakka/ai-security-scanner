@@ -341,7 +341,7 @@ export async function analyzeLLM02InsecureOutput(
       const snippet = extractSnippet(html, evidence)
 
       // Determine actual severity based on mitigations
-      let actualSeverity = domPattern.severity
+      let actualSeverity: 'low' | 'medium' | 'high' | 'critical' = domPattern.severity
       const cspMitigates = cspStrength === 'strong' || cspStrength === 'very-strong'
 
       if (cspMitigates && hasSanitization) {

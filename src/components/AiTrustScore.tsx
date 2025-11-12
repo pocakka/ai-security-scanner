@@ -15,6 +15,13 @@ interface CategoryScores {
   ethicalAi: number
 }
 
+interface Summary {
+  message: string
+  strengths: string[]
+  weaknesses: string[]
+  criticalIssues: string[]
+}
+
 interface AiTrustScoreProps {
   score: number // Simple average 0-100
   weightedScore: number // Weighted by importance
@@ -24,6 +31,9 @@ interface AiTrustScoreProps {
   detectedAiProvider?: string | null
   detectedModel?: string | null
   detectedChatFramework?: string | null
+  hasAiImplementation?: boolean // NEW: Is AI actually detected?
+  aiConfidenceLevel?: string // NEW: Confidence level
+  summary?: Summary | null // NEW: Human-readable summary
 }
 
 export function AiTrustScore({
@@ -35,7 +45,48 @@ export function AiTrustScore({
   detectedAiProvider,
   detectedModel,
   detectedChatFramework,
+  hasAiImplementation = false,
+  aiConfidenceLevel = 'none',
+  summary,
 }: AiTrustScoreProps) {
+  // If NO AI implementation detected, show a simple info card
+  if (!hasAiImplementation || aiConfidenceLevel === 'none' || aiConfidenceLevel === 'low') {
+    return (
+      <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-xl p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-12 h-12 bg-slate-500/20 rounded-full flex items-center justify-center">
+            <span className="text-2xl">🤖</span>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-white mb-2">No AI Implementation Detected</h3>
+            <p className="text-slate-300 text-sm mb-3">
+              {summary?.message || 'This website does not appear to use AI technology. AI Trust Score is not applicable.'}
+            </p>
+            {aiConfidenceLevel === 'low' && (
+              <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-3 mb-3">
+                <p className="text-yellow-200 text-xs">
+                  ⚠️ Low-confidence detection: Found 1 potential AI signal, but insufficient evidence to confirm AI usage.
+                </p>
+              </div>
+            )}
+            {summary?.strengths && summary.strengths.length > 0 && (
+              <div className="mt-3">
+                <ul className="space-y-1">
+                  {summary.strengths.map((strength, idx) => (
+                    <li key={idx} className="text-sm text-slate-400 flex items-start gap-2">
+                      <span className="text-green-400 mt-0.5">✓</span>
+                      {strength}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Grade calculation
   const getGrade = (score: number): { label: string; color: string; bgColor: string } => {
     if (score >= 85) return {

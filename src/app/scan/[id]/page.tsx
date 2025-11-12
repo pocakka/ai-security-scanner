@@ -172,12 +172,6 @@ const CATEGORY_META = {
     description: 'Exposure of secrets, PII, and proprietary AI data',
     explanation: 'AI applications often expose sensitive information in client-side code including system prompts, training data, API keys, PII (emails, phone numbers), internal endpoints, and model configurations. This analyzer uses pattern matching and entropy analysis to detect exposed secrets, validates PII against privacy regulations (GDPR, CCPA), and identifies proprietary information like business logic, pricing algorithms, and model hyperparameters that reveal competitive advantages.',
   },
-  'owasp-llm07': {
-    icon: '🔌',
-    title: 'OWASP LLM07: Insecure Plugin Design',
-    description: 'AI tools with dangerous capabilities without proper controls',
-    explanation: 'AI agents often use "tools" or "plugins" to interact with external systems (OpenAI Function Calling, LangChain tools). This analyzer detects tool definitions with dangerous capabilities like code execution (exec, eval), file system access (writeFile, deleteFile), or database operations without proper security controls. When AI agents have access to critical tools without sandboxing or approval mechanisms, prompt injection attacks can manipulate the AI to execute malicious operations.',
-  },
   'owasp-llm08': {
     icon: '🤖',
     title: 'OWASP LLM08: Excessive Agency',
@@ -603,6 +597,9 @@ export default function ScanResultPage() {
               detectedAiProvider={scan.aiTrustScorecard.detectedAiProvider}
               detectedModel={scan.aiTrustScorecard.detectedModel}
               detectedChatFramework={scan.aiTrustScorecard.detectedChatFramework}
+              hasAiImplementation={scan.aiTrustScorecard.hasAiImplementation}
+              aiConfidenceLevel={scan.aiTrustScorecard.aiConfidenceLevel}
+              summary={scan.aiTrustScorecard.summary}
             />
           </div>
         )}
