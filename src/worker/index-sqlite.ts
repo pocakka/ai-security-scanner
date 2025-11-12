@@ -8,6 +8,7 @@ import { prisma } from '../lib/db'
 import { jobQueue } from '../lib/queue-sqlite'
 import { MockCrawler } from './crawler-mock'
 import { CrawlerAdapter } from '../lib/crawler-adapter'
+import { WorkerManager } from './worker-manager'
 import { analyzeAIDetection } from './analyzers/ai-detection'
 import { analyzeSecurityHeaders } from './analyzers/security-headers'
 import { analyzeClientRisks } from './analyzers/client-risks'
@@ -18,17 +19,21 @@ import { analyzeTechStack } from './analyzers/tech-stack-analyzer'
 import { analyzeAiTrust } from './analyzers/ai-trust-analyzer'
 import { analyzeReconnaissance } from './analyzers/reconnaissance-analyzer'
 import { analyzeAdminDetection } from './analyzers/admin-detection-analyzer'
+import { analyzeAdminDiscovery } from './analyzers/admin-discovery-analyzer'
 import { analyzeCORS, checkCORSBypassPatterns } from './analyzers/cors-analyzer'
 import { analyzeDNSSecurity } from './analyzers/dns-security-analyzer'
+import { analyzePortScan } from './analyzers/port-scanner-analyzer'
 import { calculateRiskScore } from './scoring'
 import { generateReport } from './report-generator'
+
+// Initialize worker manager
+const workerManager = WorkerManager.getInstance()
 
 // Choose crawler based on environment variable
 const USE_REAL_CRAWLER = process.env.USE_REAL_CRAWLER === 'true'
 const crawler = USE_REAL_CRAWLER ? new CrawlerAdapter() : new MockCrawler()
 
 console.log(`[Worker] Using ${USE_REAL_CRAWLER ? 'REAL Playwright' : 'MOCK'} crawler`)
-console.log('[Worker] ✅ SQLite Queue Worker started')
 
 async function processScanJob(data: { scanId: string; url: string }) {
   const { scanId, url } = data
@@ -88,15 +93,50 @@ async function processScanJob(data: { scanId: string; url: string }) {
     const techStack = analyzeTechStack(crawlResult)
     timings.techStack = Date.now() - techStackStart
 
-    // NEW: Reconnaissance analyzer
+    // NEW: Reconnaissance analyzer (with timeout)
     const reconnaissanceStart = Date.now()
-    const reconnaissance = await analyzeReconnaissance(crawlResult)
+    let reconnaissance
+    try {
+      const reconPromise = analyzeReconnaissance(crawlResult)
+      const reconTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Reconnaissance timeout')), 5000)
+      )
+      reconnaissance = await Promise.race([reconPromise, reconTimeout]) as any
+    } catch (error) {
+      console.log(`[Worker] ⚠️  Reconnaissance analyzer skipped: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      reconnaissance = { findings: [], summary: { total: 0, criticalExposures: 0, highExposures: 0, mediumExposures: 0, lowExposures: 0 } }
+    }
     timings.reconnaissance = Date.now() - reconnaissanceStart
 
-    // NEW: Admin Detection analyzer
+    // NEW: Admin Detection analyzer (with timeout)
     const adminDetectionStart = Date.now()
-    const adminDetection = await analyzeAdminDetection(crawlResult)
+    let adminDetection
+    try {
+      const adminPromise = analyzeAdminDetection(crawlResult)
+      const adminTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Admin detection timeout')), 5000)
+      )
+      adminDetection = await Promise.race([adminPromise, adminTimeout]) as any
+    } catch (error) {
+      console.log(`[Worker] ⚠️  Admin Detection analyzer skipped: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      adminDetection = { hasAdminPanel: false, hasLoginForm: false, findings: [], adminUrls: [], loginForms: [] }
+    }
     timings.adminDetection = Date.now() - adminDetectionStart
+
+    // NEW: Admin Discovery analyzer (enhanced with API docs & GraphQL)
+    const adminDiscoveryStart = Date.now()
+    let adminDiscovery
+    try {
+      const discoveryPromise = analyzeAdminDiscovery(crawlResult)
+      const discoveryTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Admin discovery timeout')), 5000)
+      )
+      adminDiscovery = await Promise.race([discoveryPromise, discoveryTimeout]) as any
+    } catch (error) {
+      console.log(`[Worker] ⚠️  Admin Discovery analyzer skipped: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      adminDiscovery = { hasAdminPanel: false, hasLoginForm: false, findings: [], adminUrls: [], loginForms: 0 }
+    }
+    timings.adminDiscovery = Date.now() - adminDiscoveryStart
 
     // NEW: CORS analyzer
     const corsStart = Date.now()
@@ -104,14 +144,23 @@ async function processScanJob(data: { scanId: string; url: string }) {
     const corsBypassPatterns = checkCORSBypassPatterns(crawlResult)
     timings.cors = Date.now() - corsStart
 
-    // NEW: DNS Security analyzer
-    // TEMPORARILY DISABLED DUE TO BLOCKING ISSUE WITH FETCH
-    const dnsStart = Date.now()
-    // const dnsAnalysis = await analyzeDNSSecurity(crawlResult)
-    const dnsAnalysis = { findings: [], hasDNSSEC: false, hasSPF: false, hasDKIM: false, hasDMARC: false, hasCAA: false, score: 0, domain: '' }
-    timings.dns = Date.now() - dnsStart
+    // NEW: Port Scanner analyzer (with timeout)
+    const portScanStart = Date.now()
+    let portScan
+    try {
+      const portScanPromise = analyzePortScan(crawlResult)
+      const portScanTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Port scan timeout')), 5000)
+      )
+      portScan = await Promise.race([portScanPromise, portScanTimeout]) as any
+    } catch (error) {
+      console.log(`[Worker] ⚠️  Port Scanner analyzer skipped: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      portScan = { findings: [], exposedDatabases: 0, exposedInterfaces: 0, exposedDevServers: 0, score: 100, summary: { critical: 0, high: 0, medium: 0, low: 0 } }
+    }
+    timings.portScan = Date.now() - portScanStart
 
-    timings.totalAnalyzers = Date.now() - analyzerStart
+    // Calculate total time before DNS (everything except DNS)
+    timings.totalAnalyzersBeforeDNS = Date.now() - analyzerStart
 
     console.log(`[Worker] ✓ AI detected: ${aiDetection.hasAI}`)
     console.log(`[Worker] ✓ Providers: ${aiDetection.providers.join(', ') || 'none'}`)
@@ -123,8 +172,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
     console.log(`[Worker] ✓ Tech Stack: ${techStack.totalCount} technologies detected`)
     console.log(`[Worker] ✓ Reconnaissance: ${reconnaissance.findings.length} findings (${reconnaissance.summary.criticalExposures} critical)`)
     console.log(`[Worker] ✓ Admin Detection: ${adminDetection.hasAdminPanel ? 'Admin panel found' : 'No admin panel'}, ${adminDetection.hasLoginForm ? 'Login form found' : 'No login form'}`)
+    console.log(`[Worker] ✓ Admin Discovery: ${adminDiscovery.findings.length} findings (${adminDiscovery.adminUrls.length} admin URLs)`)
     console.log(`[Worker] ✓ CORS: ${corsAnalysis.findings.length} findings (wildcard: ${corsAnalysis.hasWildcardOrigin}, credentials: ${corsAnalysis.allowsCredentials})`)
-    // console.log(`[Worker] ✓ DNS Security: ${dnsAnalysis.findings.length} findings (DNSSEC: ${dnsAnalysis.hasDNSSEC}, SPF: ${dnsAnalysis.hasSPF}, DKIM: ${dnsAnalysis.hasDKIM}, DMARC: ${dnsAnalysis.hasDMARC})`)
+    console.log(`[Worker] ✓ Port Scanner: ${portScan.findings.length} findings (DB interfaces: ${portScan.exposedInterfaces}, Dev servers: ${portScan.exposedDevServers})`)
     console.log(`[Worker]   - CMS: ${techStack.categories.cms.length}`)
     console.log(`[Worker]   - Analytics: ${techStack.categories.analytics.length}`)
     console.log(`[Worker]   - Ads: ${techStack.categories.ads.length}`)
@@ -155,10 +205,30 @@ async function processScanJob(data: { scanId: string; url: string }) {
     )
     timings.riskScore = Date.now() - riskScoreStart
 
-    // Step 4: Generate report
-    console.log(`[Worker] Generating report...`)
+    // Step 4: Generate report (WITHOUT DNS initially)
+    console.log(`[Worker] Generating initial report (without DNS)...`)
+
+    // Create default DNS result (will be updated if DNS check succeeds)
+    let dnsAnalysis = {
+      domain: new URL(url).hostname,
+      findings: [],
+      hasDNSSEC: false,
+      hasSPF: false,
+      hasDKIM: false,
+      hasDMARC: false,
+      hasCAA: false,
+      score: 100,
+      summary: {
+        total: 0,
+        high: 0,
+        medium: 0,
+        low: 0,
+        info: 0
+      }
+    }
+
     const reportStart = Date.now()
-    const report = generateReport(
+    let report = generateReport(
       aiDetection,
       securityHeaders,
       clientRisks,
@@ -169,8 +239,10 @@ async function processScanJob(data: { scanId: string; url: string }) {
       techStack,
       reconnaissance,
       adminDetection,
+      adminDiscovery, // NEW: Admin Discovery analyzer
       { ...corsAnalysis, bypassPatterns: corsBypassPatterns }, // Combine CORS results
-      dnsAnalysis
+      dnsAnalysis, // Use empty DNS for initial report
+      portScan // NEW: Port Scanner analyzer
     )
     timings.reportGeneration = Date.now() - reportStart
 
@@ -193,7 +265,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
         aiTrust: timings.aiTrust,
         reconnaissance: timings.reconnaissance,
         adminDetection: timings.adminDetection,
+        adminDiscovery: timings.adminDiscovery,
         cors: timings.cors,
+        portScan: timings.portScan,
       }
     }
 
@@ -286,6 +360,63 @@ async function processScanJob(data: { scanId: string; url: string }) {
     })
     console.log(`[Worker] ✅ AI Trust Scorecard saved`)
 
+    // Step 6: DNS Security analyzer (OPTIONAL - with 10 second timeout)
+    console.log(`[Worker] 🌍 Running DNS Security check (10s timeout)...`)
+    const dnsStart = Date.now()
+
+    try {
+      // Create a promise that rejects after 10 seconds
+      const dnsPromise = analyzeDNSSecurity(crawlResult)
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('DNS analysis timeout (10s)')), 10000)
+      })
+
+      // Race between DNS check and timeout
+      dnsAnalysis = await Promise.race([dnsPromise, timeoutPromise]) as any
+
+      timings.dns = Date.now() - dnsStart
+      console.log(`[Worker] ✓ DNS Security: ${dnsAnalysis.findings.length} findings (DNSSEC: ${dnsAnalysis.hasDNSSEC}, SPF: ${dnsAnalysis.hasSPF}, DKIM: ${dnsAnalysis.hasDKIM}, DMARC: ${dnsAnalysis.hasDMARC}) - completed in ${timings.dns}ms`)
+
+      // Update report with DNS findings
+      report = generateReport(
+        aiDetection,
+        securityHeaders,
+        clientRisks,
+        riskScore,
+        sslTLS,
+        cookieSecurity,
+        jsLibraries,
+        techStack,
+        reconnaissance,
+        adminDetection,
+        adminDiscovery, // Admin Discovery analyzer
+        { ...corsAnalysis, bypassPatterns: corsBypassPatterns },
+        dnsAnalysis, // Use actual DNS results
+        portScan // Port Scanner analyzer
+      )
+
+      // Update the saved scan with DNS results
+      await prisma.scan.update({
+        where: { id: scanId },
+        data: {
+          findings: JSON.stringify(report),
+          metadata: JSON.stringify({
+            ...performanceData,
+            timings: { ...timings, dns: timings.dns }
+          }),
+        },
+      })
+      console.log(`[Worker] ✅ DNS results added to scan`)
+
+    } catch (error) {
+      console.log(`[Worker] ⚠️  DNS Security check skipped: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      // DNS check failed or timed out - continue without it
+      timings.dns = Date.now() - dnsStart
+    }
+
+    // Update total time including DNS attempt
+    timings.totalAnalyzers = Date.now() - analyzerStart
+
     console.log(`[Worker] ✅ Scan ${scanId} completed successfully`)
     console.log(`[Worker] Risk Score: ${riskScore.score}/100 (${riskScore.grade} - ${riskScore.level})`)
     console.log(`[Worker] AI Trust Score: ${aiTrustResult.weightedScore}/100 (${aiTrustResult.grade})`)
@@ -316,6 +447,14 @@ async function processScanJob(data: { scanId: string; url: string }) {
  * This ensures each scan runs with fresh code (no caching issues)
  */
 async function processOneJob() {
+  // Check if we should start (prevents multiple workers)
+  const canStart = await workerManager.start()
+  if (!canStart) {
+    console.log('[Worker] Another worker is already running, exiting...')
+    process.exit(0)
+  }
+
+  console.log('[Worker] ✅ SQLite Queue Worker started')
   console.log('[Worker] 🔍 Checking for pending jobs...')
 
   try {
@@ -340,17 +479,20 @@ async function processOneJob() {
         console.log(`[Worker] ❌ Job failed, worker shutting down...`)
       }
 
-      // Close browser and exit after processing one job
+      // Close browser and cleanup before exit
       await crawler.close()
+      await workerManager.shutdown()
       process.exit(0)
     } else {
       console.log('[Worker] 💤 No jobs found, worker shutting down...')
       await crawler.close()
+      await workerManager.shutdown()
       process.exit(0)
     }
   } catch (error) {
     console.error('[Worker] ❌ Error checking for jobs:', error)
     await crawler.close()
+    await workerManager.shutdown()
     process.exit(1)
   }
 }
@@ -363,11 +505,13 @@ processOneJob()
 process.on('SIGINT', async () => {
   console.log('[Worker] Shutting down...')
   await crawler.close()
+  await workerManager.shutdown()
   process.exit(0)
 })
 
 process.on('SIGTERM', async () => {
   console.log('[Worker] Shutting down...')
   await crawler.close()
+  await workerManager.shutdown()
   process.exit(0)
 })

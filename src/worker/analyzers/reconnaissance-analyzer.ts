@@ -362,15 +362,25 @@ export async function analyzeReconnaissance(crawlResult: CrawlResult): Promise<R
   }
 
   // 9. Check for source map files
-  if (crawlResult.javascriptFiles && crawlResult.javascriptFiles.length > 0) {
+  // Note: We check if .map files are accessible by trying common patterns
+  if (crawlResult.scripts && crawlResult.scripts.length > 0) {
     const sourceMapFindings: string[] = []
 
-    for (const jsFile of crawlResult.javascriptFiles) {
-      if (jsFile.content && jsFile.content.includes('sourceMappingURL=')) {
-        const mapMatch = jsFile.content.match(/sourceMappingURL=(.+\.map)/)
-        if (mapMatch) {
-          sourceMapFindings.push(mapMatch[1])
+    // Check if .map files exist for the scripts
+    for (const scriptUrl of crawlResult.scripts.slice(0, 5)) { // Check first 5 scripts only
+      try {
+        // Try to access the .map file
+        const mapUrl = scriptUrl + '.map'
+        const response = await fetch(mapUrl, {
+          method: 'HEAD',
+          redirect: 'manual'
+        })
+
+        if (response.ok) {
+          sourceMapFindings.push(mapUrl)
         }
+      } catch (error) {
+        // Map file not accessible - good
       }
     }
 
@@ -379,15 +389,48 @@ export async function analyzeReconnaissance(crawlResult: CrawlResult): Promise<R
         type: 'information-disclosure',
         severity: 'medium',
         title: 'Source maps expose original code',
-        description: `Found ${sourceMapFindings.length} JavaScript source maps that expose original TypeScript/JSX code`,
+        description: `Found ${sourceMapFindings.length} accessible JavaScript source maps that expose original TypeScript/JSX code`,
         evidence: sourceMapFindings.slice(0, 3),
         impact: 'Original source code including comments and development details are visible',
-        recommendation: 'Disable source map generation for production builds',
+        recommendation: 'Disable source map generation for production builds or block access to .map files',
         metadata: {
           paths: sourceMapFindings
         }
       })
     }
+  }
+
+  // 10. Check for humans.txt
+  try {
+    const humansUrl = new URL('/humans.txt', baseUrl).href
+    const response = await fetch(humansUrl)
+
+    if (response.ok) {
+      const content = await response.text()
+
+      // Extract email addresses
+      const emailRegex = /[\w.-]+@[\w.-]+\.\w+/g
+      const emails = content.match(emailRegex) || []
+
+      // Extract names (lines with "Team:" or names followed by contact info)
+      const nameMatches = content.match(/(?:Team:|Name:|Developer:|Designer:)\s*(.+)/gi) || []
+
+      findings.push({
+        type: 'information-disclosure',
+        severity: 'low',
+        title: 'humans.txt found',
+        description: `Developer information file found with ${emails.length} email addresses`,
+        evidence: emails.length > 0 ? emails.slice(0, 3) : ['humans.txt exists'],
+        impact: 'Developer contact information and team structure exposed',
+        recommendation: 'Consider if this information should be public. Remove sensitive contact details.',
+        metadata: {
+          paths: ['/humans.txt'],
+          endpoints: emails
+        }
+      })
+    }
+  } catch (error) {
+    console.log('[Reconnaissance] humans.txt not accessible')
   }
 
   // Calculate score (100 = no issues, 0 = critical issues)

@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
-import { Shield, AlertTriangle, CheckCircle, XCircle, Mail, ArrowLeft, ArrowRight, TrendingUp, Download, Lock, Cookie, Code, Globe, RefreshCw, Lightbulb } from 'lucide-react'
+import { useParams, useRouter } from 'next/navigation'
+import { Shield, AlertTriangle, CheckCircle, XCircle, Mail, ArrowLeft, ArrowRight, TrendingUp, Download, Lock, Cookie, Code, Globe, RefreshCw, Lightbulb, Search } from 'lucide-react'
 import AdminDebugBar from './AdminDebugBar'
 import { getRandomSecurityTip } from '@/data/ai-security-tips'
 import { AiTrustScore } from '@/components/AiTrustScore'
@@ -94,10 +94,17 @@ const CATEGORY_META = {
     description: 'Domain name system and email authentication',
     explanation: 'DNS security features like DNSSEC, SPF, DKIM, and DMARC protect against domain spoofing, email forgery, and DNS poisoning attacks. CAA records control which certificate authorities can issue SSL certificates.',
   },
+  port: {
+    icon: '🔌',
+    title: 'Network Ports & Services',
+    description: 'Exposed network services and database interfaces',
+    explanation: 'Open network ports can expose databases, development servers, and management interfaces to the internet. Critical services like MySQL, PostgreSQL, Redis should never be publicly accessible.',
+  },
 }
 
 export default function ScanResultPage() {
   const params = useParams()
+  const router = useRouter()
   const scanId = params.id as string
 
   const [scan, setScan] = useState<Scan | null>(null)
@@ -119,6 +126,10 @@ export default function ScanResultPage() {
 
   // Random security tip for loading screen (client-side only to avoid hydration mismatch)
   const [securityTip, setSecurityTip] = useState<string>('')
+
+  // New scan form
+  const [newScanUrl, setNewScanUrl] = useState('')
+  const [newScanLoading, setNewScanLoading] = useState(false)
 
   useEffect(() => {
     // Set random tip only on client-side to avoid hydration error
@@ -224,6 +235,31 @@ export default function ScanResultPage() {
     }
   }
 
+  const handleNewScan = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newScanUrl || newScanLoading) return
+
+    setNewScanLoading(true)
+    try {
+      // Create a new scan with the provided URL
+      const response = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: newScanUrl }),
+      })
+
+      if (!response.ok) throw new Error('Failed to create new scan')
+
+      const data = await response.json()
+      // Navigate to the new scan page
+      router.push(`/scan/${data.scanId}`)
+    } catch (err) {
+      console.error('New scan error:', err)
+      alert('Failed to create new scan. Please try again.')
+      setNewScanLoading(false)
+    }
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -312,7 +348,7 @@ export default function ScanResultPage() {
   const aiFindings = findingsByCategory['ai'] || []
 
   // Define logical order for security categories
-  const categoryOrder = ['reconnaissance', 'admin', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library']
+  const categoryOrder = ['reconnaissance', 'admin', 'port', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library']
   const nonAICategories = categoryOrder.filter(cat => findingsByCategory[cat] && cat !== 'ai')
 
   // Extract domain from URL for elegant title
@@ -375,11 +411,48 @@ export default function ScanResultPage() {
                 <Download className="w-4 h-4" />
                 Download PDF
               </a>
-              <a href="/admin" className="text-sm text-slate-400 hover:text-slate-300">
+              <a href="/aiq_belepes_mrd/dashboard" className="text-sm text-slate-400 hover:text-slate-300">
                 View All Scans
               </a>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* New Scan Form */}
+      <div className="bg-black/20 backdrop-blur-sm border-b border-white/10">
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          <form onSubmit={handleNewScan} className="flex items-center gap-3">
+            <div className="flex-1 relative">
+              <input
+                type="url"
+                value={newScanUrl}
+                onChange={(e) => setNewScanUrl(e.target.value)}
+                placeholder="Enter a new URL to scan (e.g., https://example.com)"
+                className="w-full px-5 py-3 pl-12 bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:bg-white/15 transition-all"
+                required
+                disabled={newScanLoading}
+              />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+            </div>
+            <button
+              type="submit"
+              disabled={newScanLoading}
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-colors"
+            >
+              {newScanLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Scanning...
+                </>
+              ) : (
+                <>
+                  <Shield className="w-4 h-4" />
+                  Start New Scan
+                </>
+              )}
+            </button>
+          </form>
         </div>
       </div>
 

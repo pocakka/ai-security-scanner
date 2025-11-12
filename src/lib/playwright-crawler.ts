@@ -121,7 +121,7 @@ export class PlaywrightCrawler {
         loadTime,
         timingBreakdown, // NEW: detailed timing data
         timestamp: new Date(),
-        userAgent: this.config.userAgent || DEFAULT_CRAWLER_CONFIG.userAgent,
+        userAgent: (this.config.userAgent || DEFAULT_CRAWLER_CONFIG.userAgent) as string,
       }
     } catch (error) {
       console.error(`[PlaywrightCrawler] ❌ Scan failed:`, error)
@@ -138,7 +138,7 @@ export class PlaywrightCrawler {
         loadTime: Date.now() - startTime,
         timestamp: new Date(),
         error: error instanceof Error ? error.message : 'Unknown error',
-        userAgent: this.config.userAgent || DEFAULT_CRAWLER_CONFIG.userAgent,
+        userAgent: (this.config.userAgent || DEFAULT_CRAWLER_CONFIG.userAgent) as string,
       }
     } finally {
       // Always cleanup

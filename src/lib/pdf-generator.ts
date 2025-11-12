@@ -326,8 +326,10 @@ export function generatePDFReport(scan: ScanData): jsPDF {
 
     // Modern card with shadow effect (simulated with layered rectangles)
     doc.setFillColor(0, 0, 0)
+    // @ts-ignore - GState is available but not properly typed
     doc.setGState(new doc.GState({ opacity: 0.03 }))
     doc.roundedRect(16, yPosition + 1, pageWidth - 32, cardHeight, 4, 4, 'F')
+    // @ts-ignore - GState is available but not properly typed
     doc.setGState(new doc.GState({ opacity: 1.0 }))
 
     // Main card background

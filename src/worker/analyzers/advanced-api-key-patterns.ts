@@ -435,7 +435,7 @@ export const ADVANCED_API_KEY_PATTERNS: APIKeyPattern[] = [
       /https:\/\/maker\.ifttt\.com\/trigger\/[^/]+\/with\/key\/[A-Za-z0-9\-_]+/g,
       /https:\/\/[^/]+\/webhooks\/[A-Za-z0-9\-_]{16,}/g,
     ],
-    severity: 'medium',
+    severity: 'high',
     costRisk: 'medium',
     description: 'Webhook URL with embedded token exposed.',
     recommendation: 'Regenerate webhook URL. Add request signing verification.',

@@ -7,8 +7,10 @@ import { JSLibrariesResult } from './analyzers/js-libraries-analyzer'
 import { TechStackResult } from './analyzers/tech-stack-analyzer'
 import { ReconnaissanceResult } from './analyzers/reconnaissance-analyzer'
 import { AdminDetectionResult } from './analyzers/admin-detection-analyzer'
+import { AdminDiscoveryResult } from './analyzers/admin-discovery-analyzer'
 import { CORSResult, CORSFinding } from './analyzers/cors-analyzer'
 import { DNSSecurityResult } from './analyzers/dns-security-analyzer'
+import { PortScanResult } from './analyzers/port-scanner-analyzer'
 import { RiskScore } from './scoring'
 
 export interface ScanReport {
@@ -29,12 +31,16 @@ export interface ScanReport {
   cookieSecurity?: CookieSecurityResult // Add cookie security for frontend
   jsLibraries?: JSLibrariesResult // Add JS libraries for frontend
   reconnaissance?: ReconnaissanceResult // Add reconnaissance for frontend
+  adminDiscovery?: AdminDiscoveryResult // Add admin discovery for frontend
+  corsAnalysis?: CORSResult // Add CORS analysis for frontend
+  dnsAnalysis?: DNSSecurityResult // Add DNS analysis for frontend
+  portScan?: PortScanResult // Add port scan for frontend
   findings: Finding[]
 }
 
 export interface Finding {
   id: string
-  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors' | 'dns'
+  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors' | 'dns' | 'port'
   severity: 'low' | 'medium' | 'high' | 'critical'
   title: string
   description: string
@@ -54,8 +60,10 @@ export function generateReport(
   techStack?: TechStackResult,
   reconnaissance?: ReconnaissanceResult,
   adminDetection?: AdminDetectionResult,
+  adminDiscovery?: AdminDiscoveryResult,
   corsAnalysis?: CORSResult & { bypassPatterns?: CORSFinding[] },
-  dnsAnalysis?: DNSSecurityResult
+  dnsAnalysis?: DNSSecurityResult,
+  portScan?: PortScanResult
 ): ScanReport {
   const findings: Finding[] = []
 
@@ -224,6 +232,33 @@ export function generateReport(
     }
   }
 
+  // Admin Discovery findings (enhanced analyzer)
+  if (adminDiscovery) {
+    for (const finding of adminDiscovery.findings) {
+      // Skip info findings unless they're important
+      if (finding.severity === 'info' && !finding.title.includes('Good')) {
+        // Only skip generic info findings, keep important ones
+      }
+
+      findings.push({
+        id: `admin-discovery-${findings.length}`,
+        category: 'admin',
+        severity: finding.severity as 'low' | 'medium' | 'high' | 'critical',
+        title: finding.title,
+        description: finding.description || `${finding.type} detected`,
+        evidence: finding.url || finding.indicator || (finding.formActions ? finding.formActions.join(', ') : undefined),
+        impact: finding.impact,
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else if (finding.severity === 'low') lowCount++
+      // info findings don't count toward totals
+    }
+  }
+
   // CORS findings
   if (corsAnalysis) {
     // Add main CORS findings
@@ -271,6 +306,27 @@ export function generateReport(
     }
   }
 
+  // Port Scanner findings
+  if (portScan) {
+    for (const finding of portScan.findings) {
+      findings.push({
+        id: `port-${findings.length}`,
+        category: 'port',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description,
+        evidence: finding.evidence || (finding.port ? `Port ${finding.port}` : undefined),
+        impact: finding.impact,
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else if (finding.severity === 'low') lowCount++
+    }
+  }
+
   // DNS Security findings
   if (dnsAnalysis) {
     for (const finding of dnsAnalysis.findings) {
@@ -315,6 +371,10 @@ export function generateReport(
     cookieSecurity, // Pass cookie security result to frontend
     jsLibraries, // Pass JS libraries result to frontend
     reconnaissance, // Pass reconnaissance result to frontend
+    adminDiscovery, // Pass admin discovery result to frontend
+    corsAnalysis, // Pass CORS analysis result to frontend
+    dnsAnalysis, // Pass DNS analysis result to frontend
+    portScan, // Pass port scan result to frontend
     findings,
   }
 }

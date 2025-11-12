@@ -13,6 +13,29 @@
 
 import { CrawlResult } from '../crawler-mock'
 
+/**
+ * Helper function to fetch with timeout
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 3000): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    })
+    clearTimeout(timeout)
+    return response
+  } catch (error: any) {
+    clearTimeout(timeout)
+    if (error.name === 'AbortError') {
+      throw new Error(`DNS query timeout after ${timeoutMs}ms`)
+    }
+    throw error
+  }
+}
+
 export interface DNSFinding {
   type: string
   severity: 'critical' | 'high' | 'medium' | 'low' | 'info'
@@ -105,9 +128,9 @@ export async function validateDNSSEC(domain: string): Promise<DNSFinding[]> {
   try {
     // Use DNS over HTTPS to check DNSSEC
     const dohUrl = `https://cloudflare-dns.com/dns-query?name=${domain}&type=A`
-    const response = await fetch(dohUrl, {
+    const response = await fetchWithTimeout(dohUrl, {
       headers: { 'Accept': 'application/dns-json' }
-    })
+    }, 3000)
 
     const data = await response.json()
 
@@ -149,7 +172,7 @@ export async function validateDNSSEC(domain: string): Promise<DNSFinding[]> {
       severity: 'info',
       title: 'Could not verify DNSSEC status',
       description: 'Unable to check DNSSEC configuration',
-      details: { error: error.message }
+      details: { error: error instanceof Error ? error.message : 'Unknown error' }
     })
   }
 
@@ -164,7 +187,7 @@ export async function checkCAARecords(domain: string): Promise<DNSFinding[]> {
 
   try {
     const dohUrl = `https://cloudflare-dns.com/dns-query?name=${domain}&type=CAA`
-    const response = await fetch(dohUrl, {
+    const response = await fetchWithTimeout(dohUrl, {
       headers: { 'Accept': 'application/dns-json' }
     })
 
@@ -181,18 +204,18 @@ export async function checkCAARecords(domain: string): Promise<DNSFinding[]> {
       })
     } else {
       // Parse CAA records
-      const caaRecords = data.Answer.map(record => {
+      const caaRecords = data.Answer.map((record: any) => {
         const parts = record.data.match(/(\d+)\s+(\w+)\s+"([^"]+)"/)
         return {
           flags: parts?.[1],
           tag: parts?.[2],
           value: parts?.[3]
         }
-      }).filter(r => r.tag) // Filter out null entries
+      }).filter((r: any) => r.tag) // Filter out null entries
 
       // Check for issue/issuewild tags
-      const issueTags = caaRecords.filter(r => r.tag === 'issue')
-      const issueWildTags = caaRecords.filter(r => r.tag === 'issuewild')
+      const issueTags = caaRecords.filter((r: any) => r.tag === 'issue')
+      const issueWildTags = caaRecords.filter((r: any) => r.tag === 'issuewild')
 
       if (issueTags.length === 0) {
         findings.push({
@@ -217,7 +240,7 @@ export async function checkCAARecords(domain: string): Promise<DNSFinding[]> {
       }
 
       // Check for iodef (incident reporting)
-      const iodefTags = caaRecords.filter(r => r.tag === 'iodef')
+      const iodefTags = caaRecords.filter((r: any) => r.tag === 'iodef')
       if (iodefTags.length === 0) {
         findings.push({
           type: 'caa-no-iodef',
@@ -242,7 +265,7 @@ export async function checkCAARecords(domain: string): Promise<DNSFinding[]> {
       type: 'caa-check-failed',
       severity: 'info',
       title: 'Could not check CAA records',
-      details: { error: error.message }
+      details: { error: error instanceof Error ? error.message : "Unknown error" }
     })
   }
 
@@ -257,12 +280,12 @@ export async function validateSPF(domain: string): Promise<DNSFinding[]> {
 
   try {
     const dohUrl = `https://cloudflare-dns.com/dns-query?name=${domain}&type=TXT`
-    const response = await fetch(dohUrl, {
+    const response = await fetchWithTimeout(dohUrl, {
       headers: { 'Accept': 'application/dns-json' }
     })
 
     const data = await response.json()
-    const spfRecords = data.Answer?.filter(r =>
+    const spfRecords = data.Answer?.filter((r: any) =>
       r.data.includes('v=spf1')
     ) || []
 
@@ -375,7 +398,7 @@ export async function checkDKIM(domain: string): Promise<DNSFinding[]> {
       const dkimDomain = `${selector}._domainkey.${domain}`
       const dohUrl = `https://cloudflare-dns.com/dns-query?name=${dkimDomain}&type=TXT`
 
-      const response = await fetch(dohUrl, {
+      const response = await fetchWithTimeout(dohUrl, {
         headers: { 'Accept': 'application/dns-json' }
       })
 
@@ -454,12 +477,12 @@ export async function validateDMARC(domain: string): Promise<DNSFinding[]> {
     const dmarcDomain = `_dmarc.${domain}`
     const dohUrl = `https://cloudflare-dns.com/dns-query?name=${dmarcDomain}&type=TXT`
 
-    const response = await fetch(dohUrl, {
+    const response = await fetchWithTimeout(dohUrl, {
       headers: { 'Accept': 'application/dns-json' }
     })
 
     const data = await response.json()
-    const dmarcRecords = data.Answer?.filter(r =>
+    const dmarcRecords = data.Answer?.filter((r: any) =>
       r.data.includes('v=DMARC1')
     ) || []
 
@@ -572,7 +595,7 @@ export async function analyzeMXRecords(domain: string): Promise<DNSFinding[]> {
 
   try {
     const dohUrl = `https://cloudflare-dns.com/dns-query?name=${domain}&type=MX`
-    const response = await fetch(dohUrl, {
+    const response = await fetchWithTimeout(dohUrl, {
       headers: { 'Accept': 'application/dns-json' }
     })
 
@@ -587,7 +610,7 @@ export async function analyzeMXRecords(domain: string): Promise<DNSFinding[]> {
         impact: 'Domain cannot receive email'
       })
     } else {
-      const mxRecords = data.Answer.map(r => {
+      const mxRecords = data.Answer.map((r: any) => {
         const parts = r.data.split(' ')
         return {
           priority: parseInt(parts[0]),
@@ -623,7 +646,7 @@ export async function analyzeMXRecords(domain: string): Promise<DNSFinding[]> {
       }
 
       // Check for all same priority (no failover)
-      const priorities = [...new Set(mxRecords.map(r => r.priority))]
+      const priorities = [...new Set(mxRecords.map((r: any) => r.priority))]
       if (priorities.length === 1 && mxRecords.length > 1) {
         findings.push({
           type: 'mx-same-priority',
@@ -661,12 +684,12 @@ export async function analyzeTXTRecords(domain: string): Promise<DNSFinding[]> {
 
   try {
     const dohUrl = `https://cloudflare-dns.com/dns-query?name=${domain}&type=TXT`
-    const response = await fetch(dohUrl, {
+    const response = await fetchWithTimeout(dohUrl, {
       headers: { 'Accept': 'application/dns-json' }
     })
 
     const data = await response.json()
-    const txtRecords = data.Answer?.map(r => r.data) || []
+    const txtRecords = data.Answer?.map((r: any) => r.data) || []
 
     // Check for sensitive information in TXT records
     const sensitivePatterns = [
