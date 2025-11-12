@@ -28,6 +28,8 @@ import { analyzeWAFDetection } from './analyzers/waf-detection-analyzer'
 import { analyzeMFADetection } from './analyzers/mfa-detection-analyzer'
 import { analyzeRateLimiting } from './analyzers/rate-limiting-analyzer'
 import { analyzeGraphQL } from './analyzers/graphql-analyzer'
+import { analyzeErrorDisclosure } from './analyzers/error-disclosure-analyzer'
+import { analyzeSpaApi } from './analyzers/spa-api-analyzer'
 import { calculateRiskScore } from './scoring'
 import { generateReport } from './report-generator'
 
@@ -197,6 +199,20 @@ async function processScanJob(data: { scanId: string; url: string }) {
     const graphqlSecurity = await analyzeGraphQL(crawlResult.html)
     timings.graphql = Date.now() - graphqlStart
 
+    // NEW: Error Disclosure analyzer
+    const errorStart = Date.now()
+    const errorDisclosure = await analyzeErrorDisclosure(crawlResult.html, crawlResult.responseHeaders || {})
+    timings.errorDisclosure = Date.now() - errorStart
+
+    // NEW: SPA/API Detection analyzer
+    const spaStart = Date.now()
+    const spaApi = await analyzeSpaApi(
+      crawlResult.html,
+      [], // JS files - we could extract from crawlResult if needed
+      [] // Network requests - would need to be captured by crawler
+    )
+    timings.spaApi = Date.now() - spaStart
+
     // Calculate total time before DNS (everything except DNS)
     timings.totalAnalyzersBeforeDNS = Date.now() - analyzerStart
 
@@ -216,6 +232,8 @@ async function processScanJob(data: { scanId: string; url: string }) {
     console.log(`[Worker] ✓ Compliance: ${compliance.findings.length} findings (GDPR: ${compliance.gdprScore}%, CCPA: ${compliance.ccpaScore}%, ${compliance.overallCompliance})`)
     console.log(`[Worker] ✓ WAF Detection: ${wafDetection.hasWAF ? `${wafDetection.primaryWAF} detected` : 'No WAF detected'} (${wafDetection.detectedWAFs.length} WAFs)`)
     console.log(`[Worker] ✓ MFA/2FA: ${mfaDetection.hasMFA ? `${mfaDetection.detectedMethods.length} methods detected` : 'No MFA detected'} (OAuth: ${mfaDetection.hasOAuth}, WebAuthn: ${mfaDetection.hasWebAuthn}, TOTP: ${mfaDetection.hasTOTP})`)
+    console.log(`[Worker] ✓ Error Disclosure: ${errorDisclosure.findings.length} findings (Stack traces: ${errorDisclosure.hasStackTraces}, DB errors: ${errorDisclosure.hasDatabaseErrors}, Risk: ${errorDisclosure.riskLevel})`)
+    console.log(`[Worker] ✓ SPA/API: ${spaApi.isSPA ? `${spaApi.detectedFramework} detected` : 'Not SPA'} (${spaApi.apiEndpoints.length} API endpoints, ${spaApi.hasUnprotectedEndpoints ? 'UNPROTECTED ENDPOINTS!' : 'Protected'})`)
     console.log(`[Worker]   - CMS: ${techStack.categories.cms.length}`)
     console.log(`[Worker]   - Analytics: ${techStack.categories.analytics.length}`)
     console.log(`[Worker]   - Ads: ${techStack.categories.ads.length}`)
@@ -288,7 +306,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
       wafDetection, // WAF Detection analyzer
       mfaDetection, // MFA Detection analyzer
       rateLimiting, // Rate Limiting analyzer
-      graphqlSecurity // GraphQL Security analyzer
+      graphqlSecurity, // GraphQL Security analyzer
+      errorDisclosure, // Error Disclosure analyzer
+      spaApi // SPA/API Detection analyzer
     )
     timings.reportGeneration = Date.now() - reportStart
 
@@ -443,7 +463,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
         wafDetection, // WAF Detection analyzer
         mfaDetection, // MFA Detection analyzer
         rateLimiting, // Rate Limiting analyzer
-        graphqlSecurity // GraphQL Security analyzer
+        graphqlSecurity, // GraphQL Security analyzer
+        errorDisclosure, // Error Disclosure analyzer
+        spaApi // SPA/API Detection analyzer
       )
 
       // Update the saved scan with DNS results

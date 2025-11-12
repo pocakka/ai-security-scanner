@@ -16,6 +16,8 @@ import { WAFResult } from './analyzers/waf-detection-analyzer'
 import { MFAResult } from './analyzers/mfa-detection-analyzer'
 import { RateLimitResult } from './analyzers/rate-limiting-analyzer'
 import { GraphQLResult } from './analyzers/graphql-analyzer'
+import { ErrorDisclosureResult } from './analyzers/error-disclosure-analyzer'
+import { SpaApiResult } from './analyzers/spa-api-analyzer'
 import { RiskScore } from './scoring'
 
 export interface ScanReport {
@@ -45,12 +47,14 @@ export interface ScanReport {
   mfaDetection?: MFAResult // Add MFA detection for frontend
   rateLimiting?: RateLimitResult // Add rate limiting for frontend
   graphqlSecurity?: GraphQLResult // Add GraphQL security for frontend
+  errorDisclosure?: ErrorDisclosureResult // Add error disclosure for frontend
+  spaApi?: SpaApiResult // Add SPA/API detection for frontend
   findings: Finding[]
 }
 
 export interface Finding {
   id: string
-  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors' | 'dns' | 'port' | 'compliance' | 'waf' | 'mfa' | 'rate-limit' | 'graphql'
+  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors' | 'dns' | 'port' | 'compliance' | 'waf' | 'mfa' | 'rate-limit' | 'graphql' | 'error-disclosure' | 'spa-api'
   severity: 'low' | 'medium' | 'high' | 'critical' | 'info'
   title: string
   description: string
@@ -78,7 +82,9 @@ export function generateReport(
   wafDetection?: WAFResult,
   mfaDetection?: MFAResult,
   rateLimiting?: RateLimitResult,
-  graphqlSecurity?: GraphQLResult
+  graphqlSecurity?: GraphQLResult,
+  errorDisclosure?: ErrorDisclosureResult,
+  spaApi?: SpaApiResult
 ): ScanReport {
   const findings: Finding[] = []
 
@@ -483,6 +489,49 @@ export function generateReport(
     }
   }
 
+  // Error Disclosure findings
+  if (errorDisclosure) {
+    for (const finding of errorDisclosure.findings) {
+      findings.push({
+        id: `error-${findings.length}`,
+        category: 'error-disclosure',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description,
+        evidence: finding.evidence,
+        impact: finding.impact,
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
+  // SPA/API Detection findings
+  if (spaApi) {
+    for (const finding of spaApi.findings) {
+      const severity = finding.severity === 'info' ? 'low' : finding.severity
+
+      findings.push({
+        id: `spa-api-${findings.length}`,
+        category: 'spa-api',
+        severity: severity as 'low' | 'medium' | 'high' | 'critical',
+        title: finding.title,
+        description: finding.description,
+        evidence: finding.evidence,
+        impact: finding.impact,
+        recommendation: finding.recommendation,
+      })
+
+      if (severity === 'high') highCount++
+      else if (severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
   return {
     summary: {
       hasAI: aiDetection.hasAI,
@@ -510,6 +559,8 @@ export function generateReport(
     mfaDetection, // Pass MFA detection result to frontend
     rateLimiting, // Pass rate limiting result to frontend
     graphqlSecurity, // Pass GraphQL security result to frontend
+    errorDisclosure, // Pass error disclosure result to frontend
+    spaApi, // Pass SPA/API detection result to frontend
     findings,
   }
 }

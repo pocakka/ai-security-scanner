@@ -130,6 +130,18 @@ const CATEGORY_META = {
     description: 'GraphQL endpoint security configuration',
     explanation: 'GraphQL APIs require special security considerations. Exposed introspection reveals your entire schema to attackers. GraphQL Playground and GraphiQL should be disabled in production. Query depth limiting and cost analysis prevent DoS attacks.',
   },
+  'error-disclosure': {
+    icon: '❌',
+    title: 'Error & Debug Information Disclosure',
+    description: 'Stack traces, database errors, and debug mode indicators',
+    explanation: 'Exposed error messages reveal critical information about your application\'s internals: framework versions, file paths, database structure, and SQL queries. Stack traces help attackers map your system architecture. Database errors may expose connection strings or sensitive data. Debug mode shows variable values and configuration. This information significantly aids targeted attacks.',
+  },
+  'spa-api': {
+    icon: '⚡',
+    title: 'SPA & API Architecture',
+    description: 'Single Page Application framework and API endpoints',
+    explanation: 'Modern SPAs (React, Vue, Angular, Next.js) rely heavily on APIs for data. This analyzer identifies your SPA framework, discovers API endpoints, and checks for security issues like unprotected endpoints, API keys in URLs, or missing authentication. WebSocket connections are also analyzed for proper security implementation.',
+  },
 }
 
 export default function ScanResultPage() {
@@ -382,7 +394,7 @@ export default function ScanResultPage() {
   const aiFindings = findingsByCategory['ai'] || []
 
   // Define logical order for security categories
-  const categoryOrder = ['reconnaissance', 'admin', 'port', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library', 'compliance', 'waf', 'mfa', 'rate-limit', 'graphql']
+  const categoryOrder = ['reconnaissance', 'admin', 'port', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library', 'compliance', 'waf', 'mfa', 'rate-limit', 'graphql', 'error-disclosure', 'spa-api']
 
   // In full report mode, show ALL categories even if no findings
   // In normal mode, only show categories with findings
