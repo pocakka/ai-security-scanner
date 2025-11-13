@@ -202,3 +202,50 @@ model KnowledgeBaseFinding {
   @@index([severity])
   @@index([findingKey])
 }
+
+// ========================================
+// SITE SETTINGS - GLOBAL CONFIGURATION
+// ========================================
+// Stores global site settings like social media handles, branding, etc.
+// Single row table (id: "global")
+model SiteSettings {
+  id String @id
+
+  // ========================================
+  // SOCIAL MEDIA HANDLES
+  // ========================================
+  twitterHandle   String? // @username (without @)
+  facebookUrl     String? // Full URL to Facebook page
+  linkedinUrl     String? // Full URL to LinkedIn company page
+  instagramHandle String? // @username (without @)
+  youtubeUrl      String? // Full URL to YouTube channel
+  githubUrl       String? // Full URL to GitHub org/repo
+
+  // ========================================
+  // SEO & BRANDING
+  // ========================================
+  siteName        String  @default("AI Security Scanner")
+  siteDescription String? // Default meta description
+  siteUrl         String? // Production URL (e.g., https://aisecurityscanner.com)
+  ogImageUrl      String? // Default Open Graph image URL
+  faviconUrl      String? // Custom favicon URL
+
+  // ========================================
+  // CONTACT & BUSINESS
+  // ========================================
+  supportEmail    String? // support@example.com
+  salesEmail      String? // sales@example.com
+  companyName     String? // Legal company name
+  companyAddress  String? // Physical address
+
+  // ========================================
+  // FEATURES FLAGS
+  // ========================================
+  enableTwitterCards Boolean @default(false) // Enable Twitter meta tags
+  enableOgTags       Boolean @default(true)  // Enable Open Graph tags
+  enableAnalytics    Boolean @default(false) // Google Analytics toggle
+
+  // Timestamps
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}

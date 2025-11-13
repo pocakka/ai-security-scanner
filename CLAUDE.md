@@ -21,7 +21,13 @@ Delivers a 30-second automated security assessment that identifies potential AI-
 - **Backend**: SQLite-based worker queue with Playwright crawler
 - **Frontend**: Next.js 14 with real-time scan results & dark glassmorphism UI
 - **OWASP Focus**: **AI Red Teaming Scanner** with 60% OWASP LLM Top 10 coverage
-- **Recent Updates** (November 12, 2025 - Bugfixes): **🐛 FALSE POSITIVE ELIMINATION**
+- **Recent Updates** (November 13, 2025 - Scoring & UX): **🎯 SCORING V3 + PUBLIC PAGES**
+  - ✅ **Professional Scoring System v3.0** - Industry-standard scoring (OWASP/NIST/CVSS 3.1), realistic penalty values (2-2.5× stricter), reduced bonuses (50%), scores now realistic (90 A, 70 B-, not all 100 A+)
+  - ✅ **Public /all-scans Page** - Beautiful scan list (domain, score, grade, risk level, datetime), scan form integrated, no auth required
+  - ✅ **Dynamic "View All Scans" Link** - Admin → dashboard, non-admin → /all-scans (consistent across all pages)
+  - ✅ **API Key False Positive Fix** - CSS class names (accentedCardCarousel) excluded, BEM notation patterns filtered, 0 false positives
+  - ✅ **DateTime Display** - Admin dashboard + all-scans show full datetime (2025.11.13. 21:45) instead of just date
+- **Previous Updates** (November 12, 2025 - Bugfixes): **🐛 FALSE POSITIVE ELIMINATION**
   - ✅ **LLM06: PII False Positive Fix** - Context-aware filtering (200-char window), Luhn algorithm for credit cards, excluded Facebook App IDs/client IDs from detection, 0 false positives on GitHub scan
   - ✅ **LLM02: CSP Evidence Formatting** - Elegant CSP display (first 3 directives + "... (N more directives)"), max 200 chars instead of 2000+ char wall of text
   - **Commits**: `1eec7ff` (LLM06 fix), `4468538` (LLM02 format)

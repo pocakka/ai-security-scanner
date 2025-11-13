@@ -36,7 +36,7 @@ import { analyzeLLM05SupplyChain } from './analyzers/owasp-llm/llm05-supply-chai
 import { analyzeLLM06SensitiveInfo } from './analyzers/owasp-llm/llm06-sensitive-info'
 import { analyzeLLM07PluginDesign } from './analyzers/owasp-llm/llm07-plugin-design'
 import { analyzeLLM08ExcessiveAgency } from './analyzers/owasp-llm/llm08-excessive-agency'
-import { calculateRiskScore } from './scoring'
+import { calculateSecurityScore } from './scoring-v3' // ✨ NEW: Professional scoring system v3 (100 = perfect)
 import { generateReport } from './report-generator'
 
 // Initialize worker manager
@@ -468,20 +468,7 @@ async function processScanJob(data: { scanId: string; url: string }) {
     console.log(`[Worker]   - CDN: ${techStack.categories.cdn.length}`)
     console.log(`[Worker]   - Social: ${techStack.categories.social.length}`)
 
-    // Step 3: Calculate risk score (AI Trust Score already analyzed above)
-    console.log(`[Worker] Calculating risk score...`)
-    const riskScoreStart = Date.now()
-    const riskScore = calculateRiskScore(
-      aiDetection,
-      securityHeaders,
-      clientRisks,
-      sslTLS,
-      cookieSecurity,
-      jsLibraries
-    )
-    timings.riskScore = Date.now() - riskScoreStart
-
-    // Step 4: Generate report (WITHOUT DNS initially)
+    // Step 3: Generate report (WITHOUT DNS initially) - we'll calculate score AFTER
     console.log(`[Worker] Generating initial report (without DNS)...`)
 
     // Create default DNS result (will be updated if DNS check succeeds)
@@ -508,7 +495,7 @@ async function processScanJob(data: { scanId: string; url: string }) {
       aiDetection,
       securityHeaders,
       clientRisks,
-      riskScore,
+      { score: 0, level: 'LOW', grade: 'A+' }, // Temporary dummy score, will be recalculated
       sslTLS,
       cookieSecurity,
       jsLibraries,
@@ -534,6 +521,39 @@ async function processScanJob(data: { scanId: string; url: string }) {
       llm08ExcessiveAgency // OWASP LLM08 - Excessive Agency
     )
     timings.reportGeneration = Date.now() - reportStart
+
+    // Step 4: Calculate NEW v3 Professional Scoring (AFTER report generation)
+    console.log(`[Worker] 🎯 Calculating Professional Security Score v3.0 (100=perfect, 0=critical)...`)
+    const riskScoreStart = Date.now()
+
+    // Calculate scoring breakdown using the new v3 system (intuitive 100-point scale)
+    const scoreBreakdown = calculateSecurityScore(
+      report.findings || [], // All findings from the report
+      {
+        hasAI: aiDetection.hasAI,
+        sslCertificate: crawlResult.sslCertificate,
+        // Add other metadata as needed
+      }
+    )
+
+    timings.riskScore = Date.now() - riskScoreStart
+
+    console.log(`[Worker] ✅ Score: ${scoreBreakdown.overallScore}/100 (${scoreBreakdown.grade}, ${scoreBreakdown.riskLevel})`)
+    console.log(`[Worker]   - Critical Infrastructure: ${scoreBreakdown.categories.criticalInfrastructure.score}/100`)
+    console.log(`[Worker]   - Authentication: ${scoreBreakdown.categories.authentication.score}/100`)
+    console.log(`[Worker]   - Data Protection: ${scoreBreakdown.categories.dataProtection.score}/100`)
+    console.log(`[Worker]   - Code Quality: ${scoreBreakdown.categories.codeQuality.score}/100`)
+    console.log(`[Worker]   - AI Security: ${scoreBreakdown.categories.aiSecurity.applicable ? `${scoreBreakdown.categories.aiSecurity.score}/100` : 'N/A'}`)
+
+    // Update report.summary.riskScore with v3 scoring results
+    report.summary.riskScore = {
+      score: scoreBreakdown.overallScore,
+      level: scoreBreakdown.riskLevel,
+      grade: scoreBreakdown.grade,
+    }
+
+    // Add scoreBreakdown to report for API access (not just metadata)
+    report.scoreBreakdown = scoreBreakdown
 
     // Calculate total time
     timings.total = Date.now() - startTime
@@ -584,11 +604,14 @@ async function processScanJob(data: { scanId: string; url: string }) {
       where: { id: scanId },
       data: {
         status: 'COMPLETED',
-        riskScore: riskScore.score,
-        riskLevel: riskScore.level,
+        riskScore: scoreBreakdown.overallScore,
+        riskLevel: scoreBreakdown.riskLevel,
         detectedTech: JSON.stringify(report.detectedTech),
         findings: JSON.stringify(report),
-        metadata: JSON.stringify(performanceData),
+        metadata: JSON.stringify({
+          ...performanceData,
+          scoreBreakdown, // ✨ NEW: Include v2 professional scoring breakdown
+        }),
         completedAt: new Date(),
       },
     })
@@ -680,36 +703,8 @@ async function processScanJob(data: { scanId: string; url: string }) {
       timings.dns = Date.now() - dnsStart
       console.log(`[Worker] ✓ DNS Security: ${dnsAnalysis.findings.length} findings (DNSSEC: ${dnsAnalysis.hasDNSSEC}, SPF: ${dnsAnalysis.hasSPF}, DKIM: ${dnsAnalysis.hasDKIM}, DMARC: ${dnsAnalysis.hasDMARC}) - completed in ${timings.dns}ms`)
 
-      // Update report with DNS findings
-      report = generateReport(
-        aiDetection,
-        securityHeaders,
-        clientRisks,
-        riskScore,
-        sslTLS,
-        cookieSecurity,
-        jsLibraries,
-        techStack,
-        reconnaissance,
-        adminDetection,
-        adminDiscovery, // Admin Discovery analyzer
-        { ...corsAnalysis, bypassPatterns: corsBypassPatterns },
-        dnsAnalysis, // Use actual DNS results
-        portScan, // Port Scanner analyzer
-        compliance, // Compliance analyzer
-        wafDetection, // WAF Detection analyzer
-        mfaDetection, // MFA Detection analyzer
-        rateLimiting, // Rate Limiting analyzer
-        graphqlSecurity, // GraphQL Security analyzer
-        errorDisclosure, // Error Disclosure analyzer
-        spaApi, // SPA/API Detection analyzer
-        llm01PromptInjection, // OWASP LLM01 - Prompt Injection Risk
-        llm02InsecureOutput, // OWASP LLM02 - Insecure Output Handling
-        llm05SupplyChain, // OWASP LLM05 - Supply Chain Vulnerabilities
-        llm06SensitiveInfo, // OWASP LLM06 - Sensitive Information Disclosure
-        llm07PluginDesign, // OWASP LLM07 - Insecure Plugin Design
-        llm08ExcessiveAgency // OWASP LLM08 - Excessive Agency
-      )
+      // Update report with DNS analysis (without regenerating entire report)
+      report.dnsAnalysis = dnsAnalysis
 
       // Update the saved scan with DNS results
       await prisma.scan.update({
@@ -734,10 +729,10 @@ async function processScanJob(data: { scanId: string; url: string }) {
     timings.totalAnalyzers = Date.now() - analyzerStart
 
     console.log(`[Worker] ✅ Scan ${scanId} completed successfully`)
-    console.log(`[Worker] Risk Score: ${riskScore.score}/100 (${riskScore.grade} - ${riskScore.level})`)
+    console.log(`[Worker] Risk Score: ${scoreBreakdown.overallScore}/100 (${scoreBreakdown.grade} - ${scoreBreakdown.riskLevel})`)
     console.log(`[Worker] AI Trust Score: ${aiTrustResult.weightedScore}/100 (${aiTrustResult.grade})`)
 
-    return { success: true, scanId, riskScore: riskScore.score }
+    return { success: true, scanId, riskScore: scoreBreakdown.overallScore }
 
   } catch (error) {
     console.error(`[Worker] ❌ Error processing scan ${scanId}:`, error)

@@ -32,6 +32,27 @@ interface KnowledgeBaseEntry {
   references: string[]
 }
 
+// Helper functions (must be defined before ScanResultPage component)
+function getDomainTitle(url: string): string {
+  try {
+    const urlObj = new URL(url)
+    // Remove 'www.' if present and capitalize first letter
+    const domain = urlObj.hostname.replace(/^www\./, '')
+    return domain.charAt(0).toUpperCase() + domain.slice(1)
+  } catch {
+    return 'Website'
+  }
+}
+
+function calculateGrade(score: number): string {
+  if (score >= 90) return 'A+'
+  if (score >= 80) return 'A'
+  if (score >= 70) return 'B'
+  if (score >= 60) return 'C'
+  if (score >= 50) return 'D'
+  return 'F'
+}
+
 // Category metadata (icon, title, description)
 const CATEGORY_META = {
   ai: {
@@ -196,6 +217,9 @@ export default function ScanResultPage() {
   // Knowledge base for E-E-A-T content
   const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBaseEntry[]>([])
 
+  // Site settings (for Twitter handle and other meta tags)
+  const [siteSettings, setSiteSettings] = useState<any>(null)
+
   // Lead capture modal
   const [showLeadModal, setShowLeadModal] = useState(false)
   const [leadEmail, setLeadEmail] = useState('')
@@ -213,12 +237,22 @@ export default function ScanResultPage() {
   const [newScanUrl, setNewScanUrl] = useState('')
   const [newScanLoading, setNewScanLoading] = useState(false)
 
+  // Admin authentication check
+  const [isAdmin, setIsAdmin] = useState(false)
+
   useEffect(() => {
     // Set random tip only on client-side to avoid hydration error
     setSecurityTip(getRandomSecurityTip())
 
+    // Check if user is admin
+    const authToken = localStorage.getItem('admin_auth')
+    setIsAdmin(authToken === 'authenticated')
+
     // Fetch knowledge base once on mount
     fetchKnowledgeBase()
+
+    // Fetch site settings once on mount
+    fetchSiteSettings()
 
     fetchScan()
     // Poll every 2 seconds if not completed
@@ -231,6 +265,78 @@ export default function ScanResultPage() {
     return () => clearInterval(interval)
   }, [scanId, scan?.status])
 
+  // SEO Meta Tags - Update dynamically based on scan data
+  useEffect(() => {
+    if (!scan || !scan.url) return
+
+    const domainName = getDomainTitle(scan.url)
+    const riskScore = scan.riskScore || 0
+    const riskLevel = scan.riskLevel || 'UNKNOWN'
+    const grade = calculateGrade(riskScore)
+
+    // Meta Title (55-60 characters optimal)
+    const metaTitle = `${domainName} AI Security Scan - Score ${riskScore}/100 (${grade}) | Free Report`
+
+    // Meta Description (150-160 characters optimal)
+    const metaDescription = `Free AI security analysis of ${scan.url}. Risk Score: ${riskScore}/100 (${grade} grade, ${riskLevel} risk). Detected ${scan.findings?.findings?.length || 0} security issues. Get your free AI security audit now.`
+
+    // OG Title (can be longer, more descriptive)
+    const ogTitle = `${domainName} Security Report - ${riskScore}/100 AI Safety Score | Free Security Scan`
+
+    // OG Description (more detailed for social sharing)
+    const ogDescription = `We analyzed ${domainName} for AI security vulnerabilities. Overall Score: ${riskScore}/100 (${grade}). Risk Level: ${riskLevel}. Found ${scan.findings?.findings?.length || 0} security issues. Click to see your free detailed security report and learn how to fix vulnerabilities.`
+
+    // Twitter Card data
+    const twitterTitle = `${domainName} AI Security: ${riskScore}/100 (${grade})`
+    const twitterDescription = `Free AI security scan results for ${domainName}. ${riskLevel} risk level, ${scan.findings?.findings?.length || 0} issues detected. See full report →`
+
+    // Update document title
+    document.title = metaTitle
+
+    // Helper function to set or update meta tag
+    const setMetaTag = (property: string, content: string, isProperty = false) => {
+      const attribute = isProperty ? 'property' : 'name'
+      let metaTag = document.querySelector(`meta[${attribute}="${property}"]`)
+
+      if (!metaTag) {
+        metaTag = document.createElement('meta')
+        metaTag.setAttribute(attribute, property)
+        document.head.appendChild(metaTag)
+      }
+
+      metaTag.setAttribute('content', content)
+    }
+
+    // Standard Meta Tags
+    setMetaTag('description', metaDescription)
+
+    // Open Graph Tags (Facebook, LinkedIn)
+    setMetaTag('og:type', 'website', true)
+    setMetaTag('og:title', ogTitle, true)
+    setMetaTag('og:description', ogDescription, true)
+    setMetaTag('og:url', `${window.location.origin}/scan/${scanId}`, true)
+    setMetaTag('og:site_name', 'AI Security Scanner', true)
+    // Optional: Add og:image if you have a scan report screenshot or logo
+    // setMetaTag('og:image', `${window.location.origin}/api/scan/${scanId}/og-image`, true)
+
+    // Twitter Card Tags (only if Twitter handle is configured and enabled in settings)
+    if (siteSettings?.enableTwitterCards && siteSettings?.twitterHandle) {
+      setMetaTag('twitter:card', 'summary_large_image')
+      setMetaTag('twitter:title', twitterTitle)
+      setMetaTag('twitter:description', twitterDescription)
+      setMetaTag('twitter:site', `@${siteSettings.twitterHandle}`)
+      setMetaTag('twitter:creator', `@${siteSettings.twitterHandle}`)
+      // Optional: Add twitter:image if you have a scan report screenshot
+      // setMetaTag('twitter:image', `${window.location.origin}/api/scan/${scanId}/twitter-image`)
+    }
+
+    // Additional SEO tags
+    setMetaTag('robots', 'index, follow') // Allow search engines to index
+    setMetaTag('author', 'AI Security Scanner')
+    setMetaTag('language', 'English')
+
+  }, [scan, scanId, siteSettings])
+
   const fetchKnowledgeBase = async () => {
     try {
       const response = await fetch('/api/knowledge-base')
@@ -240,6 +346,18 @@ export default function ScanResultPage() {
       }
     } catch (error) {
       console.error('Failed to fetch knowledge base:', error)
+    }
+  }
+
+  const fetchSiteSettings = async () => {
+    try {
+      const response = await fetch('/api/settings')
+      if (response.ok) {
+        const data = await response.json()
+        setSiteSettings(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch site settings:', error)
     }
   }
 
@@ -405,7 +523,9 @@ export default function ScanResultPage() {
   const report = scan.findings || { summary: {}, detectedTech: {}, findings: [] }
   const findings = report.findings || []
   const detectedTech = report.detectedTech || scan.detectedTech || {}
-  const summary = report.summary || {
+
+  // Fix: Check if report.summary has riskScore property, not just if it exists as empty object
+  const summary = (report.summary && report.summary.riskScore) ? report.summary : {
     hasAI: detectedTech?.aiProviders?.length > 0 || detectedTech?.chatWidgets?.length > 0,
     riskScore: {
       score: scan.riskScore || 0,
@@ -439,17 +559,6 @@ export default function ScanResultPage() {
     : categoryOrder.filter(cat => findingsByCategory[cat] && cat !== 'ai')
 
   // Extract domain from URL for elegant title
-  const getDomainTitle = (url: string): string => {
-    try {
-      const urlObj = new URL(url)
-      // Remove 'www.' if present and capitalize first letter
-      const domain = urlObj.hostname.replace(/^www\./, '')
-      return domain.charAt(0).toUpperCase() + domain.slice(1)
-    } catch {
-      return 'Website'
-    }
-  }
-
   const domainTitle = getDomainTitle(scan.url)
 
   return (
@@ -498,7 +607,10 @@ export default function ScanResultPage() {
                 <Download className="w-4 h-4" />
                 Download PDF
               </a>
-              <a href="/aiq_belepes_mrd/dashboard" className="text-sm text-slate-400 hover:text-slate-300">
+              <a
+                href={isAdmin ? "/aiq_belepes_mrd/dashboard" : "/all-scans"}
+                className="text-sm text-slate-400 hover:text-slate-300"
+              >
                 View All Scans
               </a>
             </div>
@@ -1267,13 +1379,4 @@ function TechCategory({
       </div>
     </div>
   )
-}
-
-function calculateGrade(score: number): string {
-  if (score >= 90) return 'A+'
-  if (score >= 80) return 'A'
-  if (score >= 70) return 'B'
-  if (score >= 60) return 'C'
-  if (score >= 50) return 'D'
-  return 'F'
 }

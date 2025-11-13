@@ -3,10 +3,16 @@
 import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 
-// Format date consistently for server and client
+// Format date with time consistently for server and client
 function formatDate(date: Date | string): string {
   const d = new Date(date)
-  return d.toISOString().split('T')[0] // YYYY-MM-DD format
+  return new Intl.DateTimeFormat('hu-HU', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d)
 }
 
 interface Scan {

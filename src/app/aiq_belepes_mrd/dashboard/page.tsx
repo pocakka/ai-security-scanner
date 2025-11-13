@@ -102,6 +102,12 @@ export default function ProtectedAdminPage() {
           </div>
           <div className="flex gap-4">
             <a
+              href="/aiq_belepes_mrd/dashboard/settings"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+            >
+              ⚙️ Settings
+            </a>
+            <a
               href="/"
               className="px-6 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-lg font-semibold transition-colors"
             >

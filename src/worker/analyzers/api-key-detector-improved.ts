@@ -329,6 +329,14 @@ export const EXCLUSION_PATTERNS = [
   // CSS/Style hashes
   /^#[a-f0-9]{3,6}$/i, // Hex colors
 
+  // CSS class names and DOM identifiers (camelCase/PascalCase patterns)
+  // Common UI component naming patterns that look like random strings
+  /^[a-z]+([A-Z][a-z]+)*(Item|Card|Carousel|Container|Wrapper|Button|Header|Footer|Grid|List|Panel|Modal|Dialog|Menu|Nav|Bar|Box|Section|Component|Element|Widget|Layout|Content|Image|Icon|Logo|Link|Form|Input|Select|Table|Row|Cell|Column)$/,
+
+  // BEM notation and utility classes
+  /^[a-z0-9]+-{2}[a-z0-9]+(-[a-z0-9]+)*$/i, // BEM (block__element--modifier)
+  /^(bg|text|border|p|m|mt|mb|ml|mr|px|py|w|h|flex|grid|rounded|shadow|opacity|z)-[a-z0-9-]+$/i, // Utility classes
+
   // Common test data
   /^0{8,}$/, // All zeros
   /^1{8,}$/, // All ones

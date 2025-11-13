@@ -59,15 +59,13 @@ export default function Home() {
               <Shield className="w-8 h-8 text-blue-400" />
               <span className="text-xl font-bold text-white">AI Security Scanner</span>
             </div>
-            {isLoggedIn && (
-              <a
-                href="/aiq_belepes_mrd/dashboard"
-                className="text-sm text-blue-300 hover:text-blue-200 transition-colors flex items-center gap-2"
-              >
-                <FileText className="w-4 h-4" />
-                Latest Reports
-              </a>
-            )}
+            <a
+              href={isLoggedIn ? "/aiq_belepes_mrd/dashboard" : "/all-scans"}
+              className="text-sm text-blue-300 hover:text-blue-200 transition-colors flex items-center gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              View All Scans
+            </a>
           </div>
 
           {/* Hero Content */}
