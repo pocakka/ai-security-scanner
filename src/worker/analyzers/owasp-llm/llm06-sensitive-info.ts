@@ -319,10 +319,9 @@ export async function analyzeLLM06SensitiveInfo(
 
   // 1. Check for exposed system prompts
   for (const pattern of SYSTEM_PROMPT_PATTERNS) {
-    let match
-    pattern.lastIndex = 0
+    const matches = Array.from(html.matchAll(pattern))
 
-    while ((match = pattern.exec(html)) !== null) {
+    for (const match of matches) {
       hasSystemPrompts = true
       exposedDataTypes.push('system-prompt')
 
@@ -330,7 +329,7 @@ export async function analyzeLLM06SensitiveInfo(
       const redacted = prompt.substring(0, 50) + '...'
 
       // Extract context for confidence determination
-      const matchIndex = match.index
+      const matchIndex = match.index || 0
       const contextStart = Math.max(0, matchIndex - 200)
       const contextEnd = Math.min(html.length, matchIndex + prompt.length + 200)
       const context = html.substring(contextStart, contextEnd)
@@ -356,17 +355,16 @@ export async function analyzeLLM06SensitiveInfo(
 
   // 2. Check for training data exposure
   for (const pattern of TRAINING_DATA_PATTERNS) {
-    let match
-    pattern.lastIndex = 0
+    const matches = Array.from(html.matchAll(pattern))
 
-    while ((match = pattern.exec(html)) !== null) {
+    for (const match of matches) {
       hasTrainingData = true
       exposedDataTypes.push('training-data')
 
       const snippet = match[0].substring(0, 100) + '...'
 
       // Extract context
-      const matchIndex = match.index
+      const matchIndex = match.index || 0
       const contextStart = Math.max(0, matchIndex - 200)
       const contextEnd = Math.min(html.length, matchIndex + match[0].length + 200)
       const context = html.substring(contextStart, contextEnd)
@@ -392,12 +390,11 @@ export async function analyzeLLM06SensitiveInfo(
 
   // 3. Check for PII (Personally Identifiable Information)
   for (const piiPattern of PII_PATTERNS) {
-    let match
-    piiPattern.pattern.lastIndex = 0
+    const matches = Array.from(html.matchAll(piiPattern.pattern))
 
-    while ((match = piiPattern.pattern.exec(html)) !== null) {
+    for (const match of matches) {
       // Extract surrounding context (200 chars before and after match)
-      const matchIndex = match.index
+      const matchIndex = match.index || 0
       const contextStart = Math.max(0, matchIndex - 200)
       const contextEnd = Math.min(html.length, matchIndex + match[0].length + 200)
       const htmlContext = html.substring(contextStart, contextEnd)
@@ -434,15 +431,14 @@ export async function analyzeLLM06SensitiveInfo(
 
   // 4. Check for internal endpoints
   for (const pattern of INTERNAL_ENDPOINT_PATTERNS) {
-    let match
-    pattern.lastIndex = 0
+    const matches = Array.from(html.matchAll(pattern))
 
-    while ((match = pattern.exec(html)) !== null) {
+    for (const match of matches) {
       hasInternalEndpoints = true
       exposedDataTypes.push('internal-endpoint')
 
       // Extract context
-      const matchIndex = match.index
+      const matchIndex = match.index || 0
       const contextStart = Math.max(0, matchIndex - 200)
       const contextEnd = Math.min(html.length, matchIndex + match[0].length + 200)
       const context = html.substring(contextStart, contextEnd)
@@ -465,14 +461,13 @@ export async function analyzeLLM06SensitiveInfo(
 
   // 5. Check for model information disclosure
   for (const modelPattern of MODEL_INFO_PATTERNS) {
-    let match
-    modelPattern.pattern.lastIndex = 0
+    const matches = Array.from(html.matchAll(modelPattern.pattern))
 
-    while ((match = modelPattern.pattern.exec(html)) !== null) {
+    for (const match of matches) {
       hasModelInfo = true
       exposedDataTypes.push(`model-${modelPattern.type}`)
 
-      const matchIndex = match.index
+      const matchIndex = match.index || 0
       const contextStart = Math.max(0, matchIndex - 200)
       const contextEnd = Math.min(html.length, matchIndex + match[0].length + 200)
       const context = html.substring(contextStart, contextEnd)
@@ -496,15 +491,14 @@ export async function analyzeLLM06SensitiveInfo(
 
   // 6. Check for business logic exposure
   for (const pattern of BUSINESS_LOGIC_PATTERNS) {
-    let match
-    pattern.lastIndex = 0
+    const matches = Array.from(html.matchAll(pattern))
 
-    while ((match = pattern.exec(html)) !== null) {
+    for (const match of matches) {
       exposedDataTypes.push('business-logic')
 
       const snippet = match[0].substring(0, 150)
 
-      const matchIndex = match.index
+      const matchIndex = match.index || 0
       const contextStart = Math.max(0, matchIndex - 200)
       const contextEnd = Math.min(html.length, matchIndex + snippet.length + 200)
       const context = html.substring(contextStart, contextEnd)
@@ -527,13 +521,12 @@ export async function analyzeLLM06SensitiveInfo(
 
   // 7. Check for debug information
   for (const pattern of DEBUG_PATTERNS) {
-    let match
-    pattern.lastIndex = 0
+    const matches = Array.from(html.matchAll(pattern))
 
-    while ((match = pattern.exec(html)) !== null) {
+    for (const match of matches) {
       exposedDataTypes.push('debug-info')
 
-      const matchIndex = match.index
+      const matchIndex = match.index || 0
       const contextStart = Math.max(0, matchIndex - 200)
       const contextEnd = Math.min(html.length, matchIndex + match[0].length + 200)
       const context = html.substring(contextStart, contextEnd)

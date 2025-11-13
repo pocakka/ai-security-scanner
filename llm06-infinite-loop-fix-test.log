@@ -1,0 +1,13 @@
+[Worker] Using REAL Playwright crawler
+[WorkerManager] Another worker is already running
+[WorkerManager] Exiting - another worker is active
+[WorkerManager] Cleanup completed
+[Worker] Using REAL Playwright crawler
+[WorkerManager] Worker started with PID 3488
+[Worker] ✅ SQLite Queue Worker started
+[Worker] 🔍 Checking for pending jobs...
+[Worker] 💤 No jobs found, worker shutting down...
+[CrawlerAdapter] Closed
+[WorkerManager] Shutting down worker...
+[WorkerManager] Cleanup completed
+[WorkerManager] Cleanup completed
