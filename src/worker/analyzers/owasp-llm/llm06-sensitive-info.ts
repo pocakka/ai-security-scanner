@@ -50,21 +50,23 @@ export interface SensitiveInfoResult {
 }
 
 // System prompt patterns (different from LLM01 - focuses on disclosure, not injection)
+// FIXED: Added lazy quantifiers (?) to prevent catastrophic backtracking
 const SYSTEM_PROMPT_PATTERNS = [
-  /systemPrompt\s*[:=]\s*["'`]([^"'`]{100,500})["'`]/gi,
-  /system:\s*["'`]([^"'`]{100,500})["'`]/gi,
-  /instructions\s*[:=]\s*["'`]([^"'`]{100,500})["'`]/gi,
-  /You are (?:a|an) ([^"'.]{20,200})\./gi,
-  /Act as (?:a|an) ([^"'.]{20,200})\./gi,
-  /Your role is to ([^"'.]{20,200})\./gi,
+  /systemPrompt\s*[:=]\s*["'`]([^"'`]{100,500}?)["'`]/gi,
+  /system:\s*["'`]([^"'`]{100,500}?)["'`]/gi,
+  /instructions\s*[:=]\s*["'`]([^"'`]{100,500}?)["'`]/gi,
+  /You are (?:a|an) ([^"'.]{20,200}?)\./gi,
+  /Act as (?:a|an) ([^"'.]{20,200}?)\./gi,
+  /Your role is to ([^"'.]{20,200}?)\./gi,
 ]
 
 // Training data exposure patterns
+// FIXED: Removed catastrophic backtracking patterns with negated character classes + unlimited quantifiers
 const TRAINING_DATA_PATTERNS = [
   /trainingData\s*[:=]\s*\[/gi,
-  /examples\s*[:=]\s*\[\s*\{[^}]{50,}/gi,
+  /examples\s*[:=]\s*\[\s*\{/gi, // FIXED: Removed {50,} quantifier
   /fewShot(?:Examples)?\s*[:=]\s*\[/gi,
-  /prompt(?:s|Examples)\s*[:=]\s*\[\s*["'{][^"'}]{50,}/gi,
+  /prompt(?:s|Examples)\s*[:=]\s*\[\s*["'{]/gi, // FIXED: Removed {50,} quantifier
   /conversation(?:History|Examples)\s*[:=]\s*\[/gi,
 ]
 
@@ -182,12 +184,13 @@ const MODEL_INFO_PATTERNS = [
 ]
 
 // Business logic patterns
+// FIXED: Added lazy quantifiers and limited greedy quantifiers
 const BUSINESS_LOGIC_PATTERNS = [
   /\/\/ TODO: (.*?sensitive.*?)/gi,
   /\/\/ FIXME: (.*?security.*?)/gi,
   /\/\* INTERNAL: (.*?) \*\//gi,
-  /pricing\s*[:=]\s*\{[^}]{50,}\}/gi,
-  /algorithm\s*[:=]\s*["']([^"']{20,})["']/gi,
+  /pricing\s*[:=]\s*\{[^}]{50,500}?\}/gi, // FIXED: Limited to 500 chars max + lazy
+  /algorithm\s*[:=]\s*["']([^"']{20,200}?)["']/gi, // FIXED: Limited to 200 chars + lazy
 ]
 
 // Debug information patterns

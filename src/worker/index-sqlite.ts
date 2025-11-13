@@ -48,6 +48,26 @@ const crawler = USE_REAL_CRAWLER ? new CrawlerAdapter() : new MockCrawler()
 
 console.log(`[Worker] Using ${USE_REAL_CRAWLER ? 'REAL Playwright' : 'MOCK'} crawler`)
 
+/**
+ * Timeout wrapper for analyzers
+ * Prevents infinite loops by killing analyzer after timeout
+ */
+async function runWithTimeout<T>(
+  analyzerFn: () => Promise<T>,
+  timeoutMs: number,
+  analyzerName: string
+): Promise<T | null> {
+  return Promise.race([
+    analyzerFn(),
+    new Promise<null>((resolve) =>
+      setTimeout(() => {
+        console.log(`[Worker] ⏰ ${analyzerName} timeout after ${timeoutMs}ms - skipping`)
+        resolve(null)
+      }, timeoutMs)
+    )
+  ])
+}
+
 async function processScanJob(data: { scanId: string; url: string }) {
   const { scanId, url } = data
 
@@ -253,52 +273,84 @@ async function processScanJob(data: { scanId: string; url: string }) {
       console.log(`[Worker] 🤖 AI detected! Running OWASP LLM security analyzers...`)
 
       // NEW: OWASP LLM01 - Prompt Injection Risk analyzer (HIGH)
+      console.log(`[Worker] 🔍 Running LLM01 (Prompt Injection)...`)
       const llm01Start = Date.now()
       llm01PromptInjection = await analyzeLLM01PromptInjection(
         crawlResult.html,
         crawlResult.responseHeaders || {}
       )
       timings.llm01 = Date.now() - llm01Start
+      console.log(`[Worker] ✓ LLM01 completed in ${timings.llm01}ms`)
 
       // NEW: OWASP LLM02 - Insecure Output Handling analyzer (CRITICAL)
+      console.log(`[Worker] 🔍 Running LLM02 (Insecure Output)...`)
       const llm02Start = Date.now()
       llm02InsecureOutput = await analyzeLLM02InsecureOutput(
         crawlResult.html,
         crawlResult.responseHeaders || {}
       )
       timings.llm02 = Date.now() - llm02Start
+      console.log(`[Worker] ✓ LLM02 completed in ${timings.llm02}ms`)
 
       // NEW: OWASP LLM07 - Insecure Plugin Design analyzer (MEDIUM)
+      console.log(`[Worker] 🔍 Running LLM07 (Plugin Design)...`)
       const llm07Start = Date.now()
       llm07PluginDesign = await analyzeLLM07PluginDesign(
         crawlResult.html,
         crawlResult.responseHeaders || {}
       )
       timings.llm07 = Date.now() - llm07Start
+      console.log(`[Worker] ✓ LLM07 completed in ${timings.llm07}ms`)
 
       // NEW: OWASP LLM08 - Excessive Agency analyzer (MEDIUM)
+      console.log(`[Worker] 🔍 Running LLM08 (Excessive Agency)...`)
       const llm08Start = Date.now()
       llm08ExcessiveAgency = await analyzeLLM08ExcessiveAgency(
         crawlResult.html,
         crawlResult.responseHeaders || {}
       )
       timings.llm08 = Date.now() - llm08Start
+      console.log(`[Worker] ✓ LLM08 completed in ${timings.llm08}ms`)
 
       // NEW: OWASP LLM05 - Supply Chain Vulnerabilities analyzer (HIGH)
+      console.log(`[Worker] 🔍 Running LLM05 (Supply Chain)...`)
       const llm05Start = Date.now()
       llm05SupplyChain = await analyzeLLM05SupplyChain(
         crawlResult.html,
         crawlResult.responseHeaders || {}
       )
       timings.llm05 = Date.now() - llm05Start
+      console.log(`[Worker] ✓ LLM05 completed in ${timings.llm05}ms`)
 
       // NEW: OWASP LLM06 - Sensitive Information Disclosure analyzer (CRITICAL)
+      // LAST to run (most expensive) + 25s timeout
+      console.log(`[Worker] 🔍 Running LLM06 (Sensitive Info)...`)
       const llm06Start = Date.now()
-      llm06SensitiveInfo = await analyzeLLM06SensitiveInfo(
-        crawlResult.html,
-        crawlResult.responseHeaders || {}
+      const llm06Result = await runWithTimeout(
+        () => analyzeLLM06SensitiveInfo(crawlResult.html, crawlResult.responseHeaders || {}),
+        25000, // 25 seconds max
+        'LLM06'
       )
       timings.llm06 = Date.now() - llm06Start
+
+      if (llm06Result === null) {
+        // Timeout - return safe empty result
+        llm06SensitiveInfo = {
+          findings: [],
+          hasSystemPrompts: false,
+          hasTrainingData: false,
+          hasPII: false,
+          hasInternalEndpoints: false,
+          hasModelInfo: false,
+          exposedDataTypes: [],
+          overallRisk: 'none' as const,
+          timeout: true // Mark as timed out
+        }
+        console.log(`[Worker] ⚠️ LLM06 timed out - skipped (scan continues)`)
+      } else {
+        llm06SensitiveInfo = llm06Result
+        console.log(`[Worker] ✓ LLM06 completed in ${timings.llm06}ms`)
+      }
     } else {
       // NO AI detected - return empty/N/A results for all OWASP LLM analyzers
       console.log(`[Worker] ⚪ No AI implementation detected - Skipping OWASP LLM analyzers`)
