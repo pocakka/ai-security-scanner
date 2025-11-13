@@ -67,11 +67,20 @@ The AI Security Scanner MVP is functionally complete and ready for staging deplo
 
 4. ✅ **Dashboard UI** - Real-time monitoring interface
    - URL: http://localhost:3000/aiq_belepes_mrd/dashboard
+   - Restored original frankó admin layout (dark blue gradient)
+   - Worker Status Panel component with auto-refresh (3s)
    - Worker pool utilization gauge
-   - Active workers table (slot, PID, status, runtime)
-   - Job queue statistics (pending, processing, completed, failed)
-   - "Trigger Pending Jobs" button
-   - Auto-refresh every 2 seconds
+   - Active workers table showing **current URL being processed**
+   - Queue stats (Pending/Processing)
+   - AdminTabsWithDelete integration (Scans & Leads management)
+   - Bulk delete functionality for scans
+
+5. ✅ **AI Detection False Positive Fix** - CRITICAL
+   - Eliminated false positives from FAQ/blog text content
+   - Only checks technical signals (script tags, meta tags, data-* attributes)
+   - No longer searches in <p>, <h3>, <div> text content
+   - Example: "OpenAI API" mentioned in FAQ → no longer flagged
+   - Improved AI Trust Score accuracy
 
 ### Documentation
 1. ✅ **WORKER_POOL_TECHNICAL_DOCUMENTATION.md** (763 lines)

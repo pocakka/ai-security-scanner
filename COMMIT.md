@@ -19,6 +19,149 @@ All issues are now resolved or have production-ready workarounds.
 
 ## Recent Commits (Most Recent First)
 
+### Commit f635451 - AI Detection False Positive Fix
+**Date**: Nov 13, 2025 (latest)
+**Type**: fix(ai-detection)
+**Status**: ✅ Complete
+
+**Critical Bug Fix**: AI provider detection was causing false positives by checking text content in FAQs and articles.
+
+**Problem**:
+- detectAiProvider() searched ENTIRE HTML including `<p>`, `<h3>`, `<div>` text content
+- FAQ mentioning "OpenAI API" as example → incorrectly flagged as using OpenAI
+- Blog posts about AI tools → false AI detection
+
+**Example False Positive**:
+```
+URL: https://gazdagsag.hu/test/index.html
+FAQ: "...külső szolgáltatást (pl. OpenAI API-t) használsz..."
+Result: ❌ Incorrectly detected as OpenAI implementation
+```
+
+**Solution**:
+Modified detectAiProvider() and detectAiModel() to ONLY check:
+- ✅ JavaScript code in `<script>` tags
+- ✅ `<meta>` tags (technical metadata)
+- ✅ `<link>` tags (CDN URLs)
+- ✅ `data-*` attributes (component config)
+- ❌ NO text content in `<p>`, `<h3>`, `<div>` tags
+
+**Code Changes**:
+```typescript
+// Extract only technical HTML sections
+const metaTags = html.match(/<meta[^>]*>/gi) || []
+const linkTags = html.match(/<link[^>]*>/gi) || []
+const dataAttributes = html.match(/data-[a-z-]+="[^"]*"/gi) || []
+
+const technicalHtml = [...metaTags, ...linkTags, ...dataAttributes].join(' ')
+
+// Check patterns ONLY in technical sections + scripts
+for (const [provider, patterns] of Object.entries(AI_PROVIDERS)) {
+  if (checkPatternsInScripts(scripts, patterns).found) return provider
+  if (checkPatternsInText(technicalHtml, patterns).found) return provider
+}
+```
+
+**Result**:
+- Eliminates false positives from educational/marketing content
+- Only detects ACTUAL technical AI implementations
+- Improved AI Trust Score accuracy
+
+**Files Modified**:
+```
+M src/worker/analyzers/ai-trust-analyzer.ts (40 insertions, 4 deletions)
+```
+
+---
+
+### Commit 7470b8a - Worker Status Panel with Current URL Display
+**Date**: Nov 13, 2025
+**Type**: feat(dashboard)
+**Status**: ✅ Complete
+
+**What Changed**:
+- Restored original admin dashboard layout (dark blue gradient)
+- Added new WorkerStatusPanel component showing real-time worker activity
+- Worker table now displays current URL being processed
+- Auto-refresh every 3 seconds
+
+**New Features**:
+- Worker pool utilization gauge (visual progress bar)
+- Queue stats (Pending/Processing)
+- Active workers list with:
+  - Worker slot (#1, #2, etc.)
+  - Status badge (active/stale)
+  - **Current URL** (clickable link to scan page)
+  - Runtime display
+
+**Files Modified**:
+```
+A src/app/aiq_belepes_mrd/dashboard/WorkerStatusPanel.tsx (new component)
+M src/app/aiq_belepes_mrd/dashboard/page.tsx (restored + integrated panel)
+M src/app/api/workers/status/route.ts (added currentUrl, currentScanId)
+```
+
+**Dashboard Layout**:
+```
+┌─────────────────────────────────────────┐
+│ Admin Dashboard    [Back] [Logout]     │
+├─────────────────────────────────────────┤
+│ Stats Grid (4 cards)                    │
+├─────────────────────────────────────────┤
+│ ✨ Worker Status Panel (NEW!)          │
+│ - Pool utilization bar                 │
+│ - Queue stats                           │
+│ - Active workers + current URLs        │
+├─────────────────────────────────────────┤
+│ AdminTabsWithDelete                     │
+│ - Scans tab (bulk delete)              │
+│ - Leads tab                             │
+└─────────────────────────────────────────┘
+```
+
+**Access**: http://localhost:3000/aiq_belepes_mrd/dashboard
+
+---
+
+### Commit 981ff49 - Worker Status API Fix
+**Date**: Nov 13, 2025
+**Type**: fix(api)
+**Status**: ✅ Complete
+
+**Problem**: API endpoint /api/workers/status was failing with "Unknown argument updatedAt"
+
+**Root Cause**: Job model doesn't have `updatedAt` field, only `createdAt`, `startedAt`, `completedAt`
+
+**Fix**: Changed queries to use `completedAt` instead of `updatedAt`
+
+**Files Modified**:
+```
+M src/app/api/workers/status/route.ts (2 lines changed)
+  - Line 65: updatedAt → completedAt (COMPLETED jobs)
+  - Line 71: updatedAt → completedAt (FAILED jobs)
+```
+
+---
+
+### Commit c432721 - Dashboard UI & Documentation
+**Date**: Nov 13, 2025
+**Type**: feat(dashboard) + docs
+**Status**: ✅ Complete
+
+**What Changed**:
+- Created comprehensive COMMIT.md (this file)
+- Created PROGREDD.md (progress tracker)
+- Initial dashboard UI implementation (later improved in 7470b8a)
+
+**Files Added**:
+```
++ COMMIT.md (comprehensive commit history)
++ PROGREDD.md (progress tracker, roadmap)
++ src/app/aiq_belepes_mrd/dashboard/page.tsx (initial version)
+```
+
+---
+
 ### Commit db51cce - Worker Pool Documentation & Monitoring APIs
 **Date**: Nov 13, 2025, 16:01:50  
 **Type**: docs(worker) + feat(api)  
