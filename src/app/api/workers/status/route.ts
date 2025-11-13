@@ -62,13 +62,13 @@ export async function GET(request: NextRequest) {
       prisma.job.count({
         where: {
           status: 'COMPLETED',
-          updatedAt: { gte: new Date(Date.now() - 60 * 60 * 1000) }, // Last 1 hour
+          completedAt: { gte: new Date(Date.now() - 60 * 60 * 1000) }, // Last 1 hour
         },
       }),
       prisma.job.count({
         where: {
           status: 'FAILED',
-          updatedAt: { gte: new Date(Date.now() - 60 * 60 * 1000) }, // Last 1 hour
+          completedAt: { gte: new Date(Date.now() - 60 * 60 * 1000) }, // Last 1 hour
         },
       }),
     ])
