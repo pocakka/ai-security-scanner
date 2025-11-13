@@ -13,6 +13,8 @@ interface WorkerInfo {
   startTime: number
   runtime: number
   status: 'active' | 'stale'
+  currentUrl?: string
+  currentScanId?: string
 }
 
 /**
@@ -22,7 +24,7 @@ interface WorkerInfo {
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get active workers
+    // Get active workers with their current URLs
     const workers: WorkerInfo[] = []
 
     if (fs.existsSync(WORKER_POOL_DIR)) {
@@ -41,12 +43,44 @@ export async function GET(request: NextRequest) {
           const runtime = Date.now() - lockTime
           const isStale = runtime > MAX_WORKER_RUNTIME
 
+          // Find current job/scan for this worker (newest PROCESSING job)
+          const processingJob = await prisma.job.findFirst({
+            where: { status: 'PROCESSING' },
+            orderBy: { startedAt: 'desc' },
+            include: {
+              // We don't have direct relation, so we'll parse the data JSON
+            },
+          })
+
+          let currentUrl: string | undefined
+          let currentScanId: string | undefined
+
+          if (processingJob) {
+            try {
+              const jobData = JSON.parse(processingJob.data)
+              currentScanId = jobData.scanId
+
+              // Get the scan to find the URL
+              if (currentScanId) {
+                const scan = await prisma.scan.findUnique({
+                  where: { id: currentScanId },
+                  select: { url: true },
+                })
+                currentUrl = scan?.url
+              }
+            } catch (e) {
+              // Ignore JSON parse errors
+            }
+          }
+
           workers.push({
             slot,
             pid,
             startTime: lockTime,
             runtime,
             status: isStale ? 'stale' : 'active',
+            currentUrl,
+            currentScanId,
           })
         } catch (error) {
           // Skip invalid lock files
