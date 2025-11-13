@@ -466,31 +466,67 @@ function checkPatternsInNetworkRequests(
 
 /**
  * Detect AI provider from HTML and scripts
+ * ONLY checks technical signals (scripts, meta tags, data attributes)
+ * DOES NOT check text content to avoid false positives from FAQs/articles
  */
 function detectAiProvider(html: string, scripts: string[]): string | undefined {
+  // Check scripts first (most reliable)
   for (const [provider, patterns] of Object.entries(AI_PROVIDERS)) {
-    if (checkPatternsInText(html, patterns).found) {
-      return provider
-    }
     if (checkPatternsInScripts(scripts, patterns).found) {
       return provider
     }
   }
+
+  // Check only technical HTML sections (meta tags, link href, data attributes)
+  // Extract technical sections only
+  const metaTags = html.match(/<meta[^>]*>/gi) || []
+  const linkTags = html.match(/<link[^>]*>/gi) || []
+  const dataAttributes = html.match(/data-[a-z-]+="[^"]*"/gi) || []
+
+  const technicalHtml = [
+    ...metaTags,
+    ...linkTags,
+    ...dataAttributes
+  ].join(' ')
+
+  for (const [provider, patterns] of Object.entries(AI_PROVIDERS)) {
+    if (checkPatternsInText(technicalHtml, patterns).found) {
+      return provider
+    }
+  }
+
   return undefined
 }
 
 /**
  * Detect AI model from HTML and scripts
+ * ONLY checks technical signals, NOT text content
  */
 function detectAiModel(html: string, scripts: string[]): string | undefined {
+  // Check scripts first (most reliable)
   for (const [model, patterns] of Object.entries(AI_MODELS)) {
-    if (checkPatternsInText(html, patterns).found) {
-      return model
-    }
     if (checkPatternsInScripts(scripts, patterns).found) {
       return model
     }
   }
+
+  // Check only technical HTML sections
+  const metaTags = html.match(/<meta[^>]*>/gi) || []
+  const linkTags = html.match(/<link[^>]*>/gi) || []
+  const dataAttributes = html.match(/data-[a-z-]+="[^"]*"/gi) || []
+
+  const technicalHtml = [
+    ...metaTags,
+    ...linkTags,
+    ...dataAttributes
+  ].join(' ')
+
+  for (const [model, patterns] of Object.entries(AI_MODELS)) {
+    if (checkPatternsInText(technicalHtml, patterns).found) {
+      return model
+    }
+  }
+
   return undefined
 }
 
