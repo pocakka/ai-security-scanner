@@ -265,6 +265,102 @@ const LLM_API_PATTERNS: LLMAPIPattern[] = [
       'Prediction manipulation',
     ],
   },
+
+  // 10. Together AI (P0) - Open-source models
+  {
+    provider: 'Together AI',
+    endpoints: [
+      'api.together.xyz/inference',
+      'api.together.xyz/v1/chat/completions',
+      'api.together.xyz/v1/completions',
+    ],
+    authHeaderPatterns: [
+      /Authorization:\s*Bearer\s+([a-f0-9]{64})/i,  // 64-char hex
+    ],
+    apiKeyPatterns: [
+      /[a-f0-9]{64}/,
+    ],
+    requestStructureKeywords: ['model', 'prompt', 'messages', 'max_tokens', 'temperature'],
+    responseStructureKeywords: ['output', 'choices', 'usage'],
+    attackSurface: [
+      'Open-source model exploitation',
+      'Prompt injection',
+      'API key exposure (64-char hex)',
+      'Rate limit bypass',
+      'Model parameter manipulation',
+    ],
+  },
+
+  // 11. Perplexity AI (P0) - Search-augmented LLM
+  {
+    provider: 'Perplexity AI',
+    endpoints: [
+      'api.perplexity.ai/chat/completions',
+    ],
+    authHeaderPatterns: [
+      /Authorization:\s*Bearer\s+(pplx-[a-zA-Z0-9]{40,})/i,
+    ],
+    apiKeyPatterns: [
+      /pplx-[a-zA-Z0-9]{40,}/,
+    ],
+    requestStructureKeywords: ['model', 'messages', 'temperature', 'max_tokens', 'stream'],
+    responseStructureKeywords: ['choices', 'citations', 'usage'],
+    attackSurface: [
+      'Search-augmented prompt injection',
+      'Citation manipulation',
+      'Source spoofing',
+      'API key exposure (pplx- prefix)',
+      'Real-time web data poisoning',
+    ],
+  },
+
+  // 12. Mistral AI (P0) - European AI
+  {
+    provider: 'Mistral AI',
+    endpoints: [
+      'api.mistral.ai/v1/chat/completions',
+      'api.mistral.ai/v1/embeddings',
+    ],
+    authHeaderPatterns: [
+      /Authorization:\s*Bearer\s+([a-zA-Z0-9]{32})/i,
+    ],
+    apiKeyPatterns: [
+      /[a-zA-Z0-9]{32}/,  // Generic 32-char key (context-aware)
+    ],
+    requestStructureKeywords: ['model', 'messages', 'temperature', 'max_tokens', 'safe_mode'],
+    responseStructureKeywords: ['choices', 'usage', 'model'],
+    attackSurface: [
+      'European AI regulation bypass',
+      'Prompt injection',
+      'Model extraction',
+      'API key exposure (32-char)',
+      'Safe mode bypass attempts',
+    ],
+  },
+
+  // 13. Groq (P0) - Ultra-fast inference (LPU)
+  {
+    provider: 'Groq',
+    endpoints: [
+      'api.groq.com/openai/v1/chat/completions',
+      'api.groq.com/openai/v1/models',
+    ],
+    authHeaderPatterns: [
+      /Authorization:\s*Bearer\s+(gsk_[a-zA-Z0-9]{52})/i,
+    ],
+    apiKeyPatterns: [
+      /gsk_[a-zA-Z0-9]{52}/,
+    ],
+    requestStructureKeywords: ['model', 'messages', 'temperature', 'max_tokens', 'stream'],
+    responseStructureKeywords: ['choices', 'usage', 'x_groq'],
+    attackSurface: [
+      'Ultra-fast inference exploitation',
+      'Token manipulation',
+      'LPU-specific attacks',
+      'API key exposure (gsk_ prefix)',
+      'OpenAI compatibility layer abuse',
+    ],
+  },
 ]
 
 /**
