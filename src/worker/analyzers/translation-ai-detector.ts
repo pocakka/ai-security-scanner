@@ -15,7 +15,7 @@
  * Created: 2025-11-14
  */
 
-import type { CrawlResult } from '@/lib/types/crawler-types'
+import type { CrawlerResult as CrawlResult } from '@/lib/types/crawler-types'
 
 export interface TranslationAIDetection {
   provider: string

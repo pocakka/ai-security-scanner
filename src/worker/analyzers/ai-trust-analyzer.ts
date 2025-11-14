@@ -129,6 +129,37 @@ export interface AiTrustResult {
 
   evidenceData: Record<string, string[]>
 
+  // NEW: Extended AI Detection Results (P0 Detectors)
+  voiceAI?: {
+    hasVoiceAI: boolean
+    detections: any[]
+    totalProviders: number
+  }
+  translationAI?: {
+    hasTranslationAI: boolean
+    detections: any[]
+    totalProviders: number
+  }
+  searchAI?: {
+    hasSearchAI: boolean
+    detections: any[]
+    totalProviders: number
+    criticalRiskCount: number
+  }
+  personalizationAI?: {
+    hasPersonalizationAI: boolean
+    detections: any[]
+    totalProviders: number
+    sessionRecordingDetected: boolean
+  }
+  analyticsAI?: {
+    hasAnalyticsAI: boolean
+    detections: any[]
+    totalProviders: number
+    sessionReplayDetected: boolean
+    criticalRiskCount: number
+  }
+
   // NEW: Human-readable summary
   summary: {
     message: string
@@ -1124,6 +1155,36 @@ export function analyzeAiTrust(crawlResult: CrawlResult, securityScore: number =
     detailedChecks, // NEW
     checks, // Legacy format
     evidenceData,
+    // NEW: Extended AI Detection Results (P0 Detectors)
+    voiceAI: voiceAIResult.hasVoiceAI ? {
+      hasVoiceAI: voiceAIResult.hasVoiceAI,
+      detections: voiceAIResult.detections,
+      totalProviders: voiceAIResult.totalProviders,
+    } : undefined,
+    translationAI: translationAIResult.hasTranslationAI ? {
+      hasTranslationAI: translationAIResult.hasTranslationAI,
+      detections: translationAIResult.detections,
+      totalProviders: translationAIResult.totalProviders,
+    } : undefined,
+    searchAI: searchAIResult.hasSearchAI ? {
+      hasSearchAI: searchAIResult.hasSearchAI,
+      detections: searchAIResult.detections,
+      totalProviders: searchAIResult.totalProviders,
+      criticalRiskCount: searchAIResult.criticalRiskCount,
+    } : undefined,
+    personalizationAI: personalizationAIResult.hasPersonalizationAI ? {
+      hasPersonalizationAI: personalizationAIResult.hasPersonalizationAI,
+      detections: personalizationAIResult.detections,
+      totalProviders: personalizationAIResult.totalProviders,
+      sessionRecordingDetected: personalizationAIResult.sessionRecordingDetected,
+    } : undefined,
+    analyticsAI: analyticsAIResult.hasAnalyticsAI ? {
+      hasAnalyticsAI: analyticsAIResult.hasAnalyticsAI,
+      detections: analyticsAIResult.detections,
+      totalProviders: analyticsAIResult.totalProviders,
+      sessionReplayDetected: analyticsAIResult.sessionReplayDetected,
+      criticalRiskCount: analyticsAIResult.criticalRiskCount,
+    } : undefined,
     summary, // NEW
   }
 }
