@@ -13,6 +13,11 @@
  */
 
 import { CrawlResult } from '../crawler-mock'
+import { detectVoiceAI } from './voice-ai-detector'
+import { detectTranslationAI } from './translation-ai-detector'
+import { detectSearchAI } from './search-ai-detector'
+import { detectPersonalizationAI } from './personalization-detector'
+import { detectAnalyticsAI } from './analytics-ai-detector'
 
 // ========================================
 // TYPES
@@ -208,6 +213,12 @@ const CHAT_FRAMEWORKS: Record<string, string[]> = {
 
   // CRITICAL: GPT4Business (YoloAI) - previously missing!
   'GPT4Business (YoloAI)': ['app.gpt4business.yoloai.com', 'gpt4business.yoloai.com', 'gpt4business', 'admin.gpt4business.ai', 'chatbubble.js'],
+
+  // P0 Missing Chat Widgets (added November 14, 2025)
+  'Rocket.Chat': ['rocket.chat/livechat', '/livechat/rocketchat-livechat.min.js', 'window.rocketchat', '.rocketchat-widget', '#rocketchat-iframe', 'rocketchatlivechat'],
+  'SnapEngage': ['snapengage.com/cdn/', 'snapabug.appspot.com', 'window.snapengage', 'window.snapabug', '#snapengage-widget', 'snapengage_'],
+  'Kayako': ['kayako.com/api/v1/messenger.js', 'kayakocdn.com', 'window.kayako', '.kayako-messenger', '#kayako-messenger', 'kayakomessenger'],
+  'Kustomer': ['cdn.kustomerapp.com/chat-web/', 'kustomerapp.com', 'window.kustomer', '#kustomer-ui-sdk-iframe', '.kustomer-', 'kustomersettings'],
 }
 
 // ========================================
@@ -823,6 +834,15 @@ export function analyzeAiTrust(crawlResult: CrawlResult, securityScore: number =
   if (!aiDetection.hasAi || aiDetection.confidenceLevel === 'none' || aiDetection.confidenceLevel === 'low') {
     return createNotApplicableResult(aiDetection, securityScore)
   }
+
+  // ========================================
+  // STEP 0.5: EXTENDED AI DETECTION (NEW P0 DETECTORS)
+  // ========================================
+  const voiceAIResult = detectVoiceAI(crawlResult)
+  const translationAIResult = detectTranslationAI(crawlResult)
+  const searchAIResult = detectSearchAI(crawlResult)
+  const personalizationAIResult = detectPersonalizationAI(crawlResult)
+  const analyticsAIResult = detectAnalyticsAI(crawlResult)
 
   // ========================================
   // CATEGORY 1: TRANSPARENCY
