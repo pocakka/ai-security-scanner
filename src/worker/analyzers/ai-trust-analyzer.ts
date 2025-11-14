@@ -161,14 +161,53 @@ const AI_MODELS: Record<string, string[]> = {
   'Llama': ['model":"llama', 'llama-2', 'llama-3', 'using llama'],
 }
 
-// Chat Framework Detection
+// Chat Framework Detection - EXPANDED (35 chat widgets from ai-detection.ts)
 const CHAT_FRAMEWORKS: Record<string, string[]> = {
-  'Intercom': ['intercom.com', 'id="intercom', 'intercom-messenger'],
-  'Drift': ['drift.com', 'drift-frame', 'id="drift'],
-  'Tidio': ['tidio.com', 'tidio-chat'],
-  'Zendesk': ['zendesk.com', 'web-widget', 'zendesk-widget'],
-  'Freshchat': ['freshchat.com', 'fc-widget'],
-  'LiveChat': ['livechat.com', 'livechat-widget'],
+  // Tier 1: Market Leaders (10 services)
+  'Intercom': ['widget.intercom.io', 'js.intercomcdn.com', 'intercom.com', 'id="intercom', 'intercom-messenger', 'window.intercom', 'intercomsettings', '#intercom-container', '.intercom-messenger-frame'],
+  'Drift': ['js.driftt.com', 'js.drift.com', 'drift.com', 'drift-frame', 'id="drift', 'window.drift', 'driftapi', '#drift-widget-container', '#drift-frame-controller'],
+  'Zendesk Chat': ['static.zdassets.com', 'v2.zopim.com', 'zendesk.com', 'web-widget', 'zendesk-widget', 'window.ze', 'window.$zopim', '#ze-snippet', '.zopim'],
+  'LiveChat': ['cdn.livechatinc.com', 'cdn.livechat-files.com', 'livechat.com', 'livechat-widget', 'window.livechatwidget', 'lc_api', '#livechat-widget', '.livechat-'],
+  'Freshchat': ['wchat.freshchat.com', 'snippet.freshchat.com', 'freshchat.com', 'fc-widget', 'window.fcwidget', 'fcsettings', '.freshchat-', '#fc_frame'],
+  'HubSpot Chat': ['js.hs-scripts.com', 'js.hubspot.com', 'window.hubspotconversations', 'hsconversationssettings', '#hubspot-messages-iframe', '.hs-'],
+  'Crisp': ['client.crisp.chat', 'client.relay.crisp.chat', 'window.$crisp', 'crisp_', '.crisp-client', '#crisp-chatbox'],
+  'Tidio': ['code.tidio.co', 'cdn.tidio.co', 'tidio.com', 'tidio-chat', 'window.tidiochatapi', 'tidioidentify', '#tidio-chat', '.tidio-'],
+  'Tawk.to': ['embed.tawk.to', 'va.tawk.to', 'tawk.to', 'window.tawk_api', 'tawk_loadstart', '.tawk-widget', '#tawkchat-'],
+  'Olark': ['static.olark.com', 'window.olark', 'olark_', '#olark-box', '.olark'],
+
+  // Tier 2: Enterprise/SaaS (10 services)
+  'Salesforce Live Agent': ['service.force.com/embeddedservice', 'window.embedded_svc', 'window.liveagent', '.embeddedservicehelpbutton', '#liveagent_'],
+  'LivePerson': ['lptag.liveperson.net', 'lpcdn.lpsnmedia.net', 'window.lptag', 'lpmcontainer', '#lpchat', '.lpmcontainer'],
+  'Genesys Cloud': ['apps.mypurecloud.com', 'window.genesys', 'window.purecloud', '.cx-widget', '#webchat-'],
+  'Help Scout Beacon': ['beacon-v2.helpscout.net', 'd3hb14vkzrxvla.cloudfront.net', 'window.beacon', 'beaconapi', '#beacon-container', '.beaconfabbutton'],
+  'Gorgias': ['config.gorgias.chat', 'client.gorgias.chat', 'window.gorgiaschat', '$gorgias', '.gorgias-chat-', '#gorgias-'],
+  'Chatwoot': ['/packs/js/sdk.js', 'chatwoot.com/packs', 'window.$chatwoot', 'chatwootsdk', '.woot-widget-holder', '#chatwoot_'],
+  'Re:amaze': ['cdn.reamaze.com', 'window.reamaze', '_rasettings', '#reamaze-widget', '.reamaze-'],
+  'Smartsupp': ['www.smartsuppchat.com', 'window.smartsupp', '$smartsupp', '#chat-application', '.smartsupp-'],
+  'JivoChat': ['code.jivosite.com', 'code.jivo', 'window.jivo_api', 'jivo_config', '#jivo-iframe-container', '.globalclass_'],
+  'Userlike': ['userlike-cdn-widgets', 'userlike.com', 'window.userlikeconfig', 'userlike_', '#userlike-widget', '.userlike-'],
+
+  // Tier 3: AI-First / LLM-Based (10 services)
+  'Chatbase': ['www.chatbase.co', 'cdn.chatbase.co', 'window.chatbase', 'embeddedchatbotconfig', '#chatbase-bubble', '.chatbase-'],
+  'Voiceflow': ['cdn.voiceflow.com', 'window.voiceflow', 'vf-chat', '.vf-'],
+  'Botpress': ['cdn.botpress.cloud', 'mediafiles.botpress.cloud', 'window.botpresswebchat', 'window.botpress', '#bp-web-widget', '.bpwidget'],
+  'Dialogflow Messenger': ['gstatic.com/dialogflow-console', 'window.dialogflow', 'dfmessenger', 'df-messenger', '.df-messenger'],
+  'IBM Watson Assistant': ['web-chat.global.assistant.watson', 'assistant.watson', 'window.watsonassistantchatoptions', 'watsonassistant', '#waccontainer', '.wac__'],
+  'Microsoft Bot Framework': ['cdn.botframework.com', 'window.webchat', 'window.botchat', '#webchat', '.webchat'],
+  'Ada': ['static.ada.support', 'window.adaembed', 'adasettings', '#ada-button-frame', '.ada-'],
+  'Landbot': ['cdn.landbot.io', 'static.landbot.io', 'window.landbot', 'mylandbot', '#landbot-', '.landbot'],
+  'Rasa Webchat': ['cdn.jsdelivr.net/npm/rasa-webchat', 'unpkg.com/rasa-webchat', 'window.webchat', 'rasawebchat', '.rasa-chat-', '#rasa-'],
+  'Amazon Lex': ['runtime.lex.', '.amazonaws.com/lex', 'window.aws.lexruntime', 'lexruntime', '#lex-web-ui', '.lex-'],
+
+  // Additional Popular Widgets (5 services)
+  'Chatra': ['call.chatra.io', 'io.chatra.io', 'window.chatra', 'chatraid', '.chatra-', '#chatra-'],
+  'Pure Chat': ['app.purechat.com', 'window.purechatapi', 'pcwidget', '.purechat-', '#purechat-'],
+  'Zoho SalesIQ': ['salesiq.zoho.com', 'js.zohocdn.com/salesiq', 'window.$zoho.salesiq', '$zoho.ichat', '#zsiq_float', '.zsiq'],
+  'HelpCrunch': ['widget.helpcrunch.com', 'window.helpcrunch', 'helpcrunchsettings', '.helpcrunch-widget', '#helpcrunch-'],
+  'Kommunicate': ['widget.kommunicate.io', 'window.kommunicate', '#kommunicate-widget-iframe', '.kommunicate-'],
+
+  // CRITICAL: GPT4Business (YoloAI) - previously missing!
+  'GPT4Business (YoloAI)': ['app.gpt4business.yoloai.com', 'gpt4business.yoloai.com', 'gpt4business', 'admin.gpt4business.ai', 'chatbubble.js'],
 }
 
 // ========================================
