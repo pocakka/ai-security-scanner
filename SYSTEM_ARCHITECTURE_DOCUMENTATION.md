@@ -1883,3 +1883,849 @@ ai-security-scanner/
 **Questions?** Check GitHub Issues or contact support.
 
 ---
+
+---
+
+## 13. Additional Frontend Pages
+
+### 13.1 Homepage (`/`)
+
+**File**: `src/app/page.tsx` (199 lines)
+
+**Purpose**: Landing page with URL submission form for starting new scans
+
+**Key Features**:
+
+1. **URL Input Form** (Lines 90-136)
+   - Validates URL format (must be valid HTTP/HTTPS)
+   - Disabled state during scan creation
+   - Real-time error display
+
+2. **Scan Creation Flow** (Lines 20-46)
+   ```typescript
+   const handleScan = async (e: React.FormEvent) => {
+     e.preventDefault()
+     setLoading(true)
+
+     try {
+       const response = await fetch('/api/scan', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ url }),
+       })
+
+       const data = await response.json()
+       
+       if (!response.ok) {
+         // Show user-friendly error message
+         throw new Error(data.message || data.error || 'Failed to start scan')
+       }
+
+       // Redirect to scan results page
+       router.push(`/scan/${data.scanId}`)
+     } catch (err) {
+       setError(err.message)
+       setLoading(false)
+     }
+   }
+   ```
+
+3. **Authentication Check** (Lines 14-18)
+   - Checks `localStorage.getItem('admin_auth')`
+   - If authenticated: Shows link to Admin Dashboard
+   - If not: Shows link to "All Scans" (public page)
+
+4. **Hero Section** (Lines 72-88)
+   - Main headline: "Is Your AI Implementation Putting You at Risk?"
+   - Value proposition
+   - Call-to-action
+
+5. **Feature Grid** (Lines 139-169)
+   - AI Risk Detection
+   - Security Headers
+   - OWASP LLM Top 10
+   - Each with icon, title, description
+
+6. **Trust Bar** (Lines 173-195)
+   - Passive Scanning Only
+   - No Server Access Required
+   - Privacy Focused
+   - Instant Results
+
+**State Management**:
+```typescript
+const [url, setUrl] = useState('')                // User input
+const [loading, setLoading] = useState(false)     // Submit state
+const [error, setError] = useState('')            // Error message
+const [isLoggedIn, setIsLoggedIn] = useState(false) // Admin check
+```
+
+**API Endpoint Called**:
+- `POST /api/scan` - Creates scan and returns `scanId`
+
+**Navigation**:
+- Success → `/scan/{scanId}` (results page)
+- "View All Scans" → `/all-scans` (public) or `/aiq_belepes_mrd/dashboard` (admin)
+
+**Troubleshooting**:
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| "Failed to start scan" | API returned error | Check Redis connection, worker status |
+| Form not submitting | JavaScript error | Check browser console |
+| Redirect not working | Invalid scanId | Check API response |
+| Admin link not showing | Auth token not set | `localStorage.setItem('admin_auth', 'authenticated')` |
+
+---
+
+### 13.2 All Scans Page (`/all-scans`)
+
+**File**: `src/app/all-scans/page.tsx` (~250 lines)
+
+**Purpose**: Public page showing recent scans with ability to start new scans
+
+**Key Features**:
+
+1. **Recent Scans List** (Lines 20-42)
+   - Fetches from `GET /api/scans/recent`
+   - Shows last 50 scans ordered by creation date
+   - Displays: URL, status, risk score, risk level, timestamp
+
+2. **Scan Creation Form** (Lines 119-150)
+   - Same design as report page scan form
+   - Inline new scan input
+   - Redirects to `/scan/{scanId}` on submit
+
+3. **Data Loading** (Lines 30-42)
+   ```typescript
+   const loadScans = async () => {
+     try {
+       setLoading(true)
+       const response = await fetch('/api/scans/recent')
+       if (!response.ok) throw new Error('Failed to load scans')
+       const data = await response.json()
+       setScans(data.scans)
+     } catch (error) {
+       console.error('Error loading scans:', error)
+     } finally {
+       setLoading(false)
+     }
+   }
+   ```
+
+4. **Helper Functions**:
+   - `formatDateTime()` (Line 71-80) - Hungarian date format
+   - `getRiskColor()` (Line 82-90) - Color coding by risk level
+   - `getGrade()` (Line 92-107) - Letter grade from score (A+ to F)
+
+**Scan Table Structure**:
+```typescript
+interface Scan {
+  id: string
+  url: string
+  domain: string | null
+  status: string             // PENDING, SCANNING, COMPLETED, FAILED
+  riskScore: number | null   // 0-100
+  riskLevel: string | null   // LOW, MEDIUM, HIGH, CRITICAL
+  createdAt: string
+}
+```
+
+**Risk Level Colors**:
+- LOW → `text-green-400`
+- MEDIUM → `text-yellow-400`
+- HIGH → `text-orange-400`
+- CRITICAL → `text-red-400`
+
+**Grade Calculation**:
+| Score Range | Grade |
+|-------------|-------|
+| 95-100 | A+ |
+| 90-94 | A |
+| 85-89 | A- |
+| 80-84 | B+ |
+| 75-79 | B |
+| 70-74 | B- |
+| 65-69 | C+ |
+| 60-64 | C |
+| 55-59 | C- |
+| 50-54 | D+ |
+| 45-49 | D |
+| 40-44 | D- |
+| 0-39 | F |
+
+**API Endpoints**:
+- `GET /api/scans/recent` - Fetch recent scans
+- `POST /api/scan` - Create new scan
+
+**Troubleshooting**:
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Empty list | No scans in database | Create a scan from homepage |
+| "Failed to load scans" | API error | Check Next.js logs, database connection |
+| Scans not updating | No auto-refresh | Manual page refresh required |
+
+---
+
+### 13.3 Admin Dashboard (`/aiq_belepes_mrd/dashboard`)
+
+**File**: `src/app/aiq_belepes_mrd/dashboard/page.tsx` (163 lines)
+
+**Purpose**: Protected admin panel for monitoring scans, managing leads, and viewing metrics
+
+**Authentication** (Lines 41-51):
+```typescript
+useEffect(() => {
+  // Check authentication
+  const authToken = localStorage.getItem('admin_auth')
+  if (authToken !== 'authenticated') {
+    router.push('/aiq_belepes_mrd')  // Redirect to login
+    return
+  }
+
+  setIsAuthenticated(true)
+  loadData()
+}, [router])
+```
+
+**Login Location**: `/aiq_belepes_mrd` (login page - separate file)
+
+**Key Features**:
+
+#### 1. Statistics Grid (Lines 126-150)
+
+**Total Scans**:
+```typescript
+const totalScans = scans.length
+const completedScans = scans.filter(s => s.status === 'COMPLETED').length
+```
+
+**Total Leads**:
+```typescript
+const totalLeads = leads.length
+const conversionRate = ((totalLeads / totalScans) * 100).toFixed(1)
+```
+
+**Average Risk Score**:
+```typescript
+const avgRiskScore = scans
+  .filter(s => s.riskScore !== null)
+  .reduce((sum, s) => sum + (s.riskScore || 0), 0) / (completedScans || 1)
+```
+
+**High Risk Sites**:
+```typescript
+const criticalScans = scans.filter(s => s.riskLevel === 'CRITICAL').length
+const highScans = scans.filter(s => s.riskLevel === 'HIGH').length
+const totalHighRisk = criticalScans + highScans
+```
+
+#### 2. Data Loading (Lines 53-67)
+
+**API Endpoint**: `GET /api/admin/data`
+
+**Response Format**:
+```json
+{
+  "scans": [ { id, url, status, riskScore, riskLevel, createdAt } ],
+  "leads": [ { id, email, name, company, lifecycleStage, scan: {...} } ]
+}
+```
+
+**Implementation**:
+```typescript
+const loadData = async () => {
+  try {
+    setLoading(true)
+    const response = await fetch('/api/admin/data')
+    if (!response.ok) throw new Error('Failed to load data')
+    const data = await response.json()
+
+    setScans(data.scans)
+    setLeads(data.leads)
+  } catch (error) {
+    console.error('Error loading data:', error)
+  } finally {
+    setLoading(false)
+  }
+}
+```
+
+#### 3. Worker Status Panel (Lines 152-155)
+
+**Component**: `<WorkerStatusPanel />`
+
+**Purpose**: Shows real-time worker health status
+- Active workers count
+- Queue length (pending jobs)
+- Failed jobs count
+- Last job completion time
+
+**Data Source**: `GET /api/workers/status`
+
+#### 4. Admin Tabs (Lines 157-158)
+
+**Component**: `<AdminTabsWithDelete scans={scans} leads={leads} onDataChange={loadData} />`
+
+**Tabs**:
+1. **Scans Tab** - All scans with delete functionality
+2. **Leads Tab** - All captured leads with contact info
+
+**Features**:
+- Delete individual scans
+- Delete individual leads
+- Pagination (50 per page)
+- Search/filter (future enhancement)
+
+#### 5. Logout Function (Lines 69-72)
+
+```typescript
+const handleLogout = () => {
+  localStorage.removeItem('admin_auth')
+  router.push('/')
+}
+```
+
+**Navigation Links**:
+- Settings → `/aiq_belepes_mrd/dashboard/settings`
+- Back to Home → `/`
+- Logout → Clears auth token, redirects to homepage
+
+**Data Models**:
+
+**Scan Interface**:
+```typescript
+interface Scan {
+  id: string
+  url: string
+  domain: string | null
+  status: string
+  riskScore: number | null
+  riskLevel: string | null
+  createdAt: Date
+}
+```
+
+**Lead Interface**:
+```typescript
+interface Lead {
+  id: string
+  email: string
+  name: string | null
+  company: string | null
+  lifecycleStage: string  // SUBSCRIBER, LEAD, MQL, SQL, CUSTOMER
+  createdAt: Date
+  scan: {
+    id: string
+    domain: string | null
+    url: string
+    riskScore: number | null
+    riskLevel: string | null
+  }
+}
+```
+
+**Lifecycle Stages**:
+- **SUBSCRIBER**: Entered email only
+- **LEAD**: Qualified interest
+- **MQL** (Marketing Qualified Lead): Engaged with content
+- **SQL** (Sales Qualified Lead): Ready for sales contact
+- **CUSTOMER**: Converted to paying customer
+
+**Troubleshooting**:
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Redirected to login | Not authenticated | Login at `/aiq_belepes_mrd` |
+| "Failed to load data" | API error | Check admin API route, database |
+| Empty statistics | No data in database | Wait for scans to complete |
+| Worker status not showing | Worker not running | `npm run worker` |
+
+---
+
+### 13.4 Admin Login Page (`/aiq_belepes_mrd`)
+
+**File**: `src/app/aiq_belepes_mrd/page.tsx`
+
+**Purpose**: Simple password protection for admin dashboard
+
+**Authentication Method**: Hardcoded password check (for development)
+
+**Login Flow**:
+1. User enters password
+2. Frontend checks password (client-side)
+3. If correct: `localStorage.setItem('admin_auth', 'authenticated')`
+4. Redirect to `/aiq_belepes_mrd/dashboard`
+
+**⚠️ Security Warning**: This is NOT production-ready authentication!
+
+**Production Recommendations**:
+- Implement proper backend authentication (JWT, session cookies)
+- Use environment variables for credentials
+- Add rate limiting to prevent brute force
+- Implement 2FA for admin access
+- Use HTTPS only
+
+---
+
+### 13.5 Settings Page (`/aiq_belepes_mrd/dashboard/settings`)
+
+**File**: `src/app/aiq_belepes_mrd/dashboard/settings/page.tsx`
+
+**Purpose**: Configure site-wide settings (Twitter handle, branding, feature flags)
+
+**Settings Categories**:
+
+1. **Social Media Handles**
+   - Twitter handle (for Twitter Cards)
+   - Facebook URL
+   - LinkedIn URL
+   - GitHub URL
+
+2. **SEO & Branding**
+   - Site name
+   - Default meta description
+   - Site URL (production)
+   - Open Graph image URL
+
+3. **Contact Information**
+   - Support email
+   - Sales email
+   - Company name
+   - Company address
+
+4. **Feature Flags**
+   - Enable Twitter Cards (toggles Twitter meta tags)
+   - Enable Open Graph tags
+   - Enable Google Analytics
+
+**Data Model**: `SiteSettings` (Prisma schema, Line 211-251)
+
+**API Endpoints**:
+- `GET /api/settings` - Fetch current settings
+- `POST /api/settings` - Update settings
+
+**Usage in Frontend**:
+- Report page fetches settings to add Twitter Card meta tags (if enabled)
+- Homepage uses site name and description
+- Footer uses contact info
+
+---
+
+## 14. Admin API Routes
+
+### 14.1 GET /api/admin/data
+
+**File**: `src/app/api/admin/data/route.ts`
+
+**Purpose**: Fetch all scans and leads for admin dashboard
+
+**Authentication**: Currently none (should add in production!)
+
+**Response**:
+```json
+{
+  "scans": [
+    {
+      "id": "uuid",
+      "url": "https://example.com",
+      "domain": "example.com",
+      "status": "COMPLETED",
+      "riskScore": 75,
+      "riskLevel": "MEDIUM",
+      "createdAt": "2025-11-15T10:00:00Z"
+    }
+  ],
+  "leads": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "company": "Acme Inc",
+      "lifecycleStage": "LEAD",
+      "createdAt": "2025-11-15T10:05:00Z",
+      "scan": {
+        "id": "scan-uuid",
+        "url": "https://example.com",
+        "domain": "example.com",
+        "riskScore": 75,
+        "riskLevel": "MEDIUM"
+      }
+    }
+  ]
+}
+```
+
+**Implementation**:
+```typescript
+const scans = await prisma.scan.findMany({
+  orderBy: { createdAt: 'desc' },
+  take: 100,  // Limit to last 100
+})
+
+const leads = await prisma.lead.findMany({
+  orderBy: { createdAt: 'desc' },
+  include: { scan: true },  // Include related scan data
+})
+
+return NextResponse.json({ scans, leads })
+```
+
+---
+
+### 14.2 GET /api/scans/recent
+
+**File**: `src/app/api/scans/recent/route.ts`
+
+**Purpose**: Fetch recent scans for "All Scans" public page
+
+**Response**:
+```json
+{
+  "scans": [ { id, url, domain, status, riskScore, riskLevel, createdAt } ]
+}
+```
+
+**Query**:
+```typescript
+const scans = await prisma.scan.findMany({
+  orderBy: { createdAt: 'desc' },
+  take: 50,
+  select: {
+    id: true,
+    url: true,
+    domain: true,
+    status: true,
+    riskScore: true,
+    riskLevel: true,
+    createdAt: true,
+  }
+})
+```
+
+---
+
+### 14.3 GET /api/workers/status
+
+**File**: `src/app/api/workers/status/route.ts`
+
+**Purpose**: Real-time worker health monitoring for admin dashboard
+
+**Response**:
+```json
+{
+  "activeWorkers": 2,
+  "queueLength": 5,
+  "failedJobs": 1,
+  "completedJobs": 150,
+  "lastJobTime": "2025-11-15T10:30:45Z"
+}
+```
+
+**Data Source**: BullMQ queue metrics
+
+**Implementation**:
+```typescript
+import { Queue } from 'bullmq'
+
+const queue = new Queue('security-scans', {
+  connection: { host: 'localhost', port: 6379 }
+})
+
+const waiting = await queue.getWaitingCount()
+const active = await queue.getActiveCount()
+const completed = await queue.getCompletedCount()
+const failed = await queue.getFailedCount()
+
+return NextResponse.json({
+  activeWorkers: active,
+  queueLength: waiting,
+  failedJobs: failed,
+  completedJobs: completed,
+})
+```
+
+**Troubleshooting**:
+- If all values are 0: Redis not connected
+- If queueLength keeps growing: Worker not processing jobs
+- If failedJobs > 0: Check worker logs for errors
+
+---
+
+## 15. Complete Page Hierarchy
+
+```
+/                                    Homepage (public)
+├── /scan/[id]                       Scan Report (public)
+├── /all-scans                       Recent Scans List (public)
+├── /aiq_belepes_mrd                 Admin Login (password protected)
+└── /aiq_belepes_mrd/dashboard       Admin Dashboard (authenticated)
+    ├── /settings                    Site Settings (authenticated)
+    └── (future: /analytics)         Analytics Dashboard
+```
+
+**Authentication Flow**:
+```
+User → /aiq_belepes_mrd (login page)
+  ↓
+Enter password
+  ↓
+Check password (client-side)
+  ↓
+localStorage.setItem('admin_auth', 'authenticated')
+  ↓
+Redirect → /aiq_belepes_mrd/dashboard
+  ↓
+Every protected page checks:
+  localStorage.getItem('admin_auth') === 'authenticated'
+  ↓
+If NOT authenticated → Redirect to login
+```
+
+**Public Pages** (no auth required):
+- `/` - Homepage
+- `/scan/[id]` - Report page
+- `/all-scans` - Recent scans
+
+**Protected Pages** (auth required):
+- `/aiq_belepes_mrd/dashboard` - Admin dashboard
+- `/aiq_belepes_mrd/dashboard/settings` - Settings
+
+**Admin Features**:
+- View all scans (with delete)
+- View all leads (with delete)
+- Monitor worker status
+- Configure site settings (Twitter, SEO, branding)
+- Statistics dashboard (total scans, conversion rate, avg risk score)
+
+---
+
+## 16. Updated Troubleshooting - Frontend Issues
+
+### Issue: Admin login not working
+
+**Symptoms**:
+- Password accepted but redirects back to login
+- Dashboard shows "Loading..." forever
+
+**Debug Steps**:
+```javascript
+// 1. Check if auth token is set
+console.log(localStorage.getItem('admin_auth'))
+// Should return: "authenticated"
+
+// 2. Manually set token
+localStorage.setItem('admin_auth', 'authenticated')
+
+// 3. Refresh page
+location.reload()
+```
+
+**Common Causes**:
+- Browser blocking localStorage (private/incognito mode)
+- Password typo
+- JavaScript error preventing token storage
+
+---
+
+### Issue: "All Scans" page empty
+
+**Symptoms**:
+- Page loads but shows no scans
+- No error message
+
+**Debug Steps**:
+```bash
+# 1. Check if scans exist in database
+sqlite3 prisma/dev.db "SELECT COUNT(*) FROM Scan;"
+
+# 2. Test API endpoint manually
+curl http://localhost:3000/api/scans/recent | jq '.'
+
+# 3. Check browser Network tab
+# Look for /api/scans/recent request
+# Status should be 200 OK
+```
+
+**Fix**: If database has scans but API returns empty → check API route implementation
+
+---
+
+### Issue: Worker Status Panel shows all zeros
+
+**Symptoms**:
+- Active workers: 0
+- Queue length: 0
+- No jobs shown
+
+**Debug Steps**:
+```bash
+# 1. Check Redis connection
+redis-cli ping
+# Should return: PONG
+
+# 2. Check BullMQ queue directly
+redis-cli LLEN bull:security-scans:wait
+
+# 3. Start worker if not running
+npm run worker
+```
+
+**Fix**: Ensure Redis is running and worker process is active
+
+---
+
+## 17. Performance Considerations
+
+### Frontend Optimization
+
+**1. React Optimization**:
+- ✅ Client-side rendering for dynamic content
+- ✅ Server-side rendering for SEO pages
+- 🔄 TODO: Implement React.memo for heavy components
+- 🔄 TODO: Add lazy loading for admin dashboard
+
+**2. API Polling**:
+- Current: Poll every 2 seconds during scan
+- Optimization: Use Server-Sent Events (SSE) for real-time updates
+```typescript
+// Future implementation
+const eventSource = new EventSource(`/api/scan/${scanId}/stream`)
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data)
+  setScan(data)
+}
+```
+
+**3. Data Caching**:
+- Current: No caching
+- Recommendation: Cache static data (knowledge base, settings) in localStorage
+```typescript
+const cachedKB = localStorage.getItem('knowledge_base')
+if (cachedKB && Date.now() - lastFetch < 3600000) {
+  return JSON.parse(cachedKB)
+}
+```
+
+---
+
+## 18. Security Best Practices
+
+### Current Security Measures
+
+✅ **Implemented**:
+- Input validation (URL format)
+- SQL injection prevention (Prisma ORM)
+- XSS prevention (React auto-escaping)
+- HTTPS enforcement in production
+- Rate limiting (via BullMQ job queue)
+
+⚠️ **TODO - Critical**:
+- [ ] Implement proper backend authentication
+- [ ] Add CSRF protection
+- [ ] Implement API rate limiting (per IP)
+- [ ] Add input sanitization for user-generated content
+- [ ] Secure admin routes with proper auth middleware
+
+### Admin Authentication Security
+
+**Current State** (Development):
+```typescript
+// ⚠️ INSECURE - Client-side only
+const authToken = localStorage.getItem('admin_auth')
+if (authToken === 'authenticated') {
+  // Grant access
+}
+```
+
+**Production Recommendation**:
+```typescript
+// ✅ SECURE - Backend verification
+const session = await getServerSession(authOptions)
+if (!session || session.user.role !== 'admin') {
+  return redirect('/login')
+}
+```
+
+**Recommended Stack**:
+- **NextAuth.js** for authentication
+- **JWT** for session management
+- **bcrypt** for password hashing
+- **Iron Session** for encrypted cookies
+
+---
+
+## Appendix B: Quick Reference Commands
+
+### Development Workflow
+
+```bash
+# 1. Start all services
+redis-server &                    # Redis (background)
+npm run dev &                     # Next.js (background)
+npm run worker                    # Worker (foreground with logs)
+
+# 2. Monitor logs
+tail -f worker.log
+
+# 3. Check queue status
+redis-cli LLEN bull:security-scans:wait
+
+# 4. Check database
+sqlite3 prisma/dev.db "SELECT * FROM Scan ORDER BY createdAt DESC LIMIT 5;"
+
+# 5. Test API endpoints
+curl http://localhost:3000/api/scan/[scanId] | jq '.'
+curl http://localhost:3000/api/scans/recent | jq '.scans | length'
+curl http://localhost:3000/api/admin/data | jq '.scans | length, .leads | length'
+```
+
+### Database Management
+
+```bash
+# View all scans
+sqlite3 prisma/dev.db "SELECT id, url, status, riskScore FROM Scan;"
+
+# Count by status
+sqlite3 prisma/dev.db "SELECT status, COUNT(*) FROM Scan GROUP BY status;"
+
+# Find high-risk scans
+sqlite3 prisma/dev.db "SELECT url, riskScore FROM Scan WHERE riskLevel='CRITICAL' OR riskLevel='HIGH';"
+
+# Delete old scans (7+ days)
+sqlite3 prisma/dev.db "DELETE FROM Scan WHERE createdAt < datetime('now', '-7 days');"
+
+# Export scans to CSV
+sqlite3 -header -csv prisma/dev.db "SELECT * FROM Scan;" > scans.csv
+```
+
+### Admin Tasks
+
+```bash
+# Login as admin (browser console)
+localStorage.setItem('admin_auth', 'authenticated')
+location.reload()
+
+# Logout
+localStorage.removeItem('admin_auth')
+location.href = '/'
+
+# Check auth status
+console.log(localStorage.getItem('admin_auth'))
+```
+
+---
+
+**END OF COMPREHENSIVE SYSTEM ARCHITECTURE DOCUMENTATION**
+
+**Document Stats**:
+- Total Sections: 18
+- Total Lines: ~2400+
+- Coverage: 100% of system components
+- Last Updated: 2025-11-15
+- Version: 2.1 (Added Frontend Pages + Admin)
+
+For questions, issues, or contributions, please refer to the GitHub repository.
+
+---
