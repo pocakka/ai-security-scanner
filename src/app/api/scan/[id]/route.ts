@@ -55,3 +55,25 @@ export async function GET(
     )
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+
+    // Delete scan (cascade will delete related records)
+    await prisma.scan.delete({
+      where: { id },
+    })
+
+    return NextResponse.json({ success: true, message: 'Scan deleted successfully' })
+  } catch (error) {
+    console.error('Scan delete error:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete scan' },
+      { status: 500 }
+    )
+  }
+}
