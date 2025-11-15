@@ -361,6 +361,54 @@ const LLM_API_PATTERNS: LLMAPIPattern[] = [
       'OpenAI compatibility layer abuse',
     ],
   },
+
+  // 14. Anyscale (P1) - Ray-based distributed inference
+  {
+    provider: 'Anyscale',
+    endpoints: [
+      'api.endpoints.anyscale.com/v1/',
+      'api.endpoints.anyscale.com/v1/chat/completions',
+    ],
+    authHeaderPatterns: [
+      /Authorization:\s*Bearer\s+(esecret_[a-zA-Z0-9]{40,})/i,
+    ],
+    apiKeyPatterns: [
+      /esecret_[a-zA-Z0-9]{40,}/,
+    ],
+    requestStructureKeywords: ['model', 'messages', 'temperature', 'max_tokens'],
+    responseStructureKeywords: ['choices', 'usage'],
+    attackSurface: [
+      'Ray cluster exposure',
+      'Distributed inference manipulation',
+      'API key exposure (esecret_ prefix)',
+      'Prompt injection across distributed nodes',
+      'Resource exhaustion via distributed requests',
+    ],
+  },
+
+  // 15. Fireworks AI (P1) - Production-ready inference platform
+  {
+    provider: 'Fireworks AI',
+    endpoints: [
+      'api.fireworks.ai/inference/v1/chat/completions',
+      'api.fireworks.ai/inference/v1/completions',
+    ],
+    authHeaderPatterns: [
+      /Authorization:\s*Bearer\s+(fw_[a-zA-Z0-9]{40,})/i,
+    ],
+    apiKeyPatterns: [
+      /fw_[a-zA-Z0-9]{40,}/,
+    ],
+    requestStructureKeywords: ['model', 'messages', 'temperature', 'max_tokens', 'stream'],
+    responseStructureKeywords: ['choices', 'usage'],
+    attackSurface: [
+      'Production-ready model exploitation',
+      'LoRA adapter manipulation',
+      'API key exposure (fw_ prefix)',
+      'Custom model deployment attacks',
+      'Fine-tuning data extraction',
+    ],
+  },
 ]
 
 /**
