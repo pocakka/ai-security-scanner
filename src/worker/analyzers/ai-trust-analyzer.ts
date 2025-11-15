@@ -18,6 +18,8 @@ import { detectTranslationAI } from './translation-ai-detector'
 import { detectSearchAI } from './search-ai-detector'
 import { detectPersonalizationAI } from './personalization-detector'
 import { detectAnalyticsAI } from './analytics-ai-detector'
+import { detectImageVideoAI } from './image-video-ai-detector'
+import { detectContentModeration } from './content-moderation-detector'
 
 // ========================================
 // TYPES
@@ -158,6 +160,18 @@ export interface AiTrustResult {
     totalProviders: number
     sessionReplayDetected: boolean
     criticalRiskCount: number
+  }
+  imageVideoAI?: {
+    hasImageVideoAI: boolean
+    detections: any[]
+    totalProviders: number
+    generativeAIDetected: boolean
+  }
+  contentModeration?: {
+    hasContentModeration: boolean
+    detections: any[]
+    totalProviders: number
+    highConfidenceCount: number
   }
 
   // NEW: Human-readable summary
@@ -874,6 +888,8 @@ export function analyzeAiTrust(crawlResult: CrawlResult, securityScore: number =
   const searchAIResult = detectSearchAI(crawlResult)
   const personalizationAIResult = detectPersonalizationAI(crawlResult)
   const analyticsAIResult = detectAnalyticsAI(crawlResult)
+  const imageVideoAIResult = detectImageVideoAI(crawlResult)
+  const contentModerationResult = detectContentModeration(crawlResult)
 
   // ========================================
   // CATEGORY 1: TRANSPARENCY
@@ -1184,6 +1200,18 @@ export function analyzeAiTrust(crawlResult: CrawlResult, securityScore: number =
       totalProviders: analyticsAIResult.totalProviders,
       sessionReplayDetected: analyticsAIResult.sessionReplayDetected,
       criticalRiskCount: analyticsAIResult.criticalRiskCount,
+    } : undefined,
+    imageVideoAI: imageVideoAIResult.hasImageVideoAI ? {
+      hasImageVideoAI: imageVideoAIResult.hasImageVideoAI,
+      detections: imageVideoAIResult.detections,
+      totalProviders: imageVideoAIResult.totalProviders,
+      generativeAIDetected: imageVideoAIResult.generativeAIDetected,
+    } : undefined,
+    contentModeration: contentModerationResult.hasContentModeration ? {
+      hasContentModeration: contentModerationResult.hasContentModeration,
+      detections: contentModerationResult.detections,
+      totalProviders: contentModerationResult.totalProviders,
+      highConfidenceCount: contentModerationResult.highConfidenceCount,
     } : undefined,
     summary, // NEW
   }
