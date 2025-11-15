@@ -188,7 +188,7 @@ export function analyzeTechStack(crawlResult: CrawlResult): TechStackResult {
   const links: string[] = []
   const linkRegex = /<link[^>]+href=["']([^"']+)["']/gi
   let linkMatch
-  while ((linkMatch = linkRegex.exec(html)) !== null) {
+  for (const linkMatch of html.matchAll(linkRegex)) {
     links.push(linkMatch[1])
   }
 

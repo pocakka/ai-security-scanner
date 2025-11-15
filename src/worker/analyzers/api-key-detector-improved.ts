@@ -363,7 +363,7 @@ export function detectAPIKeys(text: string): Array<{
       let match
       regex.lastIndex = 0 // Reset regex
 
-      while ((match = regex.exec(text)) !== null) {
+      for (const match of text.matchAll(regex)) {
         const key = match[0]
 
         // Skip if already found
@@ -402,7 +402,7 @@ export function detectAPIKeys(text: string): Array<{
       let match
       regex.lastIndex = 0
 
-      while ((match = regex.exec(text)) !== null) {
+      for (const match of text.matchAll(regex)) {
         const key = match[0]
 
         // Skip if already found

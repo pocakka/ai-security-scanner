@@ -69,12 +69,12 @@ export async function analyzeAdminDiscovery(crawlResult: CrawlResult): Promise<A
         hasLoginForm = true
         loginFormCount = passwordInputs.length
 
-        // Extract form actions
+        // Extract form actions using matchAll to prevent infinite loops
         const formActions: string[] = []
         const formRegex = /<form[^>]*action=["']([^"']+)["'][^>]*>/gi
-        let formMatch
+        const formMatches = html.matchAll(formRegex)
 
-        while ((formMatch = formRegex.exec(html)) !== null) {
+        for (const formMatch of formMatches) {
           const action = formMatch[1]
           if (action && !action.startsWith('#')) {
             formActions.push(action)

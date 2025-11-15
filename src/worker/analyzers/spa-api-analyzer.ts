@@ -333,7 +333,7 @@ export async function analyzeSpaApi(
   // 3. Detect WebSocket connections
   const wsPattern = /new\s+WebSocket\s*\(\s*['"`]([^'"`]+)['"`]/gi
   let wsMatch
-  while ((wsMatch = wsPattern.exec(html)) !== null) {
+  for (const wsMatch of html.matchAll(wsPattern)) {
     webSocketConnections.push(wsMatch[1])
 
     findings.push({
@@ -365,7 +365,7 @@ export async function analyzeSpaApi(
   const apiCalls: string[] = []
 
   let fetchMatch
-  while ((fetchMatch = fetchPattern.exec(html)) !== null) {
+  for (const fetchMatch of html.matchAll(fetchPattern)) {
     const url = fetchMatch[1]
     if (url.startsWith('/api') || url.includes('/api/') || url.startsWith('http')) {
       apiCalls.push(url)
