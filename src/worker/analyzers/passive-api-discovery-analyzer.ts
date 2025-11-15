@@ -205,6 +205,22 @@ export async function analyzePassiveAPIDiscovery(
 
   const currentDomain = getDomain(currentUrl)
 
+  // Timeout protection: limit analysis to 10 seconds
+  const MAX_ANALYSIS_TIME = 10000 // 10 seconds
+  const startTime = Date.now()
+
+  const checkTimeout = () => {
+    if (Date.now() - startTime > MAX_ANALYSIS_TIME) {
+      throw new Error('Passive API Discovery timeout')
+    }
+  }
+
+  // Limit HTML size to prevent catastrophic backtracking
+  const MAX_HTML_SIZE = 5000000 // 5MB
+  if (html.length > MAX_HTML_SIZE) {
+    html = html.substring(0, MAX_HTML_SIZE)
+  }
+
   // 1. JWT Token Detection
   const jwtMatches = html.match(JWT_REGEX) || []
   for (const jwt of jwtMatches) {
@@ -241,8 +257,10 @@ export async function analyzePassiveAPIDiscovery(
   }
 
   // 2. API Key Detection
+  checkTimeout()
   for (const pattern of API_KEY_PATTERNS) {
     const matches = html.match(pattern.regex) || []
+    if (matches.length > 100) break // Prevent too many matches
     for (const match of matches) {
       if (calculateEntropy(match) > 3.5) { // Likely a real key
         exposedTokens.push({
@@ -273,8 +291,10 @@ export async function analyzePassiveAPIDiscovery(
   }
 
   // 3. SQL Error Detection
+  checkTimeout()
   for (const sqlPattern of SQL_ERROR_PATTERNS) {
     const matches = html.match(sqlPattern.regex) || []
+    if (matches.length > 50) break // Limit matches
     if (matches.length > 0) {
       const evidence = matches[0]
       const revealsSchema = /table|column|database|schema|query|SELECT|INSERT|UPDATE|DELETE/i.test(html.substring(html.indexOf(evidence), html.indexOf(evidence) + 500))
@@ -303,6 +323,7 @@ export async function analyzePassiveAPIDiscovery(
   }
 
   // 4. Stack Trace Detection
+  checkTimeout()
   for (const tracePattern of STACK_TRACE_PATTERNS) {
     const matches = html.match(tracePattern.regex) || []
     if (matches.length > 0) {
@@ -339,6 +360,7 @@ export async function analyzePassiveAPIDiscovery(
   }
 
   // 5. API Endpoint Discovery
+  checkTimeout()
   const discoveredEndpoints = new Set<string>()
   for (const pattern of API_ENDPOINT_PATTERNS) {
     let match
@@ -394,6 +416,7 @@ export async function analyzePassiveAPIDiscovery(
   }
 
   // 6. Debug Mode Indicators
+  checkTimeout()
   for (const debugPattern of DEBUG_INDICATORS) {
     const matches = html.match(debugPattern.pattern) || []
     if (matches.length > 0) {

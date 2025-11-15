@@ -285,22 +285,43 @@ async function processScanJob(data: { scanId: string; url: string }) {
       console.log(`[Worker]   - Security findings: ${frontendFramework.findings.length}`)
     }
 
-    // ⭐ NEW: Passive API Discovery analyzer
+    // ⭐ NEW: Passive API Discovery analyzer (with timeout protection)
     console.log(`[Worker] 🔍 Analyzing Passive API Discovery...`)
     const passiveAPIStart = Date.now()
-    const passiveAPI = await analyzePassiveAPIDiscovery(
-      crawlResult.html,
-      url
-    )
-    timings.passiveAPI = Date.now() - passiveAPIStart
-    console.log(`[Worker] ✓ Passive API Discovery completed in ${timings.passiveAPI}ms`)
-    console.log(`[Worker]   - JWT tokens: ${passiveAPI.hasJWT ? 'FOUND' : 'none'}`)
-    console.log(`[Worker]   - API keys: ${passiveAPI.hasAPIKeys ? 'FOUND' : 'none'}`)
-    console.log(`[Worker]   - SQL errors: ${passiveAPI.hasSQLErrors ? 'FOUND' : 'none'}`)
-    console.log(`[Worker]   - Stack traces: ${passiveAPI.hasStackTraces ? 'FOUND' : 'none'}`)
-    console.log(`[Worker]   - API endpoints discovered: ${passiveAPI.discoveredAPIs.length}`)
-    console.log(`[Worker]   - Risk level: ${passiveAPI.riskLevel.toUpperCase()}`)
-    console.log(`[Worker]   - Security findings: ${passiveAPI.findings.length}`)
+    let passiveAPI
+    try {
+      passiveAPI = await analyzePassiveAPIDiscovery(
+        crawlResult.html,
+        url
+      )
+      timings.passiveAPI = Date.now() - passiveAPIStart
+      console.log(`[Worker] ✓ Passive API Discovery completed in ${timings.passiveAPI}ms`)
+      console.log(`[Worker]   - JWT tokens: ${passiveAPI.hasJWT ? 'FOUND' : 'none'}`)
+      console.log(`[Worker]   - API keys: ${passiveAPI.hasAPIKeys ? 'FOUND' : 'none'}`)
+      console.log(`[Worker]   - SQL errors: ${passiveAPI.hasSQLErrors ? 'FOUND' : 'none'}`)
+      console.log(`[Worker]   - Stack traces: ${passiveAPI.hasStackTraces ? 'FOUND' : 'none'}`)
+      console.log(`[Worker]   - API endpoints discovered: ${passiveAPI.discoveredAPIs.length}`)
+      console.log(`[Worker]   - Risk level: ${passiveAPI.riskLevel.toUpperCase()}`)
+      console.log(`[Worker]   - Security findings: ${passiveAPI.findings.length}`)
+    } catch (error: any) {
+      timings.passiveAPI = Date.now() - passiveAPIStart
+      console.log(`[Worker] ⚠️  Passive API Discovery analyzer skipped: ${error.message}`)
+      // Return empty result on timeout/error
+      passiveAPI = {
+        findings: [],
+        discoveredAPIs: [],
+        exposedTokens: [],
+        sqlErrors: [],
+        stackTraces: [],
+        debugIndicators: [],
+        hasJWT: false,
+        hasAPIKeys: false,
+        hasSQLErrors: false,
+        hasStackTraces: false,
+        hasDebugMode: false,
+        riskLevel: 'none' as const
+      }
+    }
 
     // Step 2.5: Analyze AI Trust Score (MOVED HERE - BEFORE OWASP LLM!)
     console.log(`[Worker] Analyzing AI Trust Score...`)
