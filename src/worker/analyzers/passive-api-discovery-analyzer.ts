@@ -363,8 +363,14 @@ export async function analyzePassiveAPIDiscovery(
   checkTimeout()
   const discoveredEndpoints = new Set<string>()
   for (const pattern of API_ENDPOINT_PATTERNS) {
-    let match
-    while ((match = pattern.exec(html)) !== null) {
+    // Use matchAll instead of exec to avoid infinite loops
+    const matches = html.matchAll(pattern)
+    let matchCount = 0
+    const MAX_ENDPOINT_MATCHES = 100 // Limit to prevent excessive processing
+
+    for (const match of matches) {
+      if (matchCount++ > MAX_ENDPOINT_MATCHES) break
+
       const endpoint = match[1]
       if (!discoveredEndpoints.has(endpoint) && endpoint.length > 5) {
         discoveredEndpoints.add(endpoint)
