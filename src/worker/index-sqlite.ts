@@ -36,6 +36,10 @@ import { analyzeLLM05SupplyChain } from './analyzers/owasp-llm/llm05-supply-chai
 import { analyzeLLM06SensitiveInfo } from './analyzers/owasp-llm/llm06-sensitive-info'
 import { analyzeLLM07PluginDesign } from './analyzers/owasp-llm/llm07-plugin-design'
 import { analyzeLLM08ExcessiveAgency } from './analyzers/owasp-llm/llm08-excessive-agency'
+import { analyzeBackendFramework } from './analyzers/backend-framework-detector' // ⭐ NEW: Backend framework security
+import { analyzeWebServer } from './analyzers/web-server-security-analyzer' // ⭐ NEW: Web server security
+import { analyzeFrontendFramework } from './analyzers/frontend-framework-security-analyzer' // ⭐ NEW: Frontend framework security
+import { analyzePassiveAPIDiscovery } from './analyzers/passive-api-discovery-analyzer' // ⭐ NEW: Passive API discovery
 import { calculateSecurityScore } from './scoring-v3' // ✨ NEW: Professional scoring system v3 (100 = perfect)
 import { generateReport } from './report-generator'
 
@@ -236,6 +240,67 @@ async function processScanJob(data: { scanId: string; url: string }) {
       [] // Network requests - would need to be captured by crawler
     )
     timings.spaApi = Date.now() - spaStart
+
+    // ⭐ NEW: Backend Framework Security analyzer
+    console.log(`[Worker] 🔍 Analyzing Backend Framework Security...`)
+    const backendFrameworkStart = Date.now()
+    const backendFramework = await analyzeBackendFramework(
+      crawlResult.html,
+      crawlResult.responseHeaders || {},
+      crawlResult.cookies || []
+    )
+    timings.backendFramework = Date.now() - backendFrameworkStart
+    console.log(`[Worker] ✓ Backend Framework analysis completed in ${timings.backendFramework}ms`)
+    if (backendFramework.hasFramework) {
+      console.log(`[Worker]   - Detected frameworks: ${backendFramework.detectedFrameworks.map(f => `${f.name}${f.version ? ` ${f.version}` : ''}`).join(', ')}`)
+      console.log(`[Worker]   - Security findings: ${backendFramework.findings.length}`)
+    }
+
+    // ⭐ NEW: Web Server Security analyzer
+    console.log(`[Worker] 🔍 Analyzing Web Server Security...`)
+    const webServerStart = Date.now()
+    const webServer = await analyzeWebServer(
+      crawlResult.responseHeaders || {}
+    )
+    timings.webServer = Date.now() - webServerStart
+    console.log(`[Worker] ✓ Web Server analysis completed in ${timings.webServer}ms`)
+    if (webServer.detectedServer) {
+      console.log(`[Worker]   - Detected server: ${webServer.serverName}${webServer.serverVersion ? ` ${webServer.serverVersion}` : ''}`)
+      console.log(`[Worker]   - Security findings: ${webServer.findings.length}`)
+    }
+
+    // ⭐ NEW: Frontend Framework Security analyzer
+    console.log(`[Worker] 🔍 Analyzing Frontend Framework Security...`)
+    const frontendFrameworkStart = Date.now()
+    const frontendFramework = await analyzeFrontendFramework(
+      crawlResult.html,
+      [] // TODO: Extract script URLs from crawlResult if available
+    )
+    timings.frontendFramework = Date.now() - frontendFrameworkStart
+    console.log(`[Worker] ✓ Frontend Framework analysis completed in ${timings.frontendFramework}ms`)
+    if (frontendFramework.hasFramework) {
+      console.log(`[Worker]   - Detected frameworks: ${frontendFramework.detectedFrameworks.map(f => `${f.name}${f.version ? ` ${f.version}` : ''}`).join(', ')}`)
+      console.log(`[Worker]   - Dev mode enabled: ${frontendFramework.hasDevMode}`)
+      console.log(`[Worker]   - Source maps exposed: ${frontendFramework.hasSourceMaps}`)
+      console.log(`[Worker]   - Security findings: ${frontendFramework.findings.length}`)
+    }
+
+    // ⭐ NEW: Passive API Discovery analyzer
+    console.log(`[Worker] 🔍 Analyzing Passive API Discovery...`)
+    const passiveAPIStart = Date.now()
+    const passiveAPI = await analyzePassiveAPIDiscovery(
+      crawlResult.html,
+      url
+    )
+    timings.passiveAPI = Date.now() - passiveAPIStart
+    console.log(`[Worker] ✓ Passive API Discovery completed in ${timings.passiveAPI}ms`)
+    console.log(`[Worker]   - JWT tokens: ${passiveAPI.hasJWT ? 'FOUND' : 'none'}`)
+    console.log(`[Worker]   - API keys: ${passiveAPI.hasAPIKeys ? 'FOUND' : 'none'}`)
+    console.log(`[Worker]   - SQL errors: ${passiveAPI.hasSQLErrors ? 'FOUND' : 'none'}`)
+    console.log(`[Worker]   - Stack traces: ${passiveAPI.hasStackTraces ? 'FOUND' : 'none'}`)
+    console.log(`[Worker]   - API endpoints discovered: ${passiveAPI.discoveredAPIs.length}`)
+    console.log(`[Worker]   - Risk level: ${passiveAPI.riskLevel.toUpperCase()}`)
+    console.log(`[Worker]   - Security findings: ${passiveAPI.findings.length}`)
 
     // Step 2.5: Analyze AI Trust Score (MOVED HERE - BEFORE OWASP LLM!)
     console.log(`[Worker] Analyzing AI Trust Score...`)
@@ -518,7 +583,11 @@ async function processScanJob(data: { scanId: string; url: string }) {
       llm05SupplyChain, // OWASP LLM05 - Supply Chain Vulnerabilities
       llm06SensitiveInfo, // OWASP LLM06 - Sensitive Information Disclosure
       llm07PluginDesign, // OWASP LLM07 - Insecure Plugin Design
-      llm08ExcessiveAgency // OWASP LLM08 - Excessive Agency
+      llm08ExcessiveAgency, // OWASP LLM08 - Excessive Agency
+      backendFramework, // ⭐ NEW: Backend Framework Security
+      webServer, // ⭐ NEW: Web Server Security
+      frontendFramework, // ⭐ NEW: Frontend Framework Security
+      passiveAPI // ⭐ NEW: Passive API Discovery
     )
     timings.reportGeneration = Date.now() - reportStart
 

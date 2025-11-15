@@ -1,4 +1,5 @@
 import { CrawlResult } from '../crawler-mock'
+import { findCVEsForLibrary, CVE } from './js-library-cve-database'
 
 export interface JSLibrariesResult {
   detected: DetectedLibrary[]
@@ -18,8 +19,11 @@ export interface DetectedLibrary {
 export interface VulnerableLibrary {
   name: string
   version: string
-  vulnerabilities: string[] // CVE IDs or descriptions
-  severity: 'low' | 'medium' | 'high' | 'critical'
+  cves: CVE[] // Full CVE objects with details
+  highestSeverity: 'low' | 'medium' | 'high' | 'critical'
+  // Deprecated - keeping for backwards compatibility
+  vulnerabilities?: string[]
+  severity?: 'low' | 'medium' | 'high' | 'critical'
 }
 
 export interface LibraryFinding {
@@ -58,26 +62,14 @@ const LIBRARY_PATTERNS = [
   { name: 'Mixpanel', patterns: ['mixpanel.com', 'cdn.mxpnl.com'], category: 'analytics' },
 ]
 
-// Known vulnerable versions (simplified - in production, use CVE database API)
-const KNOWN_VULNERABILITIES: Record<string, { version: string; cve: string; severity: 'low' | 'medium' | 'high' | 'critical' }[]> = {
-  'jQuery': [
-    { version: '1.', cve: 'XSS vulnerability in jQuery < 3.0', severity: 'high' },
-    { version: '2.', cve: 'XSS vulnerability in jQuery < 3.0', severity: 'high' },
-    { version: '3.0', cve: 'Prototype pollution in jQuery 3.0-3.4', severity: 'medium' },
-    { version: '3.1', cve: 'Prototype pollution in jQuery 3.0-3.4', severity: 'medium' },
-    { version: '3.2', cve: 'Prototype pollution in jQuery 3.0-3.4', severity: 'medium' },
-    { version: '3.3', cve: 'Prototype pollution in jQuery 3.0-3.4', severity: 'medium' },
-  ],
-  'Moment.js': [
-    { version: 'any', cve: 'Deprecated - no longer maintained', severity: 'low' },
-  ],
-  'Angular': [
-    { version: '1.', cve: 'AngularJS (1.x) EOL - security issues unfixed', severity: 'high' },
-  ],
-}
+/**
+ * CVE database is now imported from js-library-cve-database.ts
+ * This provides 52 CVEs for 15 popular JavaScript libraries with full details
+ * including severity, CVSS scores, affected versions, and remediation guidance.
+ */
 
 /**
- * Detect JavaScript libraries and check for known vulnerabilities
+ * Detect JavaScript libraries and check for known CVEs
  */
 export function analyzeJSLibraries(crawlResult: CrawlResult): JSLibrariesResult {
   const result: JSLibrariesResult = {
@@ -111,32 +103,46 @@ export function analyzeJSLibraries(crawlResult: CrawlResult): JSLibrariesResult 
             category: libPattern.category as any,
           })
 
-          // Check for vulnerabilities
-          if (version && KNOWN_VULNERABILITIES[libPattern.name]) {
-            const vulns = KNOWN_VULNERABILITIES[libPattern.name]
-            const matchingVuln = vulns.find(v =>
-              v.version === 'any' || version.startsWith(v.version)
-            )
+          // ⭐ NEW: Check for CVEs using comprehensive database
+          if (version) {
+            const cves = findCVEsForLibrary(libPattern.name, version)
 
-            if (matchingVuln) {
+            if (cves.length > 0) {
+              // Determine highest severity
+              const highestSeverity = cves.reduce((highest, cve) => {
+                const severityLevels = { low: 1, medium: 2, high: 3, critical: 4 }
+                const currentLevel = severityLevels[cve.severity]
+                const highestLevel = severityLevels[highest]
+                return currentLevel > highestLevel ? cve.severity : highest
+              }, 'low' as 'low' | 'medium' | 'high' | 'critical')
+
               result.vulnerable.push({
                 name: libPattern.name,
                 version,
-                vulnerabilities: [matchingVuln.cve],
-                severity: matchingVuln.severity,
+                cves,
+                highestSeverity,
+                // Backwards compatibility
+                vulnerabilities: cves.map(cve => cve.id),
+                severity: highestSeverity
               })
 
-              result.findings.push({
-                library: libPattern.name,
-                severity: matchingVuln.severity,
-                issue: `Vulnerable version detected: ${version}`,
-                description: matchingVuln.cve,
-                recommendation: `Update ${libPattern.name} to the latest secure version.`,
-              })
+              // Add detailed findings for each CVE
+              for (const cve of cves) {
+                result.findings.push({
+                  library: libPattern.name,
+                  severity: cve.severity,
+                  issue: `${cve.id}: ${cve.title}`,
+                  description: `${cve.description}${cve.cvssScore ? ` (CVSS: ${cve.cvssScore})` : ''}${cve.fixedIn ? ` Fixed in version ${cve.fixedIn}.` : ''}`,
+                  recommendation: cve.fixedIn
+                    ? `Update ${libPattern.name} from ${version} to ${cve.fixedIn} or later. ${cve.references[0] ? `More info: ${cve.references[0]}` : ''}`
+                    : `Review ${libPattern.name} security advisory. ${cve.references[0] || ''}`,
+                })
 
-              scoreDeduction += matchingVuln.severity === 'critical' ? 30 :
-                                matchingVuln.severity === 'high' ? 20 :
-                                matchingVuln.severity === 'medium' ? 10 : 5
+                // Score deduction based on severity
+                scoreDeduction += cve.severity === 'critical' ? 30 :
+                                  cve.severity === 'high' ? 20 :
+                                  cve.severity === 'medium' ? 10 : 5
+              }
             }
           }
         }

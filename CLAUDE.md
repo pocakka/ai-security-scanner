@@ -16,16 +16,17 @@ Delivers a 30-second automated security assessment that identifies potential AI-
 
 ## Project Status
 
-**Current Phase**: ✅ MVP COMPLETE + AI RED TEAMING ENHANCEMENT - 60% OWASP + 60% AI Coverage
-- **Status**: Fully functional MVP with **35 specialized analyzers** (29 infrastructure + **6 OWASP LLM**)
+**Current Phase**: ✅ MVP COMPLETE + INFRASTRUCTURE SECURITY ENHANCEMENT - Sprint #10-12 Completed
+- **Status**: Fully functional MVP with **38 specialized analyzers** (32 infrastructure + **6 OWASP LLM**)
 - **Backend**: SQLite-based worker queue with Playwright crawler
 - **Frontend**: Next.js 14 with real-time scan results & dark glassmorphism UI
 - **AI Coverage**: **36 Chat Widgets + 9 LLM API Providers** with detailed detection
-- **Recent Updates** (November 14, 2025 - AI Red Teaming): **🎯 GPT4BUSINESS FIX + LLM API DETECTOR**
-  - ✅ **GPT4Business Detection Fix** - AI Trust Analyzer CHAT_FRAMEWORKS expanded from 6 to 36 chat widgets (Intercom, Drift, HubSpot, Crisp, Tawk.to, Olark, Chatbase, Voiceflow, Botpress, + 27 more including **GPT4Business (YoloAI)**)
-  - ✅ **LLM API Detector Integration** - New analyzer for 9 LLM API providers (OpenAI, Anthropic, Cohere, Gemini, Hugging Face, Replicate, Azure OpenAI, AWS Bedrock, Vertex AI) with API endpoint detection, auth header matching, API key extraction (safe masking), attack surface mapping
-  - ✅ **AI Coverage**: ~60% (58/97 AI technologies) - 36 chat widgets + 9 LLM APIs + 7 vector databases + 6 ML frameworks
-  - ✅ **System Architecture Documentation** - Complete 900+ line SYSTEM_ARCHITECTURE.md file covering frontend, backend, worker, crawler, all 35 analyzers, data flow
+- **Recent Updates** (November 15, 2025 - Sprint #10-12): **🎯 BACKEND + WEB SERVER + FRONTEND + CVE + API SECURITY**
+  - ✅ **Backend Framework Detector** (7 frameworks: PHP, Django, Flask, Express, Rails, ASP.NET, Laravel) - Debug mode detection (CRITICAL), version disclosure, outdated versions
+  - ✅ **Web Server Security Analyzer** (5 servers: Nginx, Apache, IIS, LiteSpeed, Caddy) - CVE detection, version disclosure, module exposure
+  - ✅ **Frontend Framework Security** (7 frameworks: React, Vue, Angular, Next.js, Svelte, Nuxt, Ember) - DevTools detection, source maps exposure, dev mode in production
+  - ✅ **JS Library CVE Database** (52 CVEs for 15 libraries) - jQuery, Lodash, Moment.js, Axios, Angular, React vulnerabilities with semver matching
+  - ✅ **Passive API Discovery** - JWT detection, API key exposure, SQL errors, stack traces, API endpoints, debug mode indicators (100% passive, no active attacks)
 - **Previous Updates** (November 13, 2025 - Scoring & UX): **🎯 SCORING V3 + PUBLIC PAGES**
   - ✅ **Professional Scoring System v3.0** - Industry-standard scoring (OWASP/NIST/CVSS 3.1), realistic penalty values (2-2.5× stricter), reduced bonuses (50%), scores now realistic (90 A, 70 B-, not all 100 A+)
   - ✅ **Public /all-scans Page** - Beautiful scan list (domain, score, grade, risk level, datetime), scan form integrated, no auth required
@@ -87,7 +88,7 @@ Delivers a 30-second automated security assessment that identifies potential AI-
 - **API**: Next.js API Routes
 - **Workers**: SQLite-based job queue with automatic spawning
 - **Crawler**: Playwright (headless Chromium browser)
-- **Analyzers**: **35 specialized security analyzers** (29 infrastructure + **6 OWASP LLM**)
+- **Analyzers**: **38 specialized security analyzers** (32 infrastructure + **6 OWASP LLM**)
 
   **🎯 OWASP LLM Top 10 Analyzers (6/10 - 60% Coverage):**
   - **🆕 LLM01: Prompt Injection Risk** (420 lines) - System prompt leaks, risky prompt assembly, AI context correlation, sanitization detection
@@ -97,15 +98,18 @@ Delivers a 30-second automated security assessment that identifies potential AI-
   - **🆕 LLM07: Insecure Plugin Design** (457 lines) - OpenAI Function Calling, LangChain tools (ShellTool, PythonREPL), dangerous capabilities (code exec, file system, DB)
   - **🆕 LLM08: Excessive Agency** (395 lines) - Auto-execute detection, sandboxing analysis, approval mechanisms, privilege escalation patterns
 
-  **🛡️ Infrastructure Security Analyzers (29):**
+  **🛡️ Infrastructure Security Analyzers (32):**
   - **AI Detection** (NOT USED - only type imported, replaced by AI Trust Score)
   - **🆕 AI Trust Score** (⭐ MAIN AI DETECTOR - 36 chat widgets + 6 AI providers + 5 AI models, 27 checks across 5 categories)
   - **🆕 LLM API Detector** (9 LLM API providers: OpenAI, Anthropic, Cohere, Gemini, Hugging Face, Replicate, Azure OpenAI, AWS Bedrock, Vertex AI - API endpoint detection, auth header matching, API key extraction with safe masking)
+  - **🆕 Backend Framework Detector** (7 frameworks: PHP, Django, Flask, Express.js, Ruby on Rails, ASP.NET, Laravel - Debug mode detection CRITICAL, version disclosure, outdated versions)
+  - **🆕 Web Server Security** (5 servers: Nginx, Apache, IIS, LiteSpeed, Caddy - CVE detection for known versions, module/plugin disclosure, outdated versions)
+  - **🆕 Frontend Framework Security** (7 frameworks: React, Vue.js, Next.js, Angular, Svelte, Nuxt.js, Ember.js - DevTools detection CRITICAL, source maps exposure, dev mode in production)
   - **Security Headers** (CSP, HSTS, X-Frame-Options, server information headers)
   - **Client Risks** (exposed API keys with entropy checking, secrets)
   - **SSL/TLS** (certificate validation with dual-method collection)
   - **Cookie Security** (1st party only, 7 advanced checks including prefix validation, domain scope, session fixation)
-  - **JS Libraries** (version detection, vulnerability scanning)
+  - **JS Libraries** (version detection, vulnerability scanning with **CVE database** - 52 CVEs for 15 libraries: jQuery, Lodash, Moment.js, Axios, Angular, React, Bootstrap, etc.)
   - **Tech Stack** (120+ technologies across 8 categories)
   - **CORS** (wildcard origins, credentials, bypass patterns, JSONP, postMessage)
   - **Reconnaissance** (robots.txt, .git, .env, backups, SQL dumps, source maps)
@@ -119,6 +123,7 @@ Delivers a 30-second automated security assessment that identifies potential AI-
   - **GraphQL Security** (Endpoint detection, Introspection check, Playground/GraphiQL exposure, Query batching, Apollo/Relay/urql detection)
   - **Error Disclosure** (Stack traces - Java/Python/PHP/Node.js/.NET/Ruby, Database errors - MySQL/PostgreSQL/Oracle/SQL Server, Debug mode indicators, File path disclosure, Connection string exposure)
   - **SPA/API Detection** (SPA frameworks - React/Vue/Angular/Next.js/Nuxt.js/Svelte, API endpoint discovery, WebSocket detection, Unprotected API endpoints, Authentication analysis - Bearer/API-Key/Basic/Cookie)
+  - **🆕 Passive API Discovery** (JWT tokens in localStorage/sessionStorage, API keys in JavaScript, SQL errors, stack traces, API endpoints, debug mode indicators - 100% passive, no active attacks)
 
 ### Data Layer (✅ Implemented)
 - **Primary DB**: SQLite with Prisma ORM

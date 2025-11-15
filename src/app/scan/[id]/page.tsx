@@ -87,9 +87,9 @@ const CATEGORY_META = {
   },
   library: {
     icon: '📚',
-    title: 'JavaScript Libraries',
-    description: 'Third-party code dependencies',
-    explanation: 'External JavaScript libraries used on this site. Outdated versions may contain known security vulnerabilities.',
+    title: 'JavaScript Libraries & CVE Detection',
+    description: 'Third-party code dependencies with CVE vulnerability scanning',
+    explanation: 'External JavaScript libraries (jQuery, Lodash, React, Angular, etc.) used on this site are checked against an offline database of 52 CVEs affecting 15 popular libraries. Vulnerabilities include XSS, Prototype Pollution, Remote Code Execution, ReDoS, and SSRF. Each CVE includes severity rating (CVSS score), affected version ranges, fix versions, and links to security advisories. Outdated libraries with known CVEs should be updated immediately to prevent exploitation.',
   },
   reconnaissance: {
     icon: '🔍',
@@ -198,6 +198,30 @@ const CATEGORY_META = {
     title: 'OWASP LLM08: Excessive Agency',
     description: 'AI agents with excessive permissions without human oversight',
     explanation: 'AI agents configured with excessive permissions or autonomy can be exploited through prompt injection to perform unauthorized actions. This analyzer detects dangerous functions (shell execution, file operations, database access) without adequate security controls like sandboxing, human approval, audit logging, or rate limiting. It also identifies auto-execute configurations and privilege escalation patterns where AI agents ignore user context or bypass permission checks.',
+  },
+  'backend-framework': {
+    icon: '⚙️',
+    title: 'Backend Framework Security',
+    description: 'Server-side framework detection and security analysis',
+    explanation: 'Backend frameworks (PHP, Django, Flask, Express.js, Rails, ASP.NET, Laravel) power your server-side application logic. This analyzer detects framework versions, identifies CRITICAL security misconfigurations like debug mode enabled in production (Django DEBUG=True, Flask Werkzeug debugger), checks for outdated versions with known CVEs, and detects version disclosure in HTTP headers. Debug mode exposure is CRITICAL as it reveals database credentials, SECRET_KEY, environment variables, and can allow remote code execution.',
+  },
+  'web-server': {
+    icon: '🖥️',
+    title: 'Web Server Security',
+    description: 'HTTP server configuration and version security',
+    explanation: 'Web servers (Nginx, Apache, IIS, LiteSpeed, Caddy) handle all HTTP requests to your application. This analyzer detects server type and version from HTTP headers, identifies outdated versions with known CVEs, checks for version/module disclosure that aids reconnaissance, and detects exposed server-side technologies. Hiding server versions and keeping software updated prevents attackers from targeting known vulnerabilities.',
+  },
+  'frontend-framework': {
+    icon: '⚛️',
+    title: 'Frontend Framework Security',
+    description: 'Client-side framework development mode and source map exposure',
+    explanation: 'Frontend frameworks (React, Vue, Angular, Next.js, Svelte, Nuxt, Ember) power your user interface. This analyzer detects framework types and versions, identifies CRITICAL development mode deployments (React DevTools, Vue devtools, Next.js dev server), checks for exposed source maps that reveal original TypeScript/ES6 code, and detects debug builds. Development mode in production exposes sensitive internal data, component structure, API keys in state, and detailed error messages. Source maps allow complete reverse-engineering of your application. Always use production builds and disable source maps for public deployment.',
+  },
+  'api-security': {
+    icon: '🔌',
+    title: 'API Security & Exposure',
+    description: 'API endpoints, authentication patterns, and vulnerability indicators',
+    explanation: 'Modern web applications rely heavily on APIs for client-server communication. This analyzer performs PASSIVE analysis (no active attacks) to discover potential security issues: (1) JWT tokens exposed in localStorage/sessionStorage (vulnerable to XSS attacks), (2) API keys hardcoded in client-side JavaScript (immediate compromise risk), (3) SQL error messages leaking database structure, (4) Stack traces revealing internal architecture and file paths, (5) API endpoints discovered from JavaScript (attack surface mapping), (6) Debug mode indicators showing development configurations in production. All findings are based on information the server voluntarily sends - no malicious payloads are used. JWT tokens should use httpOnly cookies, API keys must stay server-side, error messages should be generic, and debug mode must be disabled in production.',
   },
 }
 
@@ -550,7 +574,7 @@ export default function ScanResultPage() {
   const aiFindings = findingsByCategory['ai'] || []
 
   // Define logical order for security categories (OWASP LLM categories prioritized at top)
-  const categoryOrder = ['owasp-llm01', 'owasp-llm02', 'owasp-llm05', 'owasp-llm06', 'owasp-llm07', 'owasp-llm08', 'reconnaissance', 'admin', 'port', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library', 'compliance', 'waf', 'mfa', 'rate-limit', 'graphql', 'error-disclosure', 'spa-api']
+  const categoryOrder = ['owasp-llm01', 'owasp-llm02', 'owasp-llm05', 'owasp-llm06', 'owasp-llm07', 'owasp-llm08', 'reconnaissance', 'admin', 'port', 'backend-framework', 'web-server', 'frontend-framework', 'api-security', 'client', 'ssl', 'cors', 'dns', 'cookie', 'security', 'library', 'compliance', 'waf', 'mfa', 'rate-limit', 'graphql', 'error-disclosure', 'spa-api']
 
   // In full report mode, show ALL categories even if no findings
   // In normal mode, only show categories with findings

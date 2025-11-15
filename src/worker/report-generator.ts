@@ -24,6 +24,10 @@ import { SupplyChainResult } from './analyzers/owasp-llm/llm05-supply-chain'
 import { SensitiveInfoResult } from './analyzers/owasp-llm/llm06-sensitive-info'
 import { PluginDesignResult } from './analyzers/owasp-llm/llm07-plugin-design'
 import { ExcessiveAgencyResult } from './analyzers/owasp-llm/llm08-excessive-agency'
+import { BackendFrameworkResult } from './analyzers/backend-framework-detector'
+import { WebServerSecurityResult } from './analyzers/web-server-security-analyzer'
+import { FrontendFrameworkResult } from './analyzers/frontend-framework-security-analyzer'
+import { PassiveAPIDiscoveryResult } from './analyzers/passive-api-discovery-analyzer'
 import { RiskScore } from './scoring'
 
 export interface ScanReport {
@@ -61,12 +65,16 @@ export interface ScanReport {
   llm06SensitiveInfo?: SensitiveInfoResult // Add LLM06 for frontend
   llm07PluginDesign?: PluginDesignResult // Add LLM07 for frontend
   llm08ExcessiveAgency?: ExcessiveAgencyResult // Add LLM08 for frontend
+  backendFramework?: BackendFrameworkResult // Add backend framework security for frontend
+  webServer?: WebServerSecurityResult // Add web server security for frontend
+  frontendFramework?: FrontendFrameworkResult // Add frontend framework security for frontend
+  passiveAPI?: PassiveAPIDiscoveryResult // Add passive API discovery for frontend
   findings: Finding[]
 }
 
 export interface Finding {
   id: string
-  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors' | 'dns' | 'port' | 'compliance' | 'waf' | 'mfa' | 'rate-limit' | 'graphql' | 'error-disclosure' | 'spa-api' | 'owasp-llm01' | 'owasp-llm02' | 'owasp-llm05' | 'owasp-llm06' | 'owasp-llm07' | 'owasp-llm08'
+  category: 'ai' | 'security' | 'client' | 'ssl' | 'cookie' | 'library' | 'reconnaissance' | 'admin' | 'cors' | 'dns' | 'port' | 'compliance' | 'waf' | 'mfa' | 'rate-limit' | 'graphql' | 'error-disclosure' | 'spa-api' | 'owasp-llm01' | 'owasp-llm02' | 'owasp-llm05' | 'owasp-llm06' | 'owasp-llm07' | 'owasp-llm08' | 'backend-framework' | 'web-server' | 'frontend-framework' | 'api-security'
   severity: 'low' | 'medium' | 'high' | 'critical' | 'info'
   title: string
   description: string
@@ -102,7 +110,11 @@ export function generateReport(
   llm05SupplyChain?: SupplyChainResult,
   llm06SensitiveInfo?: SensitiveInfoResult,
   llm07PluginDesign?: PluginDesignResult,
-  llm08ExcessiveAgency?: ExcessiveAgencyResult
+  llm08ExcessiveAgency?: ExcessiveAgencyResult,
+  backendFramework?: BackendFrameworkResult,
+  webServer?: WebServerSecurityResult,
+  frontendFramework?: FrontendFrameworkResult,
+  passiveAPI?: PassiveAPIDiscoveryResult
 ): ScanReport {
   const findings: Finding[] = []
 
@@ -697,6 +709,90 @@ export function generateReport(
     }
   }
 
+  // ⭐ NEW: Backend Framework Security findings
+  if (backendFramework) {
+    for (const finding of backendFramework.findings) {
+      findings.push({
+        id: `backend-framework-${findings.length}`,
+        category: 'backend-framework',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description,
+        evidence: finding.evidence,
+        impact: finding.impact,
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
+  // ⭐ NEW: Web Server Security findings
+  if (webServer) {
+    for (const finding of webServer.findings) {
+      findings.push({
+        id: `web-server-${findings.length}`,
+        category: 'web-server',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description,
+        evidence: finding.evidence,
+        impact: finding.impact,
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
+  // ⭐ NEW: Frontend Framework Security findings
+  if (frontendFramework) {
+    for (const finding of frontendFramework.findings) {
+      findings.push({
+        id: `frontend-framework-${findings.length}`,
+        category: 'frontend-framework',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description,
+        evidence: finding.evidence,
+        impact: finding.impact,
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
+  // ⭐ NEW: Passive API Discovery findings
+  if (passiveAPI) {
+    for (const finding of passiveAPI.findings) {
+      findings.push({
+        id: `api-security-${findings.length}`,
+        category: 'api-security',
+        severity: finding.severity,
+        title: finding.title,
+        description: finding.description,
+        evidence: finding.evidence,
+        impact: finding.impact,
+        recommendation: finding.recommendation,
+      })
+
+      if (finding.severity === 'critical') criticalCount++
+      else if (finding.severity === 'high') highCount++
+      else if (finding.severity === 'medium') mediumCount++
+      else lowCount++
+    }
+  }
+
   return {
     summary: {
       hasAI: aiDetection.hasAI,
@@ -732,6 +828,10 @@ export function generateReport(
     llm06SensitiveInfo, // Pass LLM06 Sensitive Information Disclosure result to frontend
     llm07PluginDesign, // Pass LLM07 Insecure Plugin Design result to frontend
     llm08ExcessiveAgency, // Pass LLM08 Excessive Agency result to frontend
+    backendFramework, // Pass Backend Framework Security result to frontend
+    webServer, // Pass Web Server Security result to frontend
+    frontendFramework, // Pass Frontend Framework Security result to frontend
+    passiveAPI, // Pass Passive API Discovery result to frontend
     findings,
   }
 }
