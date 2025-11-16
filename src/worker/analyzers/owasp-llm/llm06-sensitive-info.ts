@@ -683,6 +683,24 @@ function shouldSkipPII(value: string, type: string, htmlContext?: string): boole
   // Skip version numbers that look like phone numbers
   if (type === 'phone' && /\d\.\d\.\d/.test(value)) return true
 
+  // ========================================
+  // EMAIL FALSE POSITIVES (Nov 16, 2025)
+  // Fix: Image files with @2x, @3x, @4x (Retina images)
+  // ========================================
+  if (type === 'email') {
+    // 1. Retina image suffixes: filename@2x.jpg, image@3x.png
+    if (/@[234]x\.(jpe?g|png|gif|svg|webp|bmp|ico|tiff?)$/i.test(value)) return true
+
+    // 2. Image file extensions anywhere in the "email"
+    if (/\.(jpe?g|png|gif|svg|webp|bmp|ico|tiff?|avif|heic)$/i.test(value)) return true
+
+    // 3. Contains path separator / (emails don't have paths)
+    if (value.includes('/')) return true
+
+    // 4. Srcset attribute patterns: /path/file@2x.jpg 2x
+    if (/@[234]x\b/i.test(value)) return true
+  }
+
   // NEW: Context-aware exclusions using surrounding HTML
   if (htmlContext) {
     const exclusions = PII_EXCLUSION_CONTEXTS[type as keyof typeof PII_EXCLUSION_CONTEXTS]
