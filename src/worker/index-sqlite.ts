@@ -199,7 +199,8 @@ async function processScanJob(data: { scanId: string; url: string }) {
     const compliance = await analyzeCompliance(
       crawlResult.html,
       crawlResult.cookies || [],
-      crawlResult.responseHeaders || {}
+      crawlResult.responseHeaders || {},
+      crawlResult.url // Nov 16, 2025: Added for EU scope detection
     )
     timings.compliance = Date.now() - complianceStart
 

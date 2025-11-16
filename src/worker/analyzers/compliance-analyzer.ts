@@ -57,12 +57,13 @@ export interface ComplianceResult {
 export async function analyzeCompliance(
   html: string,
   cookies: any[],
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  url?: string // Nov 16, 2025: Added for EU scope detection
 ): Promise<ComplianceResult> {
   const findings: ComplianceFinding[] = []
 
   // GDPR Compliance Analysis
-  const gdprFindings = analyzeGDPR(html, cookies, headers)
+  const gdprFindings = analyzeGDPR(html, cookies, headers, url)
   findings.push(...gdprFindings.findings)
 
   // CCPA Compliance Analysis
@@ -100,13 +101,69 @@ export async function analyzeCompliance(
 }
 
 /**
+ * Nov 16, 2025: EU Geographic Scope Detection for GDPR
+ *
+ * GDPR only applies to sites targeting EU users.
+ * Avoid false positives for US-only, Asian, or other non-EU sites.
+ */
+function requiresGDPR(html: string, url?: string): boolean {
+  // If no URL provided, assume GDPR applies (conservative approach)
+  if (!url) return true
+
+  // EU country code TLDs
+  const euTLDs = ['.eu', '.de', '.fr', '.it', '.es', '.nl', '.pl', '.be', '.se', '.dk', '.fi', '.at', '.pt', '.ie', '.cz', '.ro', '.gr', '.hu', '.sk', '.bg', '.hr', '.si', '.lt', '.lv', '.ee', '.cy', '.lu', '.mt']
+
+  // EU language codes (html lang attribute)
+  const euLanguages = ['de', 'fr', 'it', 'es', 'nl', 'pl', 'sv', 'da', 'fi', 'pt', 'el', 'cs', 'ro', 'hu', 'sk', 'bg', 'hr', 'sl', 'lt', 'lv', 'et']
+
+  // EU currency mentions
+  const euCurrencyPattern = /EUR|€|euro/i
+
+  // Explicit GDPR mentions
+  const gdprPattern = /GDPR|General Data Protection Regulation|datenschutz|RGPD/i
+
+  try {
+    // Check TLD
+    const urlLower = url.toLowerCase()
+    if (euTLDs.some(tld => urlLower.endsWith(tld))) {
+      return true
+    }
+
+    // Check language attribute
+    const langMatch = html.match(/<html[^>]*lang=["']([a-z]{2})/i)
+    if (langMatch && euLanguages.includes(langMatch[1].toLowerCase())) {
+      return true
+    }
+
+    // Check for EU currency mentions
+    if (euCurrencyPattern.test(html)) {
+      return true
+    }
+
+    // Check for explicit GDPR mentions
+    if (gdprPattern.test(html)) {
+      return true
+    }
+
+    // Default: assume non-EU site (avoid false positives)
+    return false
+  } catch (error) {
+    // On error, assume GDPR applies (conservative approach)
+    return true
+  }
+}
+
+/**
  * GDPR Compliance Analysis
  */
 function analyzeGDPR(
   html: string,
   cookies: any[],
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  url?: string // Nov 16, 2025: Added for EU scope detection
 ): { findings: ComplianceFinding[]; score: number } {
+  // Nov 16, 2025: Check if GDPR applies to this site
+  const gdprApplies = requiresGDPR(html, url)
   const findings: ComplianceFinding[] = []
   const indicators: ComplianceIndicators = {
     privacyPolicy: false,
@@ -150,15 +207,29 @@ function analyzeGDPR(
   }
 
   if (!indicators.privacyPolicy) {
-    findings.push({
-      type: 'gdpr-privacy-policy-missing',
-      severity: 'high',
-      title: 'No Privacy Policy Detected',
-      category: 'compliance',
-      found: false,
-      impact: 'GDPR Article 13 requires transparent privacy information',
-      recommendation: 'Implement a comprehensive privacy policy',
-    })
+    if (gdprApplies) {
+      // EU site without privacy policy = HIGH severity (GDPR violation)
+      findings.push({
+        type: 'gdpr-privacy-policy-missing',
+        severity: 'high',
+        title: 'No Privacy Policy Detected (GDPR applies)',
+        category: 'compliance',
+        found: false,
+        impact: 'GDPR Article 13 requires transparent privacy information for EU users',
+        recommendation: 'Implement a comprehensive privacy policy compliant with GDPR',
+      })
+    } else {
+      // Non-EU site = LOW severity (best practice recommendation only)
+      findings.push({
+        type: 'privacy-policy-missing',
+        severity: 'low',
+        title: 'No Privacy Policy Detected',
+        category: 'compliance',
+        found: false,
+        impact: 'Privacy policy is a best practice for user trust (GDPR not applicable)',
+        recommendation: 'Consider adding a privacy policy to improve user transparency',
+      })
+    }
   }
 
   // Cookie Consent Banner
@@ -193,7 +264,8 @@ function analyzeGDPR(
     })
   } else {
     // Check if cookies are being used
-    if (cookies.length > 0) {
+    if (cookies.length > 0 && gdprApplies) {
+      // EU site with cookies but no consent = HIGH severity
       findings.push({
         type: 'gdpr-cookie-consent-missing',
         severity: 'high',
