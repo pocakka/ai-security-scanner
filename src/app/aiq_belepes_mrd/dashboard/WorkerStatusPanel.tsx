@@ -30,6 +30,8 @@ interface WorkerStatus {
 export default function WorkerStatusPanel() {
   const [status, setStatus] = useState<WorkerStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [triggerLoading, setTriggerLoading] = useState(false)
+  const [triggerMessage, setTriggerMessage] = useState<string | null>(null)
 
   const fetchStatus = async () => {
     try {
@@ -40,6 +42,33 @@ export default function WorkerStatusPanel() {
       setError(null)
     } catch (err) {
       setError('Failed to load worker status')
+    }
+  }
+
+  const handleTriggerWorker = async () => {
+    setTriggerLoading(true)
+    setTriggerMessage(null)
+    try {
+      const response = await fetch('/api/worker/trigger', {
+        method: 'POST',
+      })
+      const data = await response.json()
+
+      if (data.success) {
+        setTriggerMessage(`✅ ${data.message}`)
+        // Refresh status after 2 seconds
+        setTimeout(() => {
+          fetchStatus()
+        }, 2000)
+      } else {
+        setTriggerMessage(`ℹ️ ${data.message}`)
+      }
+    } catch (err) {
+      setTriggerMessage('❌ Failed to start worker')
+    } finally {
+      setTriggerLoading(false)
+      // Clear message after 5 seconds
+      setTimeout(() => setTriggerMessage(null), 5000)
     }
   }
 
@@ -113,6 +142,34 @@ export default function WorkerStatusPanel() {
           <div className="text-2xl font-bold text-white">{status.queue.processing}</div>
         </div>
       </div>
+
+      {/* Process Pending Scans Button */}
+      {status.queue.pending > 0 && status.activeWorkers === 0 && (
+        <div className="mb-4">
+          <button
+            onClick={handleTriggerWorker}
+            disabled={triggerLoading}
+            className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+          >
+            {triggerLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                <span>Starting Worker...</span>
+              </>
+            ) : (
+              <>
+                <span>🚀</span>
+                <span>Process Pending Scans ({status.queue.pending})</span>
+              </>
+            )}
+          </button>
+          {triggerMessage && (
+            <div className="mt-2 text-sm text-center text-white bg-white/10 border border-white/20 rounded-lg p-2">
+              {triggerMessage}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Active Workers */}
       {status.workers.length > 0 && (
