@@ -94,20 +94,185 @@ Last Updated: November 16, 2025
 **Purpose:** Display full scan results, risk score, findings, lead capture
 
 **Key Components:**
-- **Header:** Domain, timestamp, risk score badge
-- **Overview Card:** Risk level, total findings, scan metadata
-- **AI Trust Scorecard:** Score + category breakdown
-- **Technology Stack:** Detected technologies (from Wappalyzer-like detection)
-- **Findings by Category:**
-  - Security Issues
-  - SSL/TLS Issues
-  - Cookie Issues
-  - Client-Side Issues
-  - Library Vulnerabilities
-  - OWASP LLM Risks
-  - AI Trust Issues
-- **Lead Capture Form:** Email gate to unlock detailed findings
-- **Footer:** CTA to scan another site
+
+#### 1. Header Section
+- Domain name (e.g., "openai.com")
+- Scan timestamp
+- Risk score badge (0-100) with color coding:
+  - 0-25: GREEN (Low Risk)
+  - 26-50: YELLOW (Medium Risk)
+  - 51-75: ORANGE (High Risk)
+  - 76-100: RED (Critical Risk)
+
+#### 2. Overview Card
+- **Risk Level:** LOW | MEDIUM | HIGH | CRITICAL
+- **Total Findings:** Count of all findings across all categories
+- **Scan Duration:** Time taken to complete scan
+- **Scan Status:** COMPLETED | FAILED
+- **Scan Metadata:** URL, domain, createdAt, completedAt
+
+#### 3. AI Trust Scorecard Section
+**AI Trust Score:** 0-100 weighted score
+
+**Category Breakdown (5 categories):**
+1. **Transparency** (6 checks / 22%):
+   - ✓/✗ AI Provider Disclosed (e.g., "Powered by OpenAI")
+   - ✓/✗ AI Identity Disclosed (e.g., "I am an AI assistant")
+   - ✓/✗ AI Policy Linked (link to /ai-policy or similar)
+   - ✓/✗ Model Version Disclosed (e.g., "Using GPT-4")
+   - ✓/✗ Limitations Disclosed (e.g., "AI may make mistakes")
+   - ✓/✗ Data Usage Disclosure (e.g., "Data not used for training")
+
+2. **User Control** (5 checks / 19%):
+   - ✓/✗ Feedback Mechanism (thumbs up/down, rating)
+   - ✓/✗ Conversation Reset (New Chat button)
+   - ✓/✗ Human Escalation (Talk to human support)
+   - ✓/✗ Conversation Export (Download/export chat history)
+   - ✓/✗ Data Deletion Option (Delete my data button)
+
+3. **Compliance (GDPR)** (5 checks / 19%):
+   - ✓/✗ DPO Contact (mailto:privacy@ or DPO contact form)
+   - ✓/✗ Cookie Banner (Cookie consent mechanism)
+   - ✓/✗ Privacy Policy Link (/privacy or privacy policy page)
+   - ✓/✗ Terms of Service Link (/terms or ToS page)
+   - ✓/✗ GDPR Compliance Badge/Statement
+
+4. **Security & Reliability** (7 checks / 26%):
+   - ✓/✗ Bot Protection (reCAPTCHA, hCaptcha, Turnstile)
+   - ✓/✗ AI Rate Limit Headers (X-RateLimit-* on AI endpoints)
+   - ✓/✗ Basic Web Security (overall security score > 70)
+   - ✓/✗ Input Length Limit (textarea maxlength attribute)
+   - ✓/✗ Input Sanitization (DOMPurify or similar)
+   - ✓/✗ Error Handling (graceful error messages, no stack traces)
+   - ✓/✗ Session Management (secure session handling)
+
+5. **Ethical AI** (4 checks / 15%):
+   - ✓/✗ Bias Disclosure (warning about potential biases)
+   - ✓/✗ Content Moderation (harmful content filtering)
+   - ✓/✗ Age Verification ("Are you 18+")
+   - ✓/✗ Accessibility Support (ARIA labels, screen reader support)
+
+**Additional AI Trust Scorecard Data:**
+- **Passed Checks:** Count of passed checks (e.g., 15/27)
+- **Total Checks:** 27 checks total
+- **Confidence Level:** none | low | medium | high (AI implementation confidence)
+- **Detected AI Provider:** OpenAI | Anthropic | Google | Cohere | etc.
+- **Detected Model:** GPT-4 | Claude-3-Opus | Gemini Pro | etc.
+- **Detected Chat Framework:** Intercom | Drift | Crisp | Custom | etc.
+- **Evidence Data:** JSON object with evidence for each check
+- **Summary:** Strengths, weaknesses, critical issues
+
+#### 4. Technology Stack Section
+**Detected Technologies (from Wappalyzer-like detection):**
+
+Each technology displayed with:
+- Technology name (e.g., "Next.js", "React", "Cloudflare")
+- Category (e.g., "Framework", "Library", "CDN", "Analytics")
+- Version (if detected, e.g., "14.0.3")
+- Icon/logo (if available)
+
+**Categories Detected:**
+- Frontend Frameworks (React, Vue, Angular, Next.js, Nuxt, Svelte)
+- Backend Frameworks (Express, FastAPI, Django, Rails)
+- Web Servers (Nginx, Apache, IIS, Cloudflare)
+- CDNs (Cloudflare, Fastly, Akamai)
+- Analytics (Google Analytics, Plausible, Mixpanel)
+- AI Services (OpenAI, Anthropic, Cohere, Intercom, Drift)
+- Security Tools (Cloudflare, Sucuri, reCAPTCHA)
+- JavaScript Libraries (jQuery, Lodash, Axios)
+- CMS (WordPress, Drupal, Contentful)
+
+#### 5. Findings by Category
+
+**Security Findings** (from security-headers analyzer):
+- Missing Content-Security-Policy (CSP)
+- Missing X-Frame-Options
+- Missing X-Content-Type-Options
+- Missing Strict-Transport-Security (HSTS)
+- Missing Referrer-Policy
+- Missing Permissions-Policy
+- Insecure Cross-Origin-* headers
+
+**SSL/TLS Findings** (from ssl-tls-analyzer):
+- SSL certificate expired
+- Self-signed certificate
+- Weak cipher suites
+- TLS version too old (< TLS 1.2)
+- Certificate chain issues
+- Hostname mismatch
+
+**Cookie Security Findings** (from cookie-security analyzers):
+- Cookies without HttpOnly flag
+- Cookies without Secure flag
+- Cookies without SameSite attribute
+- Session cookies with long expiration
+- Cookies accessible by JavaScript
+- Third-party tracking cookies
+
+**Client-Side Security Findings** (from client-risks analyzer):
+- eval() usage detected
+- innerHTML usage (XSS risk)
+- document.write() usage
+- Inline event handlers
+- Global variables exposed
+- Sensitive data in localStorage/sessionStorage
+
+**Library Vulnerabilities** (from js-library-cve-database):
+- Outdated jQuery (CVE-XXXX-XXXX)
+- Outdated React (known vulnerabilities)
+- Outdated lodash (prototype pollution)
+- Other known CVEs in detected libraries
+
+**OWASP LLM Top 10 Findings** (from OWASP LLM analyzers):
+- **LLM01:** Prompt Injection vulnerabilities
+- **LLM02:** Insecure output handling
+- **LLM03:** Training data poisoning risks
+- **LLM04:** Model denial of service
+- **LLM05:** Supply chain vulnerabilities
+- **LLM06:** Sensitive information disclosure (API keys, endpoints)
+- **LLM07:** Insecure plugin design
+- **LLM08:** Excessive agency
+- **LLM09:** Overreliance on LLM
+- **LLM10:** Model theft
+
+**AI-Specific Security Findings:**
+- Exposed AI API endpoints
+- Hardcoded API keys (OpenAI, Anthropic, etc.)
+- Prompt templates exposed in client-side code
+- Embedding vectors exposed
+- Model version disclosure
+- Training data leakage
+- Rate limiting issues on AI endpoints
+- No input validation on AI prompts
+
+**Infrastructure Security Findings:**
+- Open ports detected (from port-scanner)
+- Weak WAF configuration
+- DNS security issues (DNSSEC, SPF, DMARC)
+- Server version disclosure
+- Admin panel exposed (/admin, /wp-admin)
+- GraphQL introspection enabled
+- CORS misconfiguration
+
+#### 6. Lead Capture Form
+- **Email input** (required, validated)
+- **Name input** (optional)
+- **Company input** (optional)
+- **Role dropdown** (optional): Developer | Security Engineer | Manager | Other
+- **Submit button:** "Unlock Detailed Report"
+- **Privacy notice:** Link to privacy policy
+
+**Form Behavior:**
+- Shows before detailed findings are visible
+- After submission, unlocks full findings
+- Creates Lead record in database
+- Email can be duplicated (same user can scan multiple sites)
+
+#### 7. Footer Section
+- **CTA:** "Scan Another Website" button
+- **Social links:** Twitter, LinkedIn, GitHub (if configured in SiteSettings)
+- **Legal links:** Privacy Policy, Terms of Service
+- **Branding:** "Powered by AI Security Scanner"
 
 **Critical Functions:**
 - Fetch scan data from `/api/scan/[id]`
@@ -332,19 +497,76 @@ Last Updated: November 16, 2025
 - Default: 3 concurrent workers
 - Configurable via `WORKER_POOL_SIZE` env var
 
-**Analyzer Execution Order:**
-1. Web crawling (Playwright/Puppeteer)
-2. SSL/TLS checks
-3. Security headers
-4. Cookie security
-5. Client-side security
-6. Library vulnerability detection
-7. OWASP LLM checks
-8. AI Trust Scorecard
-9. Technology Stack detection
-10. Passive API discovery
-11. Admin panel discovery
-12. ... (38 total)
+**Analyzer Execution Order (41 analyzers total):**
+
+#### Phase 1: Infrastructure & Web Server (6 analyzers)
+1. **ssl-tls-analyzer** - SSL/TLS certificate validation, cipher suites, TLS version
+2. **web-server-security-analyzer** - Server version disclosure, configuration issues
+3. **dns-security-analyzer** - DNSSEC, SPF, DMARC, DNS configuration
+4. **port-scanner-analyzer** - Open ports, exposed services
+5. **waf-detection-analyzer** - WAF presence (Cloudflare, Sucuri, etc.)
+6. **cors-analyzer** - CORS configuration, misconfigurations
+
+#### Phase 2: Security Headers & Policies (2 analyzers)
+7. **security-headers** - CSP, X-Frame-Options, HSTS, X-Content-Type-Options, etc.
+8. **compliance-analyzer** - GDPR compliance, privacy policy, cookie consent
+
+#### Phase 3: Cookie Security (2 analyzers)
+9. **cookie-security-analyzer** - HttpOnly, Secure, SameSite flags
+10. **cookie-security-enhanced** - Advanced cookie analysis, tracking cookies
+
+#### Phase 4: Client-Side Security (3 analyzers)
+11. **client-risks** - eval(), innerHTML, document.write() usage
+12. **error-disclosure-analyzer** - Stack traces, error messages exposed
+13. **frontend-framework-security-analyzer** - Framework-specific security issues
+
+#### Phase 5: JavaScript Libraries & Vulnerabilities (2 analyzers)
+14. **js-libraries-analyzer** - Detect JS libraries (jQuery, React, etc.)
+15. **js-library-cve-database** - CVE matching for detected libraries
+
+#### Phase 6: Technology Stack Detection (2 analyzers)
+16. **tech-stack-analyzer** - Web framework, CMS, server detection
+17. **backend-framework-detector** - Backend framework identification
+
+#### Phase 7: API & Endpoint Discovery (4 analyzers)
+18. **passive-api-discovery-analyzer** - API endpoints from HTML/JS
+19. **spa-api-analyzer** - Single-page app API analysis
+20. **graphql-analyzer** - GraphQL endpoint detection, introspection
+21. **rate-limiting-analyzer** - API rate limiting detection
+
+#### Phase 8: Admin & Reconnaissance (3 analyzers)
+22. **admin-detection-analyzer** - Admin panel detection (/admin, /wp-admin)
+23. **admin-discovery-analyzer** - Admin routes, management interfaces
+24. **reconnaissance-analyzer** - Information disclosure, metadata leakage
+
+#### Phase 9: Authentication & Access Control (1 analyzer)
+25. **mfa-detection-analyzer** - Multi-factor authentication detection
+
+#### Phase 10: AI Detection - Core (3 analyzers)
+26. **ai-detection** - Primary AI implementation detection
+27. **advanced-ai-detection-rules** - Advanced AI pattern matching
+28. **ai-trust-analyzer** - AI Trust Scorecard (27 checks across 5 categories)
+
+#### Phase 11: AI Detection - Specialized Services (7 analyzers)
+29. **llm-api-detector** - LLM API detection (OpenAI, Anthropic, Cohere, etc.)
+30. **analytics-ai-detector** - AI-powered analytics (Mixpanel AI, Amplitude AI)
+31. **content-moderation-detector** - AI content moderation (Perspective API, etc.)
+32. **image-video-ai-detector** - AI image/video services (Cloudinary AI, etc.)
+33. **personalization-detector** - AI personalization engines
+34. **search-ai-detector** - AI-powered search (Algolia AI, Elasticsearch ML)
+35. **translation-ai-detector** - AI translation services (DeepL, Google Translate AI)
+36. **voice-ai-detector** - Voice AI (Elevenlabs, Play.ht, etc.)
+
+#### Phase 12: OWASP LLM Top 10 (4 analyzers)
+37. **ai-prompt-exposure** - LLM01: Prompt injection detection
+38. **ai-endpoint-security** - LLM02-LLM05: Output handling, model DoS, supply chain
+39. **advanced-api-key-patterns** - LLM06: Sensitive info disclosure (API keys)
+40. **api-key-detector-improved** - LLM06: Enhanced API key detection
+
+#### Phase 13: Advanced AI Security (1 analyzer)
+41. **embedding-vector-detection** - Embedding vectors, semantic search exposure
+
+**Total: 41 analyzers across 13 phases**
 
 **Critical Error Handling:**
 - Each analyzer wrapped in try/catch
