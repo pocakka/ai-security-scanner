@@ -38,30 +38,57 @@ export async function POST(request: Request) {
       })
     }
 
-    // Spawn worker process
-    const workerProcess = spawn('npm', ['run', 'worker'], {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        USE_REAL_CRAWLER: 'true',
-      },
-      detached: true,
-      stdio: 'ignore',
-    })
+    // Calculate how many workers to spawn
+    // Max 5 concurrent workers (worker pool limit), minus already scanning
+    const MAX_WORKERS = 5
+    const workersToSpawn = Math.min(pendingCount, MAX_WORKERS - scanningCount, MAX_WORKERS)
 
-    // Detach process so it runs independently
-    workerProcess.unref()
+    if (workersToSpawn <= 0) {
+      return NextResponse.json({
+        success: false,
+        message: `Worker pool full (${scanningCount} scans already scanning, max ${MAX_WORKERS})`,
+        stats: {
+          pending: pendingCount,
+          scanning: scanningCount,
+        },
+      })
+    }
 
-    console.log(`[WorkerTrigger] ✅ Worker spawned with PID: ${workerProcess.pid}`)
+    // Spawn multiple worker processes to process ALL pending scans
+    const workerPids: number[] = []
+    for (let i = 0; i < workersToSpawn; i++) {
+      const workerProcess = spawn('npm', ['run', 'worker'], {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          USE_REAL_CRAWLER: 'true',
+        },
+        detached: true,
+        stdio: 'ignore',
+      })
+
+      // Detach process so it runs independently
+      workerProcess.unref()
+
+      if (workerProcess.pid) {
+        workerPids.push(workerProcess.pid)
+      }
+
+      // Small delay between spawns to avoid race conditions
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    }
+
+    console.log(`[WorkerTrigger] ✅ Spawned ${workerPids.length} workers: ${workerPids.join(', ')}`)
     console.log(`[WorkerTrigger] 📊 Pending: ${pendingCount}, Scanning: ${scanningCount}`)
 
     return NextResponse.json({
       success: true,
-      message: `Worker started successfully. Processing ${pendingCount} pending scan(s).`,
+      message: `Started ${workerPids.length} worker(s) to process ${pendingCount} pending scan(s).`,
       stats: {
         pending: pendingCount,
         scanning: scanningCount,
-        workerPid: workerProcess.pid,
+        workersSpawned: workerPids.length,
+        workerPids,
       },
     })
   } catch (error) {
