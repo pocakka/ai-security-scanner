@@ -116,11 +116,11 @@ function requiresGDPR(html: string, url?: string): boolean {
   // EU language codes (html lang attribute)
   const euLanguages = ['de', 'fr', 'it', 'es', 'nl', 'pl', 'sv', 'da', 'fi', 'pt', 'el', 'cs', 'ro', 'hu', 'sk', 'bg', 'hr', 'sl', 'lt', 'lv', 'et']
 
-  // EU currency mentions
-  const euCurrencyPattern = /EUR|€|euro/i
+  // EU currency mentions (Nov 16, 2025: Fixed false positives - added word boundaries)
+  const euCurrencyPattern = /\b(EUR|euro|euros)\b|€/i
 
-  // Explicit GDPR mentions
-  const gdprPattern = /GDPR|General Data Protection Regulation|datenschutz|RGPD/i
+  // Explicit GDPR mentions (Nov 16, 2025: More specific patterns)
+  const gdprPattern = /\b(GDPR|General Data Protection Regulation|datenschutz|RGPD)\b/i
 
   try {
     // Check TLD
@@ -366,20 +366,23 @@ function analyzeGDPR(
     })
   }
 
-  // Legal Basis for Processing
+  // Legal Basis for Processing (Nov 16, 2025: Fixed "consent" false positives)
+  // Using regex with word boundaries and GDPR-specific context
   const legalBasisPatterns = [
-    'legitimate interest',
-    'legal basis',
-    'lawful basis',
-    'consent',
-    'contractual necessity',
-    'legal obligation',
-    'vital interests',
-    'public interest',
+    /\blegitimate interest/i,
+    /\blegal basis/i,
+    /\blawful basis/i,
+    /\b(data processing|gdpr|privacy).{0,50}\bconsent\b/i,  // Consent in GDPR context
+    /\bconsent.{0,50}(data processing|personal data|gdpr)/i,  // Consent in GDPR context
+    /\bcontractual necessity/i,
+    /\blegal obligation/i,
+    /\bvital interests/i,
+    /\bpublic interest/i,
   ]
 
   for (const pattern of legalBasisPatterns) {
-    if (html.toLowerCase().includes(pattern)) {
+    const match = html.match(pattern)
+    if (match) {
       indicators.legalBasis = true
       findings.push({
         type: 'gdpr-legal-basis',
@@ -387,7 +390,7 @@ function analyzeGDPR(
         title: 'Legal Basis for Processing Mentioned',
         category: 'compliance',
         found: true,
-        evidence: `"${pattern}" found`,
+        evidence: `"${match[0]}" found`,
       })
       break
     }
@@ -708,27 +711,29 @@ function analyzeHIPAA(html: string): {
     })
   }
 
-  // Health-related indicators
+  // Health-related indicators (Nov 16, 2025: Fixed false positives)
+  // Using regex with word boundaries to avoid matching substrings
   const healthPatterns = [
-    'protected health information',
-    'phi',
-    'electronic health records',
-    'ehr',
-    'medical records',
-    'patient data',
-    'health data privacy',
+    /\bprotected health information\b/i,
+    /\bPHI\b/,  // Only uppercase PHI (acronym), not lowercase "phi"
+    /\belectronic health records?\b/i,
+    /\bEHR\b/,  // Only uppercase EHR
+    /\bmedical records?\b/i,
+    /\bpatient data\b/i,
+    /\bhealth data privacy\b/i,
   ]
 
   for (const pattern of healthPatterns) {
-    if (html.toLowerCase().includes(pattern)) {
-      indicators.push(`Health data: ${pattern}`)
+    const match = html.match(pattern)
+    if (match) {
+      indicators.push(`Health data: ${match[0]}`)
       findings.push({
         type: 'hipaa-health-data',
         severity: 'info',
         title: 'Health Data References Found',
         category: 'compliance',
         found: true,
-        evidence: `"${pattern}" mentioned`,
+        evidence: `"${match[0]}" mentioned`,
       })
       break
     }
