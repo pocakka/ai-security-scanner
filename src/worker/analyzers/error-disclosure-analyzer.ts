@@ -163,61 +163,62 @@ const DATABASE_ERROR_PATTERNS = [
   },
 ]
 
-// Debug mode indicators
+// Debug mode indicators (Nov 16, 2025: Removed generic patterns causing FPs)
+// Only match ACTUAL environment variable outputs, not documentation
 const DEBUG_MODE_PATTERNS = [
   {
-    pattern: /DEBUG\s*=\s*True/gi,
+    // Django - word boundary added
+    pattern: /DEBUG\s*=\s*True\b/g,
     framework: 'Django',
-    severity: 'medium' as const,
+    severity: 'high' as const,  // Upgraded - real config exposure
   },
   {
-    pattern: /APP_DEBUG\s*=\s*true/gi,
+    // Laravel - word boundary added
+    pattern: /APP_DEBUG\s*=\s*true\b/g,
     framework: 'Laravel',
-    severity: 'medium' as const,
+    severity: 'high' as const,
   },
   {
-    pattern: /development mode/gi,
-    framework: 'Generic',
-    severity: 'medium' as const,
-  },
-  {
-    pattern: /ENVIRONMENT\s*=\s*(dev|development|debug)/gi,
-    framework: 'Generic',
-    severity: 'medium' as const,
-  },
-  {
-    pattern: /NODE_ENV\s*=\s*development/gi,
+    // Node.js - more specific pattern
+    pattern: /NODE_ENV\s*=\s*["']?(development|dev)["']?\b/g,
     framework: 'Node.js',
-    severity: 'medium' as const,
+    severity: 'high' as const,
   },
+  {
+    // Rails environment
+    pattern: /RAILS_ENV\s*=\s*development\b/g,
+    framework: 'Ruby on Rails',
+    severity: 'high' as const,
+  },
+  // ❌ REMOVED: /development mode/gi - 80% false positive rate on documentation
+  // ❌ REMOVED: generic /ENVIRONMENT\s*=/ - too broad, matches documentation
 ]
 
-// File path disclosure patterns
+// File path disclosure patterns (Nov 16, 2025: Fixed false positives)
+// More specific patterns to avoid matching website navigation and SPA routes
 const FILE_PATH_PATTERNS = [
   {
-    pattern: /\/var\/www\/[^\s<>"]+/gi,
-    type: 'Linux Web Root',
+    // Only match /var/www/ with subdirectories (not just /var/www/)
+    pattern: /\/var\/www\/(?:html|vhosts)\/[a-zA-Z0-9_\-\/]+\.(?:php|py|js|rb|java|jsp)/gi,
+    type: 'Linux Web Root with File Extension',
   },
   {
-    pattern: /\/home\/[^\s<>"]+/gi,
-    type: 'Linux Home Directory',
+    // Only match /home/username/ structure with file extensions
+    pattern: /\/home\/[a-z_][a-z0-9_-]{0,31}\/[a-zA-Z0-9_\-\/]+\.(?:php|py|js|rb|java)/gi,
+    type: 'Linux Home Directory with Source File',
   },
   {
-    pattern: /C:\\[^\s<>"]+/gi,
-    type: 'Windows Path',
+    // Windows paths - only system/program paths (not C:\ alone)
+    pattern: /C:\\(?:Windows|Program Files|inetpub|xampp|wamp)\\[^\s<>"]+/gi,
+    type: 'Windows System Path',
   },
   {
-    pattern: /\/usr\/(local|bin|lib)\/[^\s<>"]+/gi,
-    type: 'Linux System Path',
+    // Linux system paths - more specific
+    pattern: /\/usr\/(?:local|bin|lib)\/[a-zA-Z0-9_\-\/]+\.(?:so|py|rb|pl)/gi,
+    type: 'Linux System Library Path',
   },
-  {
-    pattern: /\/opt\/[^\s<>"]+/gi,
-    type: 'Linux Optional Path',
-  },
-  {
-    pattern: /\/app\/[^\s<>"]+/gi,
-    type: 'Application Path',
-  },
+  // ❌ REMOVED: /\/opt\// - too many Docker/tutorial false positives
+  // ❌ REMOVED: /\/app\// - SPA routing false positives (Next.js, React Router)
 ]
 
 // Generic exception patterns
@@ -240,10 +241,22 @@ export async function analyzeErrorDisclosure(
   let hasDebugMode = false
   let hasFilePathDisclosure = false
 
-  // Remove HTML comments and script tags for cleaner analysis
+  // Nov 16, 2025: Enhanced preprocessing to eliminate false positives from documentation/tutorials
+  // Remove ALL code blocks, syntax-highlighted content, and comments
   const cleanHtml = html
+    // 1. Remove HTML comments (documentation, TODOs)
     .replace(/<!--[\s\S]*?-->/g, '')
+    // 2. Remove <script> tags (JavaScript code examples)
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // 3. Remove <pre> blocks (code examples, tutorials)
+    .replace(/<pre\b[^>]*>[\s\S]*?<\/pre>/gi, '')
+    // 4. Remove <code> blocks (inline code, syntax highlighting)
+    .replace(/<code\b[^>]*>[\s\S]*?<\/code>/gi, '')
+    // 5. Remove syntax-highlighted code (Prism, Highlight.js, etc.)
+    .replace(/<div\b[^>]*class="[^"]*language-[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+    .replace(/<div\b[^>]*class="[^"]*hljs[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+    // 6. Remove markdown code fences
+    .replace(/```[\s\S]*?```/g, '')
 
   // 1. Check for stack traces
   for (const stackPattern of STACK_TRACE_PATTERNS) {
