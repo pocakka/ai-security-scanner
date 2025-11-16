@@ -1,7 +1,7 @@
 # AI Security Scanner - Teljes Rendszer Architektúra
 
-**Utolsó frissítés**: 2025. november 15.
-**Verzió**: 2.1 (Sprint #10-12: Backend/Web Server/Frontend/CVE/API Security)
+**Utolsó frissítés**: 2025. november 16.
+**Verzió**: 2.2 (Stabilization Sprint: Testing Framework + Bug Fixes + Documentation Cleanup)
 
 ---
 
@@ -12,7 +12,7 @@
 3. [Backend API Endpoints](#3-backend-api-endpoints)
 4. [Worker & Queue Rendszer](#4-worker--queue-rendszer)
 5. [Crawler (Playwright)](#5-crawler-playwright)
-6. [Analyzer Rendszer (35 analyzer)](#6-analyzer-rendszer)
+6. [Analyzer Rendszer (41 analyzer)](#6-analyzer-rendszer)
 7. [Adatbázis Séma](#7-adatbázis-séma)
 8. [Deployment & Infrastructure](#8-deployment--infrastructure)
 9. [Folyamatok & Data Flow](#9-folyamatok--data-flow)
@@ -36,9 +36,10 @@ Egy **passzív AI biztonság audit platform**, amely webhelyeket elemez AI imple
 2. ✅ **AI Detection** (36 chat widget + 9 LLM API provider)
 3. ✅ **AI Trust Score** (27 check, 5 kategória)
 4. ✅ **OWASP LLM Top 10** (6 analyzer)
-5. ✅ **Infrastruktúra Scan** (32 analyzer - **+5 új: Backend Framework, Web Server, Frontend Framework, JS CVE Database, Passive API Discovery**)
-6. ✅ **Admin Dashboard** (scan management, statistics)
-7. ✅ **PDF Report Generation** (tervezett)
+5. ✅ **Infrastruktúra Scan** (35 analyzer - **stabilizálva: regex.exec() loop fixes, timeout protection, error boundaries**)
+6. ✅ **Dokumentáció & Testing** (TESTING_PROTOCOL.md, SITE_STRUCTURE.md - teljes testing framework)
+7. ✅ **Admin Dashboard** (scan management, statistics, DELETE functionality fixed)
+8. ✅ **PDF Report Generation** (tervezett)
 
 ---
 

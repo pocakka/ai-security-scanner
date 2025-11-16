@@ -16,12 +16,21 @@ Delivers a 30-second automated security assessment that identifies potential AI-
 
 ## Project Status
 
-**Current Phase**: ✅ MVP COMPLETE + INFRASTRUCTURE SECURITY ENHANCEMENT - Sprint #10-12 Completed
-- **Status**: Fully functional MVP with **38 specialized analyzers** (32 infrastructure + **6 OWASP LLM**)
-- **Backend**: SQLite-based worker queue with Playwright crawler
+**Current Phase**: ✅ MVP COMPLETE + STABILIZATION & TESTING FRAMEWORK - Sprint #10-12 + Testing Infrastructure
+- **Status**: Fully functional MVP with **41 specialized analyzers** (35 infrastructure + **6 OWASP LLM**)
+- **Backend**: SQLite-based worker queue with Playwright crawler (Worker Pool: 3 concurrent workers)
 - **Frontend**: Next.js 14 with real-time scan results & dark glassmorphism UI
 - **AI Coverage**: **36 Chat Widgets + 9 LLM API Providers** with detailed detection
-- **Recent Updates** (November 15, 2025 - Sprint #10-12): **🎯 BACKEND + WEB SERVER + FRONTEND + CVE + API SECURITY**
+- **Quality Assurance**: Comprehensive testing framework, documentation cleanup, stabilization focus
+- **Recent Updates** (November 16, 2025 - Stabilization Sprint): **🎯 TESTING FRAMEWORK + DOCUMENTATION CLEANUP + BUG FIXES**
+  - ✅ **DELETE Functionality Fixed** - Resolved Prisma cache issue causing 500 errors on scan deletion
+  - ✅ **Documentation Cleanup** - Archived 16 obsolete docs, down from 28 to 12 active documentation files
+  - ✅ **TESTING_PROTOCOL.md** - Comprehensive testing framework with 3 test suites (Domain Diversity, Edge Cases, Analyzer-Specific)
+  - ✅ **SITE_STRUCTURE.md** - Complete page inventory with all 41 analyzers listed, all 27 AI Trust checks detailed, full findings breakdown
+  - ✅ **Regex.exec() Infinite Loop Prevention** - Fixed 6 analyzers (passive-api-discovery, admin-discovery, api-key-detector, spa-api, tech-stack) - replaced while loops with matchAll()
+  - ✅ **Worker Stability** - Timeout protection, error boundaries, graceful degradation on all analyzers
+  - **Commits**: `0b84434` (SITE_STRUCTURE expansion), `ccc1d71` (docs cleanup), `0557963` (testing framework), `75968a7` (DELETE fix), `184d2d7` (regex.exec fix)
+- **Previous Updates** (November 15, 2025 - Sprint #10-12): **🎯 BACKEND + WEB SERVER + FRONTEND + CVE + API SECURITY**
   - ✅ **Backend Framework Detector** (7 frameworks: PHP, Django, Flask, Express, Rails, ASP.NET, Laravel) - Debug mode detection (CRITICAL), version disclosure, outdated versions
   - ✅ **Web Server Security Analyzer** (5 servers: Nginx, Apache, IIS, LiteSpeed, Caddy) - CVE detection, version disclosure, module exposure
   - ✅ **Frontend Framework Security** (7 frameworks: React, Vue, Angular, Next.js, Svelte, Nuxt, Ember) - DevTools detection, source maps exposure, dev mode in production
@@ -88,7 +97,8 @@ Delivers a 30-second automated security assessment that identifies potential AI-
 - **API**: Next.js API Routes
 - **Workers**: SQLite-based job queue with automatic spawning
 - **Crawler**: Playwright (headless Chromium browser)
-- **Analyzers**: **38 specialized security analyzers** (32 infrastructure + **6 OWASP LLM**)
+- **Analyzers**: **41 specialized security analyzers** (35 infrastructure + **6 OWASP LLM**)
+- **Documentation**: TESTING_PROTOCOL.md (comprehensive testing framework), SITE_STRUCTURE.md (complete page inventory)
 
   **🎯 OWASP LLM Top 10 Analyzers (6/10 - 60% Coverage):**
   - **🆕 LLM01: Prompt Injection Risk** (420 lines) - System prompt leaks, risky prompt assembly, AI context correlation, sanitization detection
