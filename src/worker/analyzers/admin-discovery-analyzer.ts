@@ -1,5 +1,85 @@
 import { CrawlResult } from '../crawler-mock'
 
+// ========================================
+// REDIRECT FALSE POSITIVE PREVENTION (Nov 16, 2025)
+// Fix: index.hu/phpmyadmin → daemon.indapass.hu redirect loop
+// ========================================
+
+/**
+ * Check if URL is a login page based on URL patterns
+ */
+function isLoginPageUrl(url: string): boolean {
+  const loginPatterns = [
+    /\/login/i,
+    /\/signin/i,
+    /\/auth/i,
+    /\/session/i,
+    /indapass\.hu/i,      // index.hu specific SSO
+    /daemon\./i,          // daemon subdomains often auth services
+    /sso\./i,             // single sign-on services
+    /oauth/i,             // OAuth endpoints
+    /saml/i,              // SAML endpoints
+  ]
+  return loginPatterns.some(pattern => pattern.test(url))
+}
+
+/**
+ * Get root domain from hostname (e.g., "index.hu" from "www.index.hu")
+ */
+function getRootDomain(hostname: string): string {
+  const parts = hostname.split('.')
+  // Return last 2 parts (e.g., "example.com")
+  return parts.slice(-2).join('.')
+}
+
+/**
+ * Check if redirect is cross-domain (different root domain)
+ */
+function isCrossDomainRedirect(originalUrl: string, redirectUrl: string): boolean {
+  try {
+    const originalDomain = new URL(originalUrl).hostname
+    const redirectDomain = new URL(redirectUrl).hostname
+
+    // Allow subdomain redirects (www.example.com → example.com)
+    const originalRoot = getRootDomain(originalDomain)
+    const redirectRoot = getRootDomain(redirectDomain)
+
+    return originalRoot !== redirectRoot
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Check if admin panel finding should be skipped (false positive detection)
+ */
+function shouldSkipAdminPanelFinding(
+  path: string,
+  status: number,
+  redirectLocation?: string | null
+): boolean {
+  // No redirect → legitimate finding
+  if (!redirectLocation) return false
+
+  const absoluteRedirect = redirectLocation.startsWith('http')
+    ? redirectLocation
+    : new URL(redirectLocation, `https://example.com${path}`).href
+
+  // 1. Cross-domain redirect → likely SSO/external auth (skip)
+  if (isCrossDomainRedirect(`https://example.com${path}`, absoluteRedirect)) {
+    console.log(`[AdminDiscovery] Skipping ${path}: cross-domain redirect to ${absoluteRedirect}`)
+    return true
+  }
+
+  // 2. Redirect to login page → auth-protected (skip)
+  if (isLoginPageUrl(absoluteRedirect)) {
+    console.log(`[AdminDiscovery] Skipping ${path}: redirects to login page (${absoluteRedirect})`)
+    return true
+  }
+
+  return false
+}
+
 export interface AdminDiscoveryFinding {
   type: 'admin-panel' | 'api-documentation' | 'graphql-introspection' | 'graphql-endpoint' | 'login-form' | 'possible-admin'
   severity: 'info' | 'low' | 'medium' | 'high' | 'critical'
@@ -174,6 +254,19 @@ export async function analyzeAdminDiscovery(crawlResult: CrawlResult): Promise<A
 
         clearTimeout(timeout)
 
+        // Extract redirect location for false positive detection
+        const redirectLocation = (response.status === 301 || response.status === 302)
+          ? response.headers.get('location')
+          : null
+
+        // ========================================
+        // FALSE POSITIVE CHECK (Nov 16, 2025)
+        // Skip if redirect to login/SSO/cross-domain
+        // ========================================
+        if (shouldSkipAdminPanelFinding(path, response.status, redirectLocation)) {
+          continue // Skip this path - false positive
+        }
+
         // Check if admin panel exists
         if (response.ok || response.status === 401 || response.status === 403) {
           hasAdminPanel = true
@@ -205,10 +298,9 @@ export async function analyzeAdminDiscovery(crawlResult: CrawlResult): Promise<A
           if (adminUrls.length >= 5) break
         }
 
-        // Check for redirect to login
-        if (response.status === 301 || response.status === 302) {
-          const location = response.headers.get('location')
-          if (location && location.toLowerCase().includes('login')) {
+        // Check for redirect to login (only if NOT already skipped by false positive check)
+        if (response.status === 301 || response.status === 302 && redirectLocation) {
+          if (redirectLocation && redirectLocation.toLowerCase().includes('login')) {
             hasAdminPanel = true
             adminUrls.push(adminUrl)
 
@@ -218,7 +310,7 @@ export async function analyzeAdminDiscovery(crawlResult: CrawlResult): Promise<A
               title: `Login page found: ${path}`,
               url: adminUrl,
               status: response.status,
-              redirectsTo: location,
+              redirectsTo: redirectLocation,
               impact: 'Admin panel redirects to login page',
               recommendation: 'Implement IP whitelisting and rate limiting for login attempts.'
             })
