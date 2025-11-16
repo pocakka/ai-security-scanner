@@ -20,6 +20,8 @@ export interface PortScanFinding {
   impact: string
   recommendation: string
   evidence?: string
+  confidence?: 'high' | 'medium' | 'low' // Nov 16, 2025: False positive prevention
+  legitimateUseCase?: string // Nov 16, 2025: Explain if port might be legitimate
 }
 
 export interface PortScanResult {
@@ -68,18 +70,21 @@ async function checkDatabaseInterfaces(baseUrl: URL): Promise<PortScanFinding[]>
   const findings: PortScanFinding[] = []
 
   // Database web management interfaces
-  const interfaces = [
-    { path: ':8080/phpmyadmin', service: 'phpMyAdmin', port: 8080, severity: 'critical' as const },
-    { path: '/phpmyadmin', service: 'phpMyAdmin', port: 80, severity: 'critical' as const },
-    { path: ':8080/adminer', service: 'Adminer', port: 8080, severity: 'critical' as const },
-    { path: '/adminer', service: 'Adminer', port: 80, severity: 'critical' as const },
-    { path: ':5984/_utils', service: 'CouchDB Fauxton', port: 5984, severity: 'critical' as const },
-    { path: ':9200/_plugin/head', service: 'Elasticsearch Head', port: 9200, severity: 'high' as const },
-    { path: ':9200', service: 'Elasticsearch', port: 9200, severity: 'high' as const },
-    { path: ':15672', service: 'RabbitMQ Management', port: 15672, severity: 'high' as const },
-    { path: ':8086', service: 'InfluxDB Admin', port: 8086, severity: 'high' as const },
-    { path: ':27017', service: 'MongoDB', port: 27017, severity: 'critical' as const },
-    { path: ':6379', service: 'Redis', port: 6379, severity: 'critical' as const },
+  // Nov 16, 2025: Added confidence levels and legitimate use case notes for false positive prevention
+  const interfaces: Array<{ path: string; service: string; port: number; severity: 'critical' | 'high' | 'medium' | 'low'; confidence: 'high' | 'medium' | 'low'; legitimateNote?: string }> = [
+    { path: ':8080/phpmyadmin', service: 'phpMyAdmin', port: 8080, severity: 'critical' as const, confidence: 'high' as const },
+    { path: '/phpmyadmin', service: 'phpMyAdmin', port: 80, severity: 'critical' as const, confidence: 'high' as const },
+    { path: ':8080/adminer', service: 'Adminer', port: 8080, severity: 'critical' as const, confidence: 'high' as const },
+    { path: '/adminer', service: 'Adminer', port: 80, severity: 'critical' as const, confidence: 'high' as const },
+    { path: ':5984/_utils', service: 'CouchDB Fauxton', port: 5984, severity: 'critical' as const, confidence: 'high' as const },
+    { path: ':9200/_plugin/head', service: 'Elasticsearch Head', port: 9200, severity: 'high' as const, confidence: 'high' as const },
+    { path: ':9200', service: 'Elasticsearch', port: 9200, severity: 'high' as const, confidence: 'medium' as const, legitimateNote: 'May be load balancer or reverse proxy' },
+    { path: ':15672', service: 'RabbitMQ Management', port: 15672, severity: 'high' as const, confidence: 'high' as const },
+    { path: ':8086', service: 'InfluxDB Admin', port: 8086, severity: 'high' as const, confidence: 'medium' as const },
+    { path: ':27017', service: 'MongoDB', port: 27017, severity: 'critical' as const, confidence: 'high' as const },
+    { path: ':6379', service: 'Redis', port: 6379, severity: 'critical' as const, confidence: 'high' as const },
+    // Port 8080 generic check - DOWNGRADED to medium (often legitimate reverse proxy/CDN)
+    { path: ':8080', service: 'Generic Port 8080', port: 8080, severity: 'medium' as const, confidence: 'low' as const, legitimateNote: 'Port 8080 commonly used for reverse proxies, CDNs, and production APIs. Only critical if specific admin interface detected.' },
   ]
 
   for (const iface of interfaces) {
@@ -100,7 +105,7 @@ async function checkDatabaseInterfaces(baseUrl: URL): Promise<PortScanFinding[]>
       // Due to no-cors mode, we can't check response.ok, but we can detect if request completed
       // In practice, if the service is not available, the request will timeout or fail
       if (response) {
-        findings.push({
+        const finding: PortScanFinding = {
           type: 'web-interface',
           severity: iface.severity,
           title: `${iface.service} interface potentially exposed`,
@@ -113,8 +118,17 @@ async function checkDatabaseInterfaces(baseUrl: URL): Promise<PortScanFinding[]>
           recommendation: iface.severity === 'critical'
             ? `IMMEDIATELY restrict ${iface.service} access to specific IP addresses only. Never expose database management to public internet.`
             : `Restrict ${iface.service} access to internal networks or VPN only. Implement strong authentication and IP whitelisting.`,
-          evidence: testUrl
-        })
+          evidence: testUrl,
+          confidence: iface.confidence
+        }
+
+        // Add legitimate use case note if present
+        if (iface.legitimateNote) {
+          finding.legitimateUseCase = iface.legitimateNote
+          finding.description += ` Note: ${iface.legitimateNote}`
+        }
+
+        findings.push(finding)
       }
     } catch (error) {
       // Service not accessible - this is good
@@ -132,15 +146,16 @@ async function checkDevelopmentServers(baseUrl: URL): Promise<PortScanFinding[]>
   const findings: PortScanFinding[] = []
 
   // Common development server ports
-  const devServers = [
-    { port: 3000, service: 'Node.js/React Dev Server', paths: ['/', '/__webpack_hmr', '/sockjs-node'] },
-    { port: 4200, service: 'Angular Dev Server', paths: ['/', '/sockjs-node'] },
-    { port: 8080, service: 'Vue/Webpack Dev Server', paths: ['/', '/__webpack_hmr'] },
-    { port: 5000, service: 'Flask Dev Server', paths: ['/'] },
-    { port: 8000, service: 'Django Dev Server', paths: ['/admin'] },
-    { port: 9000, service: 'PHP Built-in Server', paths: ['/'] },
-    { port: 8888, service: 'Jupyter Notebook', paths: ['/tree', '/notebooks'] },
-    { port: 3001, service: 'Node.js Alt Port', paths: ['/'] },
+  // Nov 16, 2025: Added confidence levels - production apps often use these ports legitimately
+  const devServers: Array<{ port: number; service: string; paths: string[]; severity: 'critical' | 'high' | 'medium' | 'low'; confidence: 'high' | 'medium' | 'low'; legitimateNote?: string }> = [
+    { port: 3000, service: 'Node.js/React Dev Server', paths: ['/__webpack_hmr', '/sockjs-node'], severity: 'medium' as const, confidence: 'medium' as const, legitimateNote: 'Port 3000 also used by production Node.js apps. Only a concern if webpack HMR or dev tools detected.' },
+    { port: 4200, service: 'Angular Dev Server', paths: ['/sockjs-node'], severity: 'medium' as const, confidence: 'high' as const },
+    { port: 8080, service: 'Vue/Webpack Dev Server', paths: ['/__webpack_hmr'], severity: 'low' as const, confidence: 'low' as const, legitimateNote: 'Port 8080 commonly used for production reverse proxies and CDNs. Only flag if webpack HMR detected.' },
+    { port: 5000, service: 'Flask Dev Server', paths: ['/'], severity: 'medium' as const, confidence: 'medium' as const },
+    { port: 8000, service: 'Django Dev Server', paths: ['/admin'], severity: 'medium' as const, confidence: 'medium' as const },
+    { port: 9000, service: 'PHP Built-in Server', paths: ['/'], severity: 'medium' as const, confidence: 'medium' as const },
+    { port: 8888, service: 'Jupyter Notebook', paths: ['/tree', '/notebooks'], severity: 'high' as const, confidence: 'high' as const },
+    { port: 3001, service: 'Node.js Alt Port', paths: ['/'], severity: 'low' as const, confidence: 'low' as const },
   ]
 
   for (const server of devServers) {
@@ -150,17 +165,30 @@ async function checkDevelopmentServers(baseUrl: URL): Promise<PortScanFinding[]>
         const response = await fetchWithTimeout(testUrl, 1000)
 
         if (response) {
-          findings.push({
+          const finding: PortScanFinding = {
             type: 'dev-server',
-            severity: 'medium',
+            severity: server.severity,
             title: `Development server detected on port ${server.port}`,
             description: `${server.service} appears to be running and accessible`,
             port: server.port,
             service: server.service,
-            impact: `Development servers often have debug features enabled, verbose error messages, and weaker security. They may expose source code, environment variables, or internal application structure.`,
-            recommendation: `NEVER run development servers in production. Use production builds with proper security configurations. Disable debug mode and verbose error messages.`,
-            evidence: testUrl
-          })
+            impact: server.severity === 'high'
+              ? `HIGH RISK: Development server exposed to internet. Debug features, verbose errors, and weak security may expose sensitive data.`
+              : `Development servers often have debug features enabled, verbose error messages, and weaker security. They may expose source code, environment variables, or internal application structure.`,
+            recommendation: server.severity === 'high'
+              ? `IMMEDIATELY shut down this development server. NEVER run Jupyter Notebook or similar tools in production without authentication.`
+              : `NEVER run development servers in production. Use production builds with proper security configurations. Disable debug mode and verbose error messages.`,
+            evidence: testUrl,
+            confidence: server.confidence
+          }
+
+          // Add legitimate use case note if present
+          if (server.legitimateNote) {
+            finding.legitimateUseCase = server.legitimateNote
+            finding.description += ` Note: ${server.legitimateNote}`
+          }
+
+          findings.push(finding)
           break // Found one path, no need to check others
         }
       } catch (error) {

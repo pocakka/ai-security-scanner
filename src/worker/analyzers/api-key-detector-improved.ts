@@ -341,6 +341,35 @@ export const EXCLUSION_PATTERNS = [
   /^0{8,}$/, // All zeros
   /^1{8,}$/, // All ones
   /^(abc|123|test|demo){2,}$/i, // Repeated simple patterns
+
+  // ========================================
+  // AUTHENTICATION LIBRARIES (Nov 16, 2025)
+  // Fix: Passport.js false positives
+  // ========================================
+  /passport\.authenticate/i,
+  /passport\.use/i,
+  /passport\.session/i,
+  /passport\.initialize/i,
+  /passport\.serializeUser/i,
+  /passport\.deserializeUser/i,
+  /passport\.(local|google|facebook|twitter|github|oauth2)/i,
+
+  // Session management (Express.js, etc.)
+  /session\.(save|regenerate|destroy|reload)/i,
+  /req\.session\./i,
+  /sessionStore\./i,
+
+  // Express/Node.js common methods
+  /config\.(get|set|has|default)/i,
+  /router\.(get|post|put|delete|patch|use)/i,
+  /app\.(use|get|post|put|delete|listen|set)/i,
+  /express\.(Router|static|json|urlencoded)/i,
+  /middleware\./i,
+
+  // Common library patterns
+  /bcrypt\.(hash|compare|genSalt)/i,
+  /jwt\.(sign|verify|decode)/i,
+  /crypto\.(randomBytes|createHash|createHmac)/i,
 ]
 
 /**
