@@ -1,40 +1,15 @@
 // Mock crawler for local development - returns realistic test data
 
-export interface CrawlResult {
-  url: string
-  domain: string
-  networkRequests: NetworkRequest[]
-  html: string
-  scripts: string[]
-  responseHeaders: Record<string, string>
-  loadTime: number
-  timingBreakdown?: Record<string, number> // NEW: detailed timing breakdown
-  finalUrl: string
-  cookies?: CookieData[]
-  sslCertificate?: any // SSL certificate data from crawler
-  metadata?: {
-    certificate?: any
-    [key: string]: any
-  }
-}
+import type { CrawlerResult, NetworkRequest, CookieData } from '../lib/types/crawler-types'
 
-export interface NetworkRequest {
-  url: string
-  method: string
-  resourceType: string
-  status?: number
-}
+// Re-export CookieData for backward compatibility
+export type { CookieData }
 
-export interface CookieData {
-  name: string
-  value: string
-  domain: string
-  path: string
-  expires?: number
-  httpOnly: boolean
-  secure: boolean
-  sameSite?: 'Strict' | 'Lax' | 'None'
-}
+// CrawlResult is now just an alias for CrawlerResult
+// All analyzers should use CrawlerResult directly
+export type CrawlResult = CrawlerResult
+
+// CookieData is now imported from crawler-types.ts
 
 // Mock data generator based on URL
 export async function mockCrawl(url: string): Promise<CrawlResult> {
@@ -56,14 +31,31 @@ export async function mockCrawl(url: string): Promise<CrawlResult> {
   const mockHeaders = generateMockHeaders(domain)
 
   return {
+    // Basic info
     url,
+    finalUrl: url,
+    statusCode: 200,
+    success: true,
+
+    // Mock crawler required fields
     domain,
     networkRequests: mockNetworkRequests,
-    html: mockHtml,
     scripts: mockScripts,
     responseHeaders: mockHeaders,
+
+    // Network data (empty for mock)
+    requests: [],
+    responses: [],
+
+    // Page data
+    html: mockHtml,
+    title: `${domain}`,
+    cookies: [],
+
+    // Metadata
     loadTime: 800 + Math.random() * 400, // 800-1200ms
-    finalUrl: url,
+    timestamp: new Date(),
+    userAgent: 'Mozilla/5.0 (Mock Crawler)',
   }
 }
 

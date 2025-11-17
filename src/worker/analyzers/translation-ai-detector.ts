@@ -287,7 +287,7 @@ export function detectTranslationAI(crawlResult: CrawlResult): TranslationAIDete
     // 1. Check script URLs
     if (pattern.scriptUrls && crawlResult.scripts && Array.isArray(crawlResult.scripts)) {
       for (const script of crawlResult.scripts) {
-        const scriptUrl = typeof script === 'string' ? script : script.url || ''
+        const scriptUrl = script // scripts is string[]
         for (const urlPattern of pattern.scriptUrls) {
           if (urlPattern.test(scriptUrl)) {
             detection.widgetFound = true
@@ -373,7 +373,7 @@ export function detectTranslationAI(crawlResult: CrawlResult): TranslationAIDete
     // 6. Check for API key patterns in scripts
     if (pattern.apiKeyPatterns && crawlResult.scripts && Array.isArray(crawlResult.scripts)) {
       for (const script of crawlResult.scripts) {
-        const scriptContent = typeof script === 'string' ? script : script.content || ''
+        const scriptContent = script // scripts is string[]
         for (const keyPattern of pattern.apiKeyPatterns) {
           const match = scriptContent.match(keyPattern)
           if (match && match[0]) {

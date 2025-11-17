@@ -312,7 +312,7 @@ export function detectPersonalizationAI(crawlResult: CrawlResult): Personalizati
     // 1. Check script URLs
     if (pattern.scriptUrls.length > 0 && crawlResult.scripts && Array.isArray(crawlResult.scripts)) {
       for (const script of crawlResult.scripts) {
-        const scriptUrl = typeof script === 'string' ? script : script.url || ''
+        const scriptUrl = script // scripts is string[]
         for (const urlPattern of pattern.scriptUrls) {
           if (urlPattern.test(scriptUrl)) {
             detection.scriptFound = true

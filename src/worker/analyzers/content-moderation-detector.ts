@@ -241,7 +241,7 @@ export function detectContentModeration(crawlResult: CrawlResult): ContentModera
     // 2. Check for API key patterns in script content
     if (pattern.apiKeyPatterns && crawlResult.scripts && Array.isArray(crawlResult.scripts)) {
       for (const script of crawlResult.scripts) {
-        const scriptContent = typeof script === 'string' ? script : script.content || ''
+        const scriptContent = script // scripts is string[]
         for (const keyPattern of pattern.apiKeyPatterns) {
           const match = scriptContent.match(keyPattern)
           if (match && match[0]) {

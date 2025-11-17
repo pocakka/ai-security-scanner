@@ -11,9 +11,10 @@
 export interface NetworkRequest {
   url: string
   method: string
-  headers: Record<string, string>
-  timestamp: number
+  headers?: Record<string, string> // Optional for compatibility
+  timestamp?: number // Optional for compatibility
   resourceType?: string
+  status?: number // Optional status code for compatibility
 }
 
 /**
@@ -36,10 +37,10 @@ export interface CookieData {
   value: string
   domain: string
   path: string
-  expires: number
+  expires?: number // Optional for compatibility
   httpOnly: boolean
   secure: boolean
-  sameSite: 'Strict' | 'Lax' | 'None'
+  sameSite?: 'Strict' | 'Lax' | 'None' // Optional for compatibility
 }
 
 /**
@@ -64,22 +65,29 @@ export interface JavaScriptEvaluation {
 
 /**
  * Complete result from Playwright crawler
+ * Extended to be compatible with CrawlResult from crawler-mock
  */
 export interface CrawlerResult {
   // Basic info
   url: string
   finalUrl: string // After redirects
-  statusCode: number
-  success: boolean
+  statusCode?: number // Optional for compatibility
+  success?: boolean // Optional for compatibility
 
   // Network data
-  requests: NetworkRequest[]
-  responses: NetworkResponse[]
+  requests?: NetworkRequest[] // Optional for compatibility
+  responses?: NetworkResponse[] // Optional for compatibility
+
+  // Mock crawler compatibility fields
+  networkRequests?: NetworkRequest[] // Alias for requests (from mock crawler)
+  scripts?: string[] // Script URLs/content (from mock crawler)
+  domain?: string // Domain name (from mock crawler)
+  responseHeaders?: Record<string, string> // Response headers (from mock crawler)
 
   // Page data
   html: string
   title?: string
-  cookies: CookieData[]
+  cookies?: CookieData[] // Optional for compatibility
   screenshot?: Buffer
 
   // SSL/TLS certificate
@@ -90,10 +98,14 @@ export interface CrawlerResult {
 
   // Metadata
   loadTime: number // milliseconds
-  timingBreakdown?: Record<string, number> // NEW: detailed timing breakdown
-  timestamp: Date
+  timingBreakdown?: Record<string, number> // Detailed timing breakdown
+  timestamp?: Date // Optional for compatibility
   error?: string
-  userAgent: string
+  userAgent?: string // Optional for compatibility
+  metadata?: {
+    certificate?: any
+    [key: string]: any
+  }
 }
 
 /**

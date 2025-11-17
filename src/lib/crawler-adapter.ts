@@ -1,13 +1,12 @@
 /**
  * Crawler Adapter
  *
- * Adapts PlaywrightCrawler output to match MockCrawler interface
- * This ensures backward compatibility with existing analyzers
+ * Adapts PlaywrightCrawler output to unified CrawlerResult interface
+ * Populates both Playwright fields and mock crawler compatibility fields
  */
 
 import { PlaywrightCrawler } from './playwright-crawler'
 import type { CrawlerResult } from './types/crawler-types'
-import type { CrawlResult, NetworkRequest } from '../worker/crawler-mock'
 
 export class CrawlerAdapter {
   private crawler: PlaywrightCrawler
@@ -23,47 +22,63 @@ export class CrawlerAdapter {
   /**
    * Crawl URL and convert result to MockCrawler format
    */
-  async crawl(url: string): Promise<CrawlResult> {
+  async crawl(url: string): Promise<CrawlerResult> {
     console.log(`[CrawlerAdapter] Crawling ${url} with Playwright...`)
 
     const playwrightResult: CrawlerResult = await this.crawler.crawl(url)
 
-    // Convert Playwright result to Mock format
-    const adapted: CrawlResult = {
+    // Convert Playwright result to unified CrawlerResult format
+    // Populate both Playwright fields AND mock crawler compatibility fields
+    const networkRequests = (playwrightResult.responses || []).map((response) => ({
+      url: response.url,
+      method: 'GET', // Playwright responses don't have method, use GET as default
+      resourceType: response.resourceType || 'other',
+      status: response.statusCode,
+    }))
+
+    const scripts = (playwrightResult.responses || [])
+      .filter((r) => r.resourceType === 'script' || r.resourceType === 'stylesheet')
+      .map((r) => r.url)
+
+    const adapted: CrawlerResult = {
+      // Basic info
       url: playwrightResult.url,
-      domain: new URL(playwrightResult.finalUrl).hostname,
       finalUrl: playwrightResult.finalUrl,
-      html: playwrightResult.html,
-      loadTime: playwrightResult.loadTime,
-      timingBreakdown: playwrightResult.timingBreakdown, // NEW: pass through detailed timing
+      statusCode: playwrightResult.statusCode,
+      success: playwrightResult.success,
 
-      // Convert network requests
-      networkRequests: playwrightResult.responses.map((response) => ({
-        url: response.url,
-        method: 'GET', // Playwright responses don't have method, use GET as default
-        resourceType: response.resourceType || 'other',
-        status: response.statusCode,
-      })),
+      // Network data (Playwright format)
+      requests: playwrightResult.requests,
+      responses: playwrightResult.responses,
 
-      // Extract script sources from responses
-      scripts: playwrightResult.responses
-        .filter((r) => r.resourceType === 'script' || r.resourceType === 'stylesheet')
-        .map((r) => r.url),
-
-      // Convert response headers (use first HTML response)
+      // Mock crawler compatibility fields
+      domain: new URL(playwrightResult.finalUrl).hostname,
+      networkRequests: networkRequests,
+      scripts: scripts,
       responseHeaders: this.extractMainResponseHeaders(playwrightResult),
 
-      // Pass through cookies
+      // Page data
+      html: playwrightResult.html,
+      title: playwrightResult.title,
       cookies: playwrightResult.cookies || [],
+      screenshot: playwrightResult.screenshot,
 
-      // Pass through SSL certificate (CRITICAL: analyzer expects this at top level!)
+      // SSL/TLS certificate (CRITICAL: analyzer expects this at top level!)
       sslCertificate: playwrightResult.sslCertificate,
 
-      // Pass through metadata (certificate info, etc.)
+      // JavaScript evaluation
+      jsEvaluation: playwrightResult.jsEvaluation,
+
+      // Metadata
+      loadTime: playwrightResult.loadTime,
+      timingBreakdown: playwrightResult.timingBreakdown,
+      timestamp: playwrightResult.timestamp,
+      error: playwrightResult.error,
+      userAgent: playwrightResult.userAgent,
       metadata: this.extractMetadata(playwrightResult),
     }
 
-    console.log(`[CrawlerAdapter] ✅ Converted result - ${adapted.networkRequests.length} requests, ${adapted.scripts.length} scripts`)
+    console.log(`[CrawlerAdapter] ✅ Converted result - ${networkRequests.length} requests, ${scripts.length} scripts`)
 
     return adapted
   }
@@ -75,7 +90,7 @@ export class CrawlerAdapter {
     result: CrawlerResult
   ): Record<string, string> {
     // Find the main document response (HTML)
-    const mainResponse = result.responses.find(
+    const mainResponse = result.responses?.find(
       (r) => r.url === result.finalUrl || r.resourceType === 'document'
     )
 

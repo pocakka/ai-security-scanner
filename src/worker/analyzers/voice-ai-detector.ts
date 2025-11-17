@@ -412,7 +412,7 @@ export function detectVoiceAI(crawlResult: CrawlResult): VoiceAIDetectionResult 
     // 2. Check SDK URLs in scripts
     if (pattern.sdkUrls && crawlResult.scripts && Array.isArray(crawlResult.scripts)) {
       for (const script of crawlResult.scripts) {
-        const scriptUrl = typeof script === 'string' ? script : script.url || ''
+        const scriptUrl = script // scripts is string[]
         for (const sdkUrl of pattern.sdkUrls) {
           if (scriptUrl.includes(sdkUrl)) {
             hasSDK = true
@@ -426,7 +426,7 @@ export function detectVoiceAI(crawlResult: CrawlResult): VoiceAIDetectionResult 
     // 3. Check for API key patterns in script content
     if (pattern.apiKeyPatterns && crawlResult.scripts && Array.isArray(crawlResult.scripts)) {
       for (const script of crawlResult.scripts) {
-        const scriptContent = typeof script === 'string' ? script : script.content || ''
+        const scriptContent = script // scripts is string[]
         for (const keyPattern of pattern.apiKeyPatterns) {
           const match = scriptContent.match(keyPattern)
           if (match && match[0]) {
