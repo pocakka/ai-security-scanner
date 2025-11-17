@@ -181,7 +181,8 @@ export async function analyzeAdminDetection(crawlResult: CrawlResult): Promise<A
       })
     }
 
-    // Check for authentication keywords
+    // Nov 17, 2025: Improved authentication keyword detection to reduce false positives
+    // Check for authentication keywords WITH context (not in documentation/articles)
     const authKeywords = [
       'Sign in',
       'Sign In',
@@ -196,11 +197,19 @@ export async function analyzeAdminDetection(crawlResult: CrawlResult): Promise<A
       'Register'
     ]
 
+    // Clean HTML from documentation/article content
+    const cleanedHtml = crawlResult.html
+      .replace(/<article\b[^>]*>[\s\S]*?<\/article>/gi, '')
+      .replace(/<pre\b[^>]*>[\s\S]*?<\/pre>/gi, '')
+      .replace(/<code\b[^>]*>[\s\S]*?<\/code>/gi, '')
+      .replace(/<!--[\s\S]*?-->/g, '')
+
     const foundKeywords = authKeywords.filter(keyword =>
-      crawlResult.html.includes(keyword)
+      cleanedHtml.includes(keyword)
     )
 
-    if (foundKeywords.length >= 3 && !hasLoginForm) {
+    // Require at least 4 keywords and password field to reduce FPs
+    if (foundKeywords.length >= 4 && passwordInputs && !hasLoginForm) {
       hasLoginForm = true
       findings.push({
         type: 'authentication',
