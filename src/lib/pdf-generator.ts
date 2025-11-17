@@ -417,30 +417,87 @@ function generateCoverPage(doc: jsPDF, scan: ScanData) {
     doc.text(issue.label, xPos + (cardWidth / 2), yPos + 22, { align: 'center' })
   })
 
-  // AI detection notice
+  // AI detection notice - moved to new page if present
   if (scan.findings.summary.hasAI) {
-    yPos = 272
+    doc.addPage()
+
+    // Gradient background for AI notice page
+    for (let i = 0; i < 60; i++) {
+      const ratio = i / 60
+      const r = Math.floor(15 + ratio * 15)
+      const g = Math.floor(23 + ratio * 41)
+      const b = Math.floor(42 + ratio * 133)
+      doc.setFillColor(r, g, b)
+      doc.rect(0, i, pageWidth, 1, 'F')
+    }
+
+    yPos = 80
+
+    // Large AI badge
     doc.setFillColor(239, 246, 255)
-    doc.setDrawColor(147, 197, 253)
-    doc.setLineWidth(0.5)
-    doc.roundedRect(25, yPos, pageWidth - 50, 18, 3, 3, 'FD')
+    doc.setDrawColor(59, 130, 246)
+    doc.setLineWidth(1)
+    doc.roundedRect(pageWidth / 2 - 60, yPos, 120, 80, 8, 8, 'FD')
 
-    doc.setFontSize(9)
+    yPos += 25
+    doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(30, 64, 175)
-    doc.text('🤖 AI TECHNOLOGIES DETECTED', pageWidth / 2, yPos + 6, { align: 'center' })
+    setColor(doc, COLORS.primary)
+    doc.text('[AI] TECHNOLOGIES', pageWidth / 2, yPos, { align: 'center' })
 
-    doc.setFontSize(8)
+    yPos += 10
+    doc.setFontSize(18)
+    doc.text('DETECTED', pageWidth / 2, yPos, { align: 'center' })
+
+    yPos += 20
+    doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
-    doc.setTextColor(59, 130, 246)
+    setColor(doc, COLORS.slate700)
+    doc.text('This website implements AI features', pageWidth / 2, yPos, { align: 'center' })
 
+    yPos += 25
+
+    // List detected AI
     const aiProviders = scan.findings.detectedTech.aiProviders || []
     const chatWidgets = scan.findings.detectedTech.chatWidgets || []
+    const allAI = [...aiProviders, ...chatWidgets]
 
-    if (aiProviders.length > 0 || chatWidgets.length > 0) {
-      const allAI = [...aiProviders, ...chatWidgets].slice(0, 3).join(', ')
-      doc.text(`Detected: ${allAI}${(aiProviders.length + chatWidgets.length > 3) ? '...' : ''}`, pageWidth / 2, yPos + 12, { align: 'center' })
+    if (allAI.length > 0) {
+      doc.setFillColor(255, 255, 255)
+      doc.setDrawColor(226, 232, 240)
+      doc.setLineWidth(0.5)
+
+      const boxHeight = Math.min(60, 15 + allAI.length * 8)
+      doc.roundedRect(30, yPos, pageWidth - 60, boxHeight, 4, 4, 'FD')
+
+      yPos += 12
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'bold')
+      setColor(doc, COLORS.slate800)
+      doc.text('Detected AI Technologies:', pageWidth / 2, yPos, { align: 'center' })
+
+      yPos += 10
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      setColor(doc, COLORS.slate700)
+
+      allAI.slice(0, 5).forEach((tech) => {
+        doc.text(`• ${tech}`, pageWidth / 2, yPos, { align: 'center' })
+        yPos += 6
+      })
+
+      if (allAI.length > 5) {
+        doc.setFont('helvetica', 'italic')
+        setColor(doc, COLORS.slate500)
+        doc.text(`... and ${allAI.length - 5} more`, pageWidth / 2, yPos, { align: 'center' })
+      }
     }
+
+    yPos += 20
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    setColor(doc, COLORS.slate600)
+    doc.text('See "AI Trust Score Analysis" section for detailed security assessment', pageWidth / 2, yPos, { align: 'center' })
   }
 }
 
@@ -623,16 +680,16 @@ function generateExecutiveSummary(doc: jsPDF, scan: ScanData) {
   setColor(doc, COLORS.slate700)
 
   if (scan.findings.summary.hasAI) {
-    doc.text('• 🤖 AI Integration Detected', 20, yPos)
+    doc.text('• [AI] AI Integration Detected', 20, yPos)
     yPos += 5
   }
-  doc.text(`• 🔴 ${scan.findings.summary.criticalIssues} Critical Issues`, 20, yPos)
+  doc.text(`• [CRITICAL] ${scan.findings.summary.criticalIssues} Critical Issues`, 20, yPos)
   yPos += 5
-  doc.text(`• 🟠 ${scan.findings.summary.highIssues} High Priority Issues`, 20, yPos)
+  doc.text(`• [HIGH] ${scan.findings.summary.highIssues} High Priority Issues`, 20, yPos)
   yPos += 5
-  doc.text(`• 🟡 ${scan.findings.summary.mediumIssues} Medium Priority Issues`, 20, yPos)
+  doc.text(`• [MEDIUM] ${scan.findings.summary.mediumIssues} Medium Priority Issues`, 20, yPos)
   yPos += 5
-  doc.text(`• 🔵 ${scan.findings.summary.lowIssues} Low Priority Issues`, 20, yPos)
+  doc.text(`• [LOW] ${scan.findings.summary.lowIssues} Low Priority Issues`, 20, yPos)
   yPos += 5
   doc.text(`• Total Findings: ${totalIssues}`, 20, yPos)
 
@@ -681,7 +738,7 @@ function generateExecutiveSummary(doc: jsPDF, scan: ScanData) {
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
     setColor(doc, COLORS.green600)
-    doc.text('✓ No critical or high severity issues found!', 20, yPos)
+    doc.text('[PASS] No critical or high severity issues found!', 20, yPos)
     yPos += 6
   }
 
@@ -706,11 +763,11 @@ function generateExecutiveSummary(doc: jsPDF, scan: ScanData) {
     doc.setFont('helvetica', 'normal')
     setColor(doc, COLORS.slate700)
 
-    doc.text(`⚠️ GDPR Compliance: ${scan.findings.compliance.gdprScore}% (${scan.findings.compliance.overallCompliance.toUpperCase()})`, 20, yPos)
+    doc.text(`[WARN] GDPR Compliance: ${scan.findings.compliance.gdprScore}% (${scan.findings.compliance.overallCompliance.toUpperCase()})`, 20, yPos)
     yPos += 5
-    doc.text(`ℹ️ CCPA: ${scan.findings.compliance.ccpaScore}%`, 20, yPos)
+    doc.text(`[INFO] CCPA: ${scan.findings.compliance.ccpaScore}%`, 20, yPos)
     yPos += 5
-    doc.text(`ℹ️ PCI-DSS: ${scan.findings.compliance.pciDssIndicators.length} indicators found`, 20, yPos)
+    doc.text(`[INFO] PCI-DSS: ${scan.findings.compliance.pciDssIndicators.length} indicators found`, 20, yPos)
   }
 }
 
@@ -748,7 +805,7 @@ function generateAiTrustPage(doc: jsPDF, scan: ScanData) {
     doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
     setColor(doc, COLORS.green600)
-    doc.text('✓ NO AI TECHNOLOGIES DETECTED', pageWidth / 2, yPos, { align: 'center' })
+    doc.text('[PASS] NO AI TECHNOLOGIES DETECTED', pageWidth / 2, yPos, { align: 'center' })
 
     yPos += 12
     doc.setFontSize(10)
@@ -758,13 +815,13 @@ function generateAiTrustPage(doc: jsPDF, scan: ScanData) {
 
     yPos += 8
     doc.setFontSize(9)
-    doc.text('• AI chatbots or virtual assistants', pageWidth / 2, yPos, { align: 'center' })
+    doc.text('- AI chatbots or virtual assistants', pageWidth / 2, yPos, { align: 'center' })
     yPos += 5
-    doc.text('• LLM API integrations (OpenAI, Anthropic, etc.)', pageWidth / 2, yPos, { align: 'center' })
+    doc.text('- LLM API integrations (OpenAI, Anthropic, etc.)', pageWidth / 2, yPos, { align: 'center' })
     yPos += 5
-    doc.text('• Machine learning endpoints', pageWidth / 2, yPos, { align: 'center' })
+    doc.text('- Machine learning endpoints', pageWidth / 2, yPos, { align: 'center' })
     yPos += 5
-    doc.text('• AI-powered recommendation engines', pageWidth / 2, yPos, { align: 'center' })
+    doc.text('- AI-powered recommendation engines', pageWidth / 2, yPos, { align: 'center' })
 
     yPos += 12
     doc.setFontSize(9)
@@ -794,7 +851,7 @@ function generateAiTrustPage(doc: jsPDF, scan: ScanData) {
   doc.setFontSize(10)
   doc.setFont('helvetica', 'bold')
   setColor(doc, COLORS.primary)
-  doc.text('🤖 AI IMPLEMENTATION DETECTED', 20, yPos)
+  doc.text('[AI] IMPLEMENTATION DETECTED', 20, yPos)
 
   yPos += 6
   doc.setFontSize(9)
@@ -957,7 +1014,7 @@ function generateAiTrustPage(doc: jsPDF, scan: ScanData) {
 
   llmChecks.forEach((check) => {
     const isPassed = check.risk === 'none' || check.risk === 'low'
-    const icon = isPassed ? '✓' : '⚠️'
+    const icon = isPassed ? '[PASS]' : '[WARN]'
     const statusColor = isPassed ? COLORS.green600 : COLORS.high
 
     doc.setFontSize(9)
@@ -984,7 +1041,7 @@ function generateAiTrustPage(doc: jsPDF, scan: ScanData) {
     doc.setFontSize(10)
     doc.setFont('helvetica', 'bold')
     setColor(doc, COLORS.green600)
-    doc.text('✅ All OWASP LLM security checks passed!', pageWidth / 2, yPos, { align: 'center' })
+    doc.text('[SUCCESS] All OWASP LLM security checks passed!', pageWidth / 2, yPos, { align: 'center' })
   }
 }
 
@@ -1037,14 +1094,14 @@ function generateTechStackPage(doc: jsPDF, scan: ScanData) {
 
   // Technology categories
   const categoryIcons: Record<string, string> = {
-    cms: '📝',
-    ecommerce: '🛒',
-    analytics: '📊',
-    ads: '📢',
-    cdn: '🌐',
-    social: '👥',
-    framework: '⚛️',
-    hosting: '☁️'
+    cms: '[CMS]',
+    ecommerce: '[SHOP]',
+    analytics: '[ANALYTICS]',
+    ads: '[ADS]',
+    cdn: '[CDN]',
+    social: '[SOCIAL]',
+    framework: '[FRAMEWORK]',
+    hosting: '[HOSTING]'
   }
 
   const categoryColors: Record<string, { r: number; g: number; b: number }> = {
@@ -1061,7 +1118,7 @@ function generateTechStackPage(doc: jsPDF, scan: ScanData) {
   Object.entries(techStack.categories).forEach(([category, technologies]) => {
     if (!technologies || technologies.length === 0) return
 
-    const icon = categoryIcons[category] || '🔧'
+    const icon = categoryIcons[category] || '[TECH]'
     const color = categoryColors[category] || COLORS.primary
 
     // Category header
@@ -1093,7 +1150,7 @@ function generateTechStackPage(doc: jsPDF, scan: ScanData) {
       doc.setFontSize(8)
       setColor(doc, COLORS.slate600)
 
-      const confidence = tech.confidence === 'high' ? '✓ HIGH' : tech.confidence === 'medium' ? '~ MEDIUM' : '? LOW'
+      const confidence = tech.confidence === 'high' ? '[HIGH]' : tech.confidence === 'medium' ? '[MEDIUM]' : '[LOW]'
       doc.text(confidence, pageWidth - 30, yPos, { align: 'right' })
 
       yPos += 5
@@ -1172,7 +1229,7 @@ function generateDetailedFindings(doc: jsPDF, scan: ScanData) {
     doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
     setColor(doc, COLORS.green600)
-    doc.text('✓ No Security Issues Found!', pageWidth / 2, yPos, { align: 'center' })
+    doc.text('[SUCCESS] No Security Issues Found!', pageWidth / 2, yPos, { align: 'center' })
 
     yPos += 8
     doc.setFontSize(10)
@@ -1294,7 +1351,7 @@ function generateDetailedFindings(doc: jsPDF, scan: ScanData) {
     doc.setFontSize(8)
     doc.setFont('helvetica', 'bold')
     setColor(doc, COLORS.green600)
-    doc.text('✓ RECOMMENDED ACTION', 22, currentY)
+    doc.text('[FIX] RECOMMENDED ACTION', 22, currentY)
     currentY += 4
 
     doc.setFont('helvetica', 'normal')
