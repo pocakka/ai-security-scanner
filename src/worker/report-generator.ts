@@ -25,7 +25,7 @@ import { SensitiveInfoResult } from './analyzers/owasp-llm/llm06-sensitive-info'
 import { PluginDesignResult } from './analyzers/owasp-llm/llm07-plugin-design'
 import { ExcessiveAgencyResult } from './analyzers/owasp-llm/llm08-excessive-agency'
 import { BackendFrameworkResult } from './analyzers/backend-framework-detector'
-import { WebServerSecurityResult } from './analyzers/web-server-security-analyzer'
+import { WebServerResult } from './analyzers/web-server-security-analyzer'
 import { FrontendFrameworkResult } from './analyzers/frontend-framework-security-analyzer'
 import { PassiveAPIDiscoveryResult } from './analyzers/passive-api-discovery-analyzer'
 import { RiskScore } from './scoring'
@@ -66,9 +66,10 @@ export interface ScanReport {
   llm07PluginDesign?: PluginDesignResult // Add LLM07 for frontend
   llm08ExcessiveAgency?: ExcessiveAgencyResult // Add LLM08 for frontend
   backendFramework?: BackendFrameworkResult // Add backend framework security for frontend
-  webServer?: WebServerSecurityResult // Add web server security for frontend
+  webServer?: WebServerResult // Add web server security for frontend
   frontendFramework?: FrontendFrameworkResult // Add frontend framework security for frontend
   passiveAPI?: PassiveAPIDiscoveryResult // Add passive API discovery for frontend
+  scoreBreakdown?: any // Optional score breakdown
   findings: Finding[]
 }
 
@@ -112,7 +113,7 @@ export function generateReport(
   llm07PluginDesign?: PluginDesignResult,
   llm08ExcessiveAgency?: ExcessiveAgencyResult,
   backendFramework?: BackendFrameworkResult,
-  webServer?: WebServerSecurityResult,
+  webServer?: WebServerResult,
   frontendFramework?: FrontendFrameworkResult,
   passiveAPI?: PassiveAPIDiscoveryResult
 ): ScanReport {

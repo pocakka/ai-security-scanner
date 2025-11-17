@@ -1,0 +1,74 @@
+{
+  "entryPoints": [
+    "src/app/api",
+    "src/worker",
+    "src/lib",
+    "src/types"
+  ],
+  "entryPointStrategy": "expand",
+  "out": "docs/api",
+  "plugin": ["typedoc-plugin-markdown"],
+  "readme": "docs/README.md",
+  "name": "AI Security Scanner - Technical Documentation",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeExternals": true,
+  "exclude": [
+    "**/node_modules/**",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/dist/**",
+    "**/.next/**"
+  ],
+  "tsconfig": "tsconfig.json",
+  "skipErrorChecking": true,
+  "compilerOptions": {
+    "skipLibCheck": true
+  },
+  "categoryOrder": [
+    "API Layer",
+    "Worker Layer",
+    "Analyzers",
+    "Core Libraries",
+    "Types",
+    "*"
+  ],
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "sort": ["source-order"],
+  "kindSortOrder": [
+    "Project",
+    "Module",
+    "Namespace",
+    "Enum",
+    "Class",
+    "Interface",
+    "TypeAlias",
+    "Constructor",
+    "Property",
+    "Variable",
+    "Function",
+    "Accessor",
+    "Method",
+    "Parameter",
+    "TypeParameter",
+    "Reference"
+  ],
+  "visibilityFilters": {
+    "protected": true,
+    "private": false,
+    "inherited": true,
+    "external": false
+  },
+  "searchInComments": true,
+  "searchInDocuments": true,
+  "cleanOutputDir": true,
+  "githubPages": false,
+  "hideGenerator": false,
+  "includeHierarchySummary": true,
+  "disableSources": false,
+  "sourceLinkTemplate": "https://github.com/yourorg/ai-security-scanner/blob/main/{path}#L{line}"
+}

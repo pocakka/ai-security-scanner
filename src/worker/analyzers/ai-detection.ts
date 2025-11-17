@@ -325,8 +325,8 @@ function detectChatWidget(
 ): { detected: boolean; confidence: 'HIGH' | 'MEDIUM' | 'LOW'; matchedPatterns: number } {
   let matchedPatterns = 0
   const htmlLower = crawlResult.html.toLowerCase()
-  const networkUrls = crawlResult.networkRequests.map(r => r.url.toLowerCase())
-  const allScripts = crawlResult.scripts.map(s => s.toLowerCase())
+  const networkUrls = (crawlResult.networkRequests || []).map(r => r.url.toLowerCase())
+  const allScripts = (crawlResult.scripts || []).map(s => s.toLowerCase())
 
   // Check script URLs (high confidence)
   const scriptUrlMatch = patterns.scriptUrls.some(pattern =>
@@ -384,7 +384,7 @@ export function analyzeAIDetection(crawlResult: CrawlResult): AIDetectionResult 
   }
 
   // Check network requests for AI providers
-  for (const request of crawlResult.networkRequests) {
+  for (const request of crawlResult.networkRequests || []) {
     const url = request.url.toLowerCase()
 
     // Check AI providers
@@ -421,7 +421,7 @@ export function analyzeAIDetection(crawlResult: CrawlResult): AIDetectionResult 
   }
 
   // Check JavaScript for AI libraries
-  for (const script of crawlResult.scripts) {
+  for (const script of crawlResult.scripts || []) {
     const scriptLower = script.toLowerCase()
     for (const lib of AI_JS_LIBRARIES) {
       if (scriptLower.includes(lib)) {
@@ -470,7 +470,7 @@ export function analyzeAIDetection(crawlResult: CrawlResult): AIDetectionResult 
     for (const pattern of rule.patterns) {
       // Check scripts
       if (pattern.type === 'script') {
-        for (const script of crawlResult.scripts) {
+        for (const script of crawlResult.scripts || []) {
           if (pattern.match.test(script)) {
             detected = true
             evidence.push(`Script: ${script.substring(0, 100)}...`)
@@ -487,7 +487,7 @@ export function analyzeAIDetection(crawlResult: CrawlResult): AIDetectionResult 
 
       // Check network requests
       if (pattern.type === 'api-endpoint') {
-        for (const req of crawlResult.networkRequests) {
+        for (const req of crawlResult.networkRequests || []) {
           if (pattern.match.test(req.url)) {
             detected = true
             evidence.push(`API endpoint: ${req.url}`)

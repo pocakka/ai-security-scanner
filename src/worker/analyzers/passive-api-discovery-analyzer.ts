@@ -295,9 +295,10 @@ export async function analyzePassiveAPIDiscovery(
   for (const sqlPattern of SQL_ERROR_PATTERNS) {
     const matches = html.match(sqlPattern.regex) || []
     if (matches.length > 50) break // Limit matches
-    if (matches.length > 0) {
+    if (matches.length > 0 && matches[0]) {
       const evidence = matches[0]
-      const revealsSchema = /table|column|database|schema|query|SELECT|INSERT|UPDATE|DELETE/i.test(html.substring(html.indexOf(evidence), html.indexOf(evidence) + 500))
+      const evidenceIndex = html.indexOf(evidence)
+      const revealsSchema = evidenceIndex >= 0 ? /table|column|database|schema|query|SELECT|INSERT|UPDATE|DELETE/i.test(html.substring(evidenceIndex, evidenceIndex + 500)) : false
 
       sqlErrors.push({
         error: evidence,
@@ -317,7 +318,7 @@ export async function analyzePassiveAPIDiscovery(
           : `MEDIUM: Database error messages confirm which database system is being used (${sqlPattern.db}), aiding attackers in reconnaissance. Even without schema details, knowing the database type helps attackers select appropriate attack techniques and exploit known vulnerabilities specific to ${sqlPattern.db}.`,
         recommendation: `Disable detailed error messages in production. Configure ${sqlPattern.db} to log errors server-side only, not to client responses. Implement generic error pages that don't reveal technical details. Use try-catch blocks to handle database errors gracefully without exposing internals. Enable error logging to a secure location for debugging.`,
         evidence: evidence.substring(0, 200),
-        codeSnippet: html.substring(Math.max(0, html.indexOf(evidence) - 100), html.indexOf(evidence) + evidence.length + 200)
+        codeSnippet: evidenceIndex >= 0 ? html.substring(Math.max(0, evidenceIndex - 100), evidenceIndex + evidence.length + 200) : evidence
       })
     }
   }
@@ -425,7 +426,7 @@ export async function analyzePassiveAPIDiscovery(
   checkTimeout()
   for (const debugPattern of DEBUG_INDICATORS) {
     const matches = html.match(debugPattern.pattern) || []
-    if (matches.length > 0) {
+    if (matches.length > 0 && matches[0]) {
       debugIndicators.push({
         type: debugPattern.type,
         evidence: matches[0],

@@ -46,10 +46,11 @@ async function fetchWithTimeout(url: string, timeoutMs: number = 1000): Promise<
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
+    // Nov 17, 2025: REMOVED 'no-cors' mode - we need to check actual status codes!
+    // 'no-cors' hides 404 responses, causing false positives
     const response = await fetch(url, {
       method: 'HEAD',
       signal: controller.signal,
-      mode: 'no-cors', // Avoid CORS preflight
       redirect: 'manual'
     })
     clearTimeout(timeout)
@@ -59,7 +60,7 @@ async function fetchWithTimeout(url: string, timeoutMs: number = 1000): Promise<
     if (error.name === 'AbortError') {
       return null // Timeout
     }
-    return null // Other errors
+    return null // Other errors (CORS, network issues)
   }
 }
 
@@ -102,14 +103,14 @@ async function checkDatabaseInterfaces(baseUrl: URL): Promise<PortScanFinding[]>
 
       const response = await fetchWithTimeout(testUrl, 1000)
 
-      // Due to no-cors mode, we can't check response.ok, but we can detect if request completed
-      // In practice, if the service is not available, the request will timeout or fail
-      if (response) {
+      // Nov 17, 2025 FIX: Check actual status codes (200, 401, 403)
+      // ONLY report if the endpoint is actually accessible (not 404!)
+      if (response && (response.status === 200 || response.status === 401 || response.status === 403)) {
         const finding: PortScanFinding = {
           type: 'web-interface',
           severity: iface.severity,
           title: `${iface.service} interface potentially exposed`,
-          description: `Database management interface ${iface.service} may be accessible at ${iface.path}`,
+          description: `Database management interface ${iface.service} may be accessible at ${iface.path} (HTTP ${response.status})`,
           port: iface.port,
           service: iface.service,
           impact: iface.severity === 'critical'
@@ -118,7 +119,7 @@ async function checkDatabaseInterfaces(baseUrl: URL): Promise<PortScanFinding[]>
           recommendation: iface.severity === 'critical'
             ? `IMMEDIATELY restrict ${iface.service} access to specific IP addresses only. Never expose database management to public internet.`
             : `Restrict ${iface.service} access to internal networks or VPN only. Implement strong authentication and IP whitelisting.`,
-          evidence: testUrl,
+          evidence: `${testUrl} (HTTP ${response.status})`,
           confidence: iface.confidence
         }
 
@@ -130,6 +131,7 @@ async function checkDatabaseInterfaces(baseUrl: URL): Promise<PortScanFinding[]>
 
         findings.push(finding)
       }
+      // ELSE: 404, 500, or other error codes = NOT exposed, don't report
     } catch (error) {
       // Service not accessible - this is good
       continue

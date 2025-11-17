@@ -56,7 +56,7 @@ export function analyzeSecurityHeaders(crawlResult: CrawlResult): SecurityHeader
 
   // Normalize headers (lowercase keys)
   const headers: Record<string, string> = {}
-  for (const [key, value] of Object.entries(crawlResult.responseHeaders)) {
+  for (const [key, value] of Object.entries(crawlResult.responseHeaders || {})) {
     headers[key.toLowerCase()] = value
   }
 

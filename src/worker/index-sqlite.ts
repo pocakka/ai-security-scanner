@@ -265,8 +265,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
     )
     timings.webServer = Date.now() - webServerStart
     console.log(`[Worker] ✓ Web Server analysis completed in ${timings.webServer}ms`)
-    if (webServer.detectedServer) {
-      console.log(`[Worker]   - Detected server: ${webServer.serverName}${webServer.serverVersion ? ` ${webServer.serverVersion}` : ''}`)
+    if (webServer.detectedServers && webServer.detectedServers.length > 0) {
+      const primaryServer = webServer.detectedServers[0]
+      console.log(`[Worker]   - Detected server: ${primaryServer.name}${primaryServer.version ? ` ${primaryServer.version}` : ''}`)
       console.log(`[Worker]   - Security findings: ${webServer.findings.length}`)
     }
 
@@ -424,6 +425,7 @@ async function processScanJob(data: { scanId: string; url: string }) {
         // Timeout - return safe empty result
         llm06SensitiveInfo = {
           findings: [],
+          hasAPIKeys: false,
           hasSystemPrompts: false,
           hasTrainingData: false,
           hasPII: false,

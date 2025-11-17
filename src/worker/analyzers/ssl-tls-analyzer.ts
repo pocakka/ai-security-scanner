@@ -281,7 +281,7 @@ function detectMixedContent(crawlResult: CrawlResult): MixedContentIssue[] {
   ]
 
   // Check network requests for HTTP resources
-  for (const request of crawlResult.networkRequests) {
+  for (const request of crawlResult.networkRequests || []) {
     const resourceURL = request.url
 
     // Skip non-HTTP, data:, and blob: URLs
@@ -321,7 +321,7 @@ function detectMixedContent(crawlResult: CrawlResult): MixedContentIssue[] {
   }
 
   // Check scripts for HTTP URLs (but apply same filtering)
-  for (const script of crawlResult.scripts) {
+  for (const script of crawlResult.scripts || []) {
     if (script.toLowerCase().startsWith('http://')) {
       try {
         const urlObj = new URL(script)
@@ -355,7 +355,7 @@ function checkWeakProtocol(crawlResult: CrawlResult): { description: string; evi
   const headers = crawlResult.responseHeaders
 
   // Some servers expose protocol version in headers
-  const protocolHeader = headers['x-tls-version'] || headers['x-ssl-version']
+  const protocolHeader = headers?.['x-tls-version'] || headers?.['x-ssl-version']
 
   if (protocolHeader) {
     // Use specific version patterns with word boundaries

@@ -331,9 +331,28 @@ npm run dev
 
 ## 📖 Documentation
 
+### User & Project Documentation
 - **[PROGRESS.md](./PROGRESS.md)** - Development progress
 - **[CLAUDE.md](./CLAUDE.md)** - AI assistant context
 - **[LOCALHOST_SETUP.md](./LOCALHOST_SETUP.md)** - Setup guide
+
+### Technical Documentation
+- **[docs/DEVELOPER_REFERENCE.md](./docs/DEVELOPER_REFERENCE.md)** - 🚨 **DEBUGGING & FILE MAP** (Fix anything!) ⭐ NEW!
+- **[DOCUMENTATION.md](./DOCUMENTATION.md)** - 📚 **COMPLETE DOCUMENTATION GUIDE** (START HERE!)
+- **[docs/SCAN_FLOW.md](./docs/SCAN_FLOW.md)** - Complete end-to-end scan flow (2,087 lines)
+- **[docs/api/](./docs/api/)** - Auto-generated TypeDoc API documentation (100+ modules)
+
+#### Generate/Update Technical Docs
+```bash
+# Generate TypeDoc documentation
+npm run docs
+
+# Generate and watch for changes
+npm run docs:watch
+
+# Generate and serve on http://localhost:8080
+npm run docs:serve
+```
 
 ---
 

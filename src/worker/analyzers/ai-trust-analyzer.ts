@@ -793,6 +793,7 @@ function checkPatternsInText(html: string, patterns: string[]): PatternCheckResu
 
 /**
  * Check if any patterns match in scripts
+ * Nov 17, 2025: Enhanced to check script URLs (src attributes) in addition to inline scripts
  */
 function checkPatternsInScripts(scripts: string[], patterns: string[]): PatternCheckResult {
   const evidence: string[] = []
@@ -809,6 +810,24 @@ function checkPatternsInScripts(scripts: string[], patterns: string[]): PatternC
   }
 
   return { found: evidence.length > 0, evidence }
+}
+
+/**
+ * Nov 17, 2025: NEW - Extract script URLs from HTML
+ * Extracts src attributes from <script> tags to check for CDN/external scripts
+ */
+function extractScriptUrls(html: string): string[] {
+  const scriptUrls: string[] = []
+
+  // Match <script src="..."> tags
+  const scriptTagRegex = /<script[^>]*\ssrc=["']([^"']+)["'][^>]*>/gi
+  let match
+
+  while ((match = scriptTagRegex.exec(html)) !== null) {
+    scriptUrls.push(match[1])
+  }
+
+  return scriptUrls
 }
 
 /**
@@ -912,13 +931,25 @@ function detectAiModel(html: string, scripts: string[]): string | undefined {
 
 /**
  * Detect chat framework
+ * Nov 17, 2025: Enhanced to check script URLs (src attributes)
  */
 function detectChatFramework(html: string, scripts: string[]): string | undefined {
+  // Nov 17, 2025: Extract script URLs from HTML (e.g., <script src="https://...">)
+  const scriptUrls = extractScriptUrls(html)
+
   for (const [framework, patterns] of Object.entries(CHAT_FRAMEWORKS)) {
+    // Check inline HTML content
     if (checkPatternsInText(html, patterns).found) {
       return framework
     }
+
+    // Check inline script content
     if (checkPatternsInScripts(scripts, patterns).found) {
+      return framework
+    }
+
+    // Nov 17, 2025: Check script URLs (src attributes) - FIX for GPT4Business
+    if (checkPatternsInScripts(scriptUrls, patterns).found) {
       return framework
     }
   }
@@ -1222,7 +1253,12 @@ export function analyzeAiTrust(crawlResult: CrawlResult, securityScore: number =
   // ========================================
   // If NO AI detected with reasonable confidence, return N/A score
   // Reject "none" and "low" confidence to avoid false positives
-  if (!aiDetection.hasAi || aiDetection.confidenceLevel === 'none' || aiDetection.confidenceLevel === 'low') {
+  // EXCEPTION: If chat framework IS detected (concrete UI element), allow 'low' confidence
+  const hasConcreteChatWidget = aiDetection.framework && aiDetection.framework.trim() !== ''
+  const shouldReject = !aiDetection.hasAi || aiDetection.confidenceLevel === 'none' ||
+                       (aiDetection.confidenceLevel === 'low' && !hasConcreteChatWidget)
+
+  if (shouldReject) {
     return createNotApplicableResult(aiDetection, securityScore)
   }
 

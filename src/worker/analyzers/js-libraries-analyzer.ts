@@ -137,7 +137,7 @@ export function analyzeJSLibraries(crawlResult: CrawlResult): JSLibrariesResult 
 
   // Check scripts for library detection
   // Nov 17, 2025: Improved pattern matching to reduce false positives (60% FP → <10%)
-  for (const script of crawlResult.scripts) {
+  for (const script of crawlResult.scripts || []) {
     for (const libPattern of LIBRARY_PATTERNS) {
       const scriptLower = script.toLowerCase()
       let detected = false

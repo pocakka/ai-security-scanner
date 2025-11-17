@@ -32,7 +32,7 @@ export interface CORSResult {
  */
 export function analyzeCORS(crawlResult: CrawlResult): CORSResult {
   const findings: CORSFinding[] = []
-  const headers = normalizeHeaders(crawlResult.responseHeaders)
+  const headers = normalizeHeaders(crawlResult.responseHeaders || {})
 
   // Extract CORS headers
   const corsHeaders = {
@@ -324,7 +324,7 @@ export async function testCORSWithOrigins(url: string): Promise<CORSFinding[]> {
 export function checkCORSBypassPatterns(crawlResult: CrawlResult): CORSFinding[] {
   const findings: CORSFinding[] = []
   const html = crawlResult.html || ''
-  const headers = normalizeHeaders(crawlResult.responseHeaders)
+  const headers = normalizeHeaders(crawlResult.responseHeaders || {})
 
   // Nov 17, 2025: Remove code blocks and comments before pattern matching
   const cleanHtml = html

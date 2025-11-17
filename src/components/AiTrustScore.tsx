@@ -50,7 +50,8 @@ export function AiTrustScore({
   summary,
 }: AiTrustScoreProps) {
   // If NO AI implementation detected, show a simple info card
-  if (!hasAiImplementation || aiConfidenceLevel === 'none' || aiConfidenceLevel === 'low') {
+  // Trust the backend's hasAiImplementation flag (already considers chat widgets)
+  if (!hasAiImplementation || aiConfidenceLevel === 'none') {
     return (
       <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-xl p-6">
         <div className="flex items-start gap-4">

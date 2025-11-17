@@ -162,8 +162,8 @@ export function analyzeClientRisks(crawlResult: CrawlResult): ClientRisksResult 
   const detectedKeys = new Set<string>() // Prevent duplicates
 
   // Check all scripts for API keys using improved detector
-  for (let i = 0; i < crawlResult.scripts.length; i++) {
-    const script = crawlResult.scripts[i]
+  for (let i = 0; i < (crawlResult.scripts || []).length; i++) {
+    const script = (crawlResult.scripts || [])[i]
 
     // Use the new improved detector
     const detectedInScript = detectAPIKeys(script)

@@ -47,6 +47,7 @@ export interface SensitiveInfoResult {
   hasModelInfo: boolean
   exposedDataTypes: string[]
   overallRisk: 'none' | 'low' | 'medium' | 'high' | 'critical'
+  timeout?: boolean // Optional timeout flag
 }
 
 // System prompt patterns (different from LLM01 - focuses on disclosure, not injection)

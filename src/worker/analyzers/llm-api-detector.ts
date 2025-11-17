@@ -429,7 +429,7 @@ export function detectLLMAPIs(crawlResult: CrawlResult): LLMAPIDetectorResult {
   const detectedProviders = new Set<string>()
 
   // Check network requests for API endpoints
-  for (const request of crawlResult.networkRequests) {
+  for (const request of crawlResult.networkRequests || []) {
     const url = request.url.toLowerCase()
 
     for (const pattern of LLM_API_PATTERNS) {
@@ -459,7 +459,7 @@ export function detectLLMAPIs(crawlResult: CrawlResult): LLMAPIDetectorResult {
         let apiKeyMasked = undefined
 
         // Check in HTML/JS for exposed API keys
-        const allContent = crawlResult.html + ' ' + crawlResult.scripts.join(' ')
+        const allContent = crawlResult.html + ' ' + (crawlResult.scripts || []).join(' ')
 
         for (const apiKeyPattern of pattern.apiKeyPatterns) {
           const match = allContent.match(apiKeyPattern)
@@ -497,7 +497,7 @@ export function detectLLMAPIs(crawlResult: CrawlResult): LLMAPIDetectorResult {
   }
 
   // Additional check: Search in scripts for API calls even without network capture
-  for (const script of crawlResult.scripts) {
+  for (const script of crawlResult.scripts || []) {
     const scriptLower = script.toLowerCase()
 
     for (const pattern of LLM_API_PATTERNS) {

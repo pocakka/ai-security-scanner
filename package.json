@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "worker": "tsx src/worker/index-sqlite.ts"
+    "worker": "tsx src/worker/index-sqlite.ts",
+    "docs": "typedoc",
+    "docs:watch": "typedoc --watch",
+    "docs:serve": "typedoc && cd docs/api && python3 -m http.server 8080"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -35,6 +38,8 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
+    "typedoc": "^0.28.14",
+    "typedoc-plugin-markdown": "^4.9.0",
     "typescript": "^5"
   }
 }
