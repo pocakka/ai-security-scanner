@@ -174,6 +174,9 @@ export async function analyzeAdminDiscovery(crawlResult: CrawlResult): Promise<A
 
         clearTimeout(timeout)
 
+        // Get redirect location from response headers if present
+        const redirectLocation = response.headers.get('location') || null
+
         // ========================================
         // VULNERABILITY DETECTION (Nov 16, 2025)
         // ONLY 200 OK = real vulnerability!
@@ -215,7 +218,7 @@ export async function analyzeAdminDiscovery(crawlResult: CrawlResult): Promise<A
         }
 
         // Check for redirect to login (only if NOT already skipped by false positive check)
-        if (response.status === 301 || response.status === 302 && redirectLocation) {
+        if ((response.status === 301 || response.status === 302) && redirectLocation) {
           if (redirectLocation && redirectLocation.toLowerCase().includes('login')) {
             hasAdminPanel = true
             adminUrls.push(adminUrl)
