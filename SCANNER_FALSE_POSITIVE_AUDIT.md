@@ -12,8 +12,8 @@
 This document provides a **systematic, step-by-step protocol** for identifying and eliminating false positives in all 21 security analyzers.
 
 **Current Status:**
-- ✅ **3/21 analyzers audited** (Compliance, Admin Discovery)
-- ⏳ **18/21 analyzers pending audit**
+- ✅ **6/21 analyzers audited** (Compliance, Admin Discovery, LLM06, Error Disclosure, Reconnaissance, JS Libraries)
+- ⏳ **15/21 analyzers pending audit**
 - 🎯 **Target:** <3% false positive rate across all analyzers
 
 ---
@@ -51,7 +51,7 @@ This document provides a **systematic, step-by-step protocol** for identifying a
 
 ## 🔍 21 Analyzers - Complete Audit Checklist
 
-### ✅ COMPLETED (3/21)
+### ✅ COMPLETED (6/21)
 
 #### 1. **compliance-analyzer.ts** ✅
 - **Audited:** November 16, 2025
@@ -80,9 +80,40 @@ This document provides a **systematic, step-by-step protocol** for identifying a
   - ✅ Skips paths with `/` character
   - ✅ Skips image file extensions
 
+#### 4. **error-disclosure-analyzer.ts** ✅
+- **Audited:** November 17, 2025
+- **Commit:** `3d399cf`
+- **False Positive Rate:** 70% → <5%
+- **Fixes:**
+  - ✅ HTML preprocessing to remove code blocks before pattern matching
+  - ✅ Removed /app/ and /opt/ patterns (SPA/Docker false positives)
+  - ✅ File paths require file extensions
+  - ✅ Removed generic "development mode" pattern
+  - ✅ Debug mode patterns use exact ENV variable syntax
+
+#### 5. **reconnaissance-analyzer.ts** ✅
+- **Audited:** November 17, 2025
+- **Commit:** `72077e3`
+- **False Positive Rate:** 65% → <10%
+- **Fixes:**
+  - ✅ Changed .includes() to .startsWith() for path matching
+  - ✅ Removed /api/, /test/, /dev/ patterns
+  - ✅ Added trailing slashes to patterns (/admin/ instead of /admin)
+
+#### 6. **js-libraries-analyzer.ts** ✅
+- **Audited:** November 17, 2025
+- **Commit:** `eec0430`
+- **False Positive Rate:** 60% → <10%
+- **Fixes:**
+  - ✅ Context-aware library pattern matching (detectLibraryInURL helper)
+  - ✅ Version extraction with library name proximity check
+  - ✅ CDN detection using exact hostname matching
+  - ✅ SRI check supports any attribute order
+  - ✅ Analytics patterns use specific domains
+
 ---
 
-### ⏳ PENDING AUDIT (18/21)
+### ⏳ PENDING AUDIT (15/21)
 
 #### 4. **admin-detection-analyzer.ts** ⏳
 **Risk Level:** 🟡 MEDIUM
