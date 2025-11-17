@@ -246,12 +246,14 @@ export default function ScanResultPage() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const scanId = params.id as string
+  const domainSlug = params.domain as string
+  const scanNumberParam = params.scanNumber as string
 
   // Check if full report mode is enabled
   const isFullReport = searchParams.get('report') === 'full_report'
 
   const [scan, setScan] = useState<Scan | null>(null)
+  const [scanId, setScanId] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -304,7 +306,7 @@ export default function ScanResultPage() {
     }, 2000)
 
     return () => clearInterval(interval)
-  }, [scanId, scan?.status])
+  }, [domainSlug, scanNumberParam, scan?.status])
 
   // SEO Meta Tags - Update dynamically based on scan data
   useEffect(() => {
@@ -423,7 +425,16 @@ export default function ScanResultPage() {
 
   const fetchScan = async () => {
     try {
-      const response = await fetch(`/api/scan/${scanId}`)
+      // Fetch by domain slug + scanNumber, then get full scan data by UUID
+      const lookupResponse = await fetch(`/api/s/${domainSlug}/${scanNumberParam}`)
+      if (!lookupResponse.ok) throw new Error('Scan not found')
+
+      const lookupData = await lookupResponse.json()
+      const fetchedScanId = lookupData.id
+      setScanId(fetchedScanId)
+
+      // Now fetch full scan data
+      const response = await fetch(`/api/scan/${fetchedScanId}`)
       if (!response.ok) throw new Error('Failed to fetch scan')
 
       const data = await response.json()
@@ -486,7 +497,7 @@ export default function ScanResultPage() {
       if (!response.ok) throw new Error('Failed to create new scan')
 
       const data = await response.json()
-      // Redirect to the new scan page
+      // Redirect to the SEO-friendly URL (will be available once scan completes)
       window.location.href = `/scan/${data.scanId}`
     } catch (err) {
       console.error('Regenerate error:', err)

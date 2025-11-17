@@ -14,7 +14,8 @@ datasource db {
 // SCAN MODEL - Optimized for scale
 // ========================================
 model Scan {
-  id            String   @id @default(uuid())
+  scanNumber    Int      @id @default(autoincrement()) // Human-friendly sequential ID (1, 2, 3...)
+  id            String   @unique @default(uuid())      // UUID for secure URLs
   url           String
   domain        String?
   status        String   @default("PENDING") // PENDING, SCANNING, COMPLETED, FAILED
@@ -40,6 +41,7 @@ model Scan {
   // ========================================
   // CRITICAL INDEXES for 10M+ scans
   // ========================================
+  @@index([id])                           // UUID lookup (for URLs)
   @@index([url])                          // Search by URL
   @@index([domain])                       // Search by domain
   @@index([status])                       // Filter by status
@@ -49,6 +51,7 @@ model Scan {
   @@index([completedAt])                  // Completed scans
   @@index([domain, createdAt])            // Domain timeline
 
+  // Note: scanNumber is @id, automatically has index
   // Partial index for active scans (PostgreSQL specific)
   // Only indexes PENDING/SCANNING status (much smaller index)
   // Note: Prisma doesn't support partial indexes yet, we'll add this manually after migration

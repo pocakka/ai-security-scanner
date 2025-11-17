@@ -44,11 +44,33 @@ This guide covers the SEO (Search Engine Optimization) and performance optimizat
 - ✅ **Open Graph Tags** - Facebook/LinkedIn sharing
 - ✅ **Twitter Cards** - Twitter sharing
 - ✅ **Robots.txt** - Crawler instructions
-- ✅ **Sitemap.xml** - Search engine discovery
+- ✅ **Sitemap.xml** - XML sitemap generation
 - ✅ **Structured Data** - Schema.org WebApplication
 - ✅ **SSR Landing Page** - Fast first contentful paint
 - ✅ **Semantic HTML** - Proper heading hierarchy
-- ⚠️ **Scan Page SSR** - Currently client-side (TODO)
+- ✅ **SEO-Friendly URLs** - Domain + sequential IDs
+- ✅ **Canonical URLs** - Points to SEO format
+
+### **URL Structure:**
+
+#### **Primary (SEO-Optimized):**
+```
+/s/[domain-slug]/[scanNumber]
+Example: /s/reddit-com/342
+```
+
+#### **Legacy (Backward Compatible):**
+```
+/scan/[uuid]
+Example: /scan/d9442c0c-eac8-4b0a-8cf7-f6deddb784c3
+```
+
+#### **Benefits:**
+- ✅ **Google Indexable:** Domain name visible in URL
+- ✅ **Human-Readable:** Sequential numbers (1, 2, 3...)
+- ✅ **Sortable:** Easy pagination and ordering
+- ✅ **Shareable:** Clean URLs for social media
+- ✅ **Backward Compatible:** Old URLs redirect to new format
 
 ---
 
@@ -65,10 +87,18 @@ This guide covers the SEO (Search Engine Optimization) and performance optimizat
 └─────────────────────────────────────────┘
            ↓
 ┌─────────────────────────────────────────┐
-│  Scan Results (/scan/[id])              │
-│  ⚠️ Client-Side Rendered (current)      │
-│  🔄 Real-time polling                   │
-│  📝 TODO: SSR with client polling       │
+│  SEO-Friendly Scan Results              │
+│  /s/[domain-slug]/[scanNumber]          │
+│  ✅ Server-Side Rendered                │
+│  🔄 Client-side data fetching           │
+│  📊 SEO: Domain + Sequential ID in URL  │
+└─────────────────────────────────────────┘
+           ↕
+┌─────────────────────────────────────────┐
+│  Legacy UUID Scan Results               │
+│  /scan/[uuid]                           │
+│  ✅ Backward compatible                 │
+│  🔄 Canonical URL → SEO format          │
 └─────────────────────────────────────────┘
 ```
 

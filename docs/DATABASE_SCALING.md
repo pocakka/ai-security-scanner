@@ -42,6 +42,44 @@ JSON: Native JSONB (queryable!)
 
 ---
 
+## 🔢 scanNumber Field - SEO-Friendly Sequential IDs
+
+### **Purpose**
+The `scanNumber` field provides human-readable, sequential IDs for scans while maintaining UUID security.
+
+### **Schema Design**
+```prisma
+model Scan {
+  scanNumber    Int      @id @default(autoincrement()) // Primary key: 1, 2, 3...
+  id            String   @unique @default(uuid())      // UUID for secure URLs
+  url           String
+  domain        String?
+  // ... other fields
+
+  @@index([id])     // Fast UUID lookup
+  @@index([domain]) // SEO URL lookup
+}
+```
+
+### **URL Structure**
+- **SEO URL:** `/s/reddit-com/342` (domain-slug + scanNumber)
+- **UUID URL:** `/scan/d9442c0c-eac8-4b0a-8cf7-f6deddb784c3` (backward compatible)
+
+### **Benefits**
+- ✅ **SEO:** Domain name visible in URL (Google indexable)
+- ✅ **Human-readable:** Sequential numbers (1, 2, 3...)
+- ✅ **Sortable:** Easy to order by scan number
+- ✅ **Dual indexing:** Fast lookup by both scanNumber and UUID
+- ✅ **Backward compatible:** Old UUID URLs still work
+
+### **Implementation Notes**
+- scanNumber is auto-incremented by PostgreSQL
+- Domain is extracted from URL and stored separately for SEO URLs
+- Canonical URL always points to SEO-friendly format
+- API: `/api/s/[domain-slug]/[scanNumber]` → resolves to UUID
+
+---
+
 ## 🚀 Migration to PostgreSQL
 
 ### **Step 1: Install PostgreSQL**
