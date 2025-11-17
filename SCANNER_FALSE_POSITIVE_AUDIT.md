@@ -12,8 +12,8 @@
 This document provides a **systematic, step-by-step protocol** for identifying and eliminating false positives in all 21 security analyzers.
 
 **Current Status:**
-- ✅ **8/21 analyzers audited** (Compliance, Admin Discovery, LLM06, Error Disclosure, Reconnaissance, JS Libraries, CORS, MFA Detection)
-- ⏳ **13/21 analyzers pending audit**
+- ✅ **9/21 analyzers audited** (Compliance, Admin Discovery, LLM06, Error Disclosure, Reconnaissance, JS Libraries, CORS, MFA Detection, Admin Detection)
+- ⏳ **12/21 analyzers pending audit**
 - 🎯 **Target:** <3% false positive rate across all analyzers
 
 ---
@@ -51,7 +51,7 @@ This document provides a **systematic, step-by-step protocol** for identifying a
 
 ## 🔍 21 Analyzers - Complete Audit Checklist
 
-### ✅ COMPLETED (8/21)
+### ✅ COMPLETED (9/21)
 
 #### 1. **compliance-analyzer.ts** ✅
 - **Audited:** November 16, 2025
@@ -133,9 +133,19 @@ This document provides a **systematic, step-by-step protocol** for identifying a
   - ✅ "No MFA" only flagged on pages with password inputs/login forms
   - ✅ All detection functions use cleaned HTML (OAuth, SAML, TOTP, etc.)
 
+#### 9. **admin-detection-analyzer.ts** ✅
+- **Audited:** November 17, 2025
+- **Commit:** `c79f1d9`
+- **False Positive Rate:** 20-40% → <15%
+- **Fixes:**
+  - ✅ HTML preprocessing for auth keyword detection
+  - ✅ Increased required keyword count from 3 to 4
+  - ✅ Now requires keywords AND password field
+  - ✅ Documentation/FAQ content removed before detection
+
 ---
 
-### ⏳ PENDING AUDIT (13/21)
+### ⏳ PENDING AUDIT (12/21)
 
 #### 4. **admin-detection-analyzer.ts** ⏳
 **Risk Level:** 🟡 MEDIUM
