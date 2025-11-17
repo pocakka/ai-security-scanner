@@ -699,12 +699,13 @@ async function processScanJob(data: { scanId: string; url: string }) {
         status: 'COMPLETED',
         riskScore: scoreBreakdown.overallScore,
         riskLevel: scoreBreakdown.riskLevel,
-        detectedTech: JSON.stringify(report.detectedTech),
-        findings: JSON.stringify(report),
-        metadata: JSON.stringify({
+        // PostgreSQL JSONB: store as objects, not strings
+        detectedTech: report.detectedTech,
+        findings: report,
+        metadata: {
           ...performanceData,
           scoreBreakdown, // ✨ NEW: Include v2 professional scoring breakdown
-        }),
+        },
         completedAt: new Date(),
       },
     })
@@ -755,7 +756,8 @@ async function processScanJob(data: { scanId: string; url: string }) {
         // Scores (handle null values when no AI detected)
         score: aiTrustResult.score ?? 0,
         weightedScore: aiTrustResult.weightedScore ?? 0,
-        categoryScores: JSON.stringify(aiTrustResult.categoryScores),
+        // PostgreSQL JSONB: store as objects, not strings
+        categoryScores: aiTrustResult.categoryScores,
         passedChecks: aiTrustResult.passedChecks,
         totalChecks: aiTrustResult.totalChecks,
         relevantChecks: aiTrustResult.relevantChecks || 0, // NEW
@@ -769,12 +771,12 @@ async function processScanJob(data: { scanId: string; url: string }) {
         detectedModel: aiTrustResult.detectedModel,
         detectedChatFramework: aiTrustResult.detectedChatFramework,
 
-        // Evidence
-        evidenceData: JSON.stringify(aiTrustResult.evidenceData || {}),
+        // Evidence (PostgreSQL JSONB)
+        evidenceData: aiTrustResult.evidenceData || {},
 
-        // NEW: Detailed checks and summary
-        detailedChecks: JSON.stringify(aiTrustResult.detailedChecks || {}),
-        summary: JSON.stringify(aiTrustResult.summary || {}),
+        // NEW: Detailed checks and summary (PostgreSQL JSONB)
+        detailedChecks: aiTrustResult.detailedChecks || {},
+        summary: aiTrustResult.summary || {},
       },
     })
     console.log(`[Worker] ✅ AI Trust Scorecard saved`)
