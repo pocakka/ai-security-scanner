@@ -681,19 +681,19 @@ function generateExecutiveSummary(doc: jsPDF, scan: ScanData) {
 
   if (scan.findings.summary.hasAI) {
     doc.text('• [AI] AI Integration Detected', 20, yPos)
-    yPos += 5
+    yPos += 6
   }
   doc.text(`• [CRITICAL] ${scan.findings.summary.criticalIssues} Critical Issues`, 20, yPos)
-  yPos += 5
+  yPos += 6
   doc.text(`• [HIGH] ${scan.findings.summary.highIssues} High Priority Issues`, 20, yPos)
-  yPos += 5
+  yPos += 6
   doc.text(`• [MEDIUM] ${scan.findings.summary.mediumIssues} Medium Priority Issues`, 20, yPos)
-  yPos += 5
+  yPos += 6
   doc.text(`• [LOW] ${scan.findings.summary.lowIssues} Low Priority Issues`, 20, yPos)
-  yPos += 5
+  yPos += 6
   doc.text(`• Total Findings: ${totalIssues}`, 20, yPos)
 
-  yPos += 12
+  yPos += 18
 
   // Severity Distribution (simple bar chart)
   doc.setFontSize(12)
@@ -712,7 +712,7 @@ function generateExecutiveSummary(doc: jsPDF, scan: ScanData) {
 
   drawSimpleBarChart(doc, chartData, 20, yPos, pageWidth - 40, 40)
 
-  yPos += 50
+  yPos += 55
 
   // Top 3 Recommendations
   doc.setFontSize(12)
@@ -720,7 +720,7 @@ function generateExecutiveSummary(doc: jsPDF, scan: ScanData) {
   setColor(doc, COLORS.slate800)
   doc.text('Top 3 Critical Recommendations', 15, yPos)
 
-  yPos += 8
+  yPos += 10
 
   const highSeverityFindings = findings
     .filter(f => f.severity === 'critical' || f.severity === 'high')
@@ -732,17 +732,17 @@ function generateExecutiveSummary(doc: jsPDF, scan: ScanData) {
       doc.setFont('helvetica', 'bold')
       setColor(doc, getSeverityColor(finding.severity))
       doc.text(`${index + 1}. ${truncateText(finding.title, 70)}`, 20, yPos)
-      yPos += 6
+      yPos += 7
     })
   } else {
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
     setColor(doc, COLORS.green600)
     doc.text('[PASS] No critical or high severity issues found!', 20, yPos)
-    yPos += 6
+    yPos += 7
   }
 
-  yPos += 5
+  yPos += 10
 
   // Compliance Status (if available)
   if (scan.findings.compliance) {
@@ -751,22 +751,22 @@ function generateExecutiveSummary(doc: jsPDF, scan: ScanData) {
     setColor(doc, COLORS.slate800)
     doc.text('Compliance Status', 15, yPos)
 
-    yPos += 8
+    yPos += 10
 
     doc.setFillColor(255, 250, 240)
     doc.setDrawColor(251, 191, 36)
     doc.setLineWidth(0.3)
-    doc.roundedRect(15, yPos, pageWidth - 30, 20, 3, 3, 'FD')
+    doc.roundedRect(15, yPos, pageWidth - 30, 24, 3, 3, 'FD')
 
-    yPos += 7
+    yPos += 8
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
     setColor(doc, COLORS.slate700)
 
     doc.text(`[WARN] GDPR Compliance: ${scan.findings.compliance.gdprScore}% (${scan.findings.compliance.overallCompliance.toUpperCase()})`, 20, yPos)
-    yPos += 5
+    yPos += 6
     doc.text(`[INFO] CCPA: ${scan.findings.compliance.ccpaScore}%`, 20, yPos)
-    yPos += 5
+    yPos += 6
     doc.text(`[INFO] PCI-DSS: ${scan.findings.compliance.pciDssIndicators.length} indicators found`, 20, yPos)
   }
 }
@@ -1257,7 +1257,8 @@ function generateDetailedFindings(doc: jsPDF, scan: ScanData) {
 
     const descLines = doc.splitTextToSize(finding.description, pageWidth - 50)
     const recLines = doc.splitTextToSize(finding.recommendation, pageWidth - 60)
-    const cardHeight = Math.max(45, 25 + (descLines.length * 3) + (recLines.length * 3))
+    const evidenceHeight = finding.evidence ? 18 : 0
+    const cardHeight = Math.max(50, 30 + (descLines.length * 4) + evidenceHeight + (recLines.length * 4))
 
     if (yPos > pageHeight - cardHeight - 10) {
       doc.addPage()
@@ -1311,54 +1312,54 @@ function generateDetailedFindings(doc: jsPDF, scan: ScanData) {
     doc.text(finding.severity.toUpperCase(), pageWidth - 28.5, yPos + 10.5, { align: 'center' })
 
     // Description
-    let currentY = yPos + 18
+    let currentY = yPos + 20
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
     setColor(doc, COLORS.slate600)
     doc.text(descLines, 22, currentY)
-    currentY += descLines.length * 3.5 + 3
+    currentY += descLines.length * 4 + 5
 
     // Evidence (if exists)
     if (finding.evidence) {
       doc.setFillColor(0, 0, 0)
       // @ts-ignore
       doc.setGState(new doc.GState({ opacity: 0.05 }))
-      doc.roundedRect(22, currentY, pageWidth - 44, 8, 2, 2, 'F')
+      doc.roundedRect(22, currentY, pageWidth - 44, 10, 2, 2, 'F')
       // @ts-ignore
       doc.setGState(new doc.GState({ opacity: 1.0 }))
 
       doc.setFontSize(7)
       setColor(doc, COLORS.slate500)
-      doc.text('Evidence:', 24, currentY + 3)
+      doc.text('Evidence:', 24, currentY + 4)
 
       doc.setFont('courier', 'normal')
       doc.setFontSize(7)
       setColor(doc, COLORS.slate700)
       const evidenceText = truncateText(finding.evidence, 100)
-      doc.text(evidenceText, 24, currentY + 6)
+      doc.text(evidenceText, 24, currentY + 7)
       doc.setFont('helvetica', 'normal')
 
-      currentY += 11
+      currentY += 14
     }
 
     // Divider
     doc.setDrawColor(226, 232, 240)
     doc.setLineWidth(0.3)
     doc.line(22, currentY, pageWidth - 22, currentY)
-    currentY += 3
+    currentY += 5
 
     // Recommendation
     doc.setFontSize(8)
     doc.setFont('helvetica', 'bold')
     setColor(doc, COLORS.green600)
     doc.text('[FIX] RECOMMENDED ACTION', 22, currentY)
-    currentY += 4
+    currentY += 5
 
     doc.setFont('helvetica', 'normal')
     setColor(doc, COLORS.slate600)
     doc.text(recLines, 22, currentY)
 
-    yPos += cardHeight + 6
+    yPos += cardHeight + 8
   })
 }
 
