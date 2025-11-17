@@ -22,10 +22,10 @@ export async function GET() {
       },
     })
 
-    // Convert references from JSON strings to arrays
+    // Convert references from JSON strings to arrays (PostgreSQL returns objects, SQLite returns strings)
     const formatted = knowledgeBase.map(kb => ({
       ...kb,
-      references: kb.references ? JSON.parse(kb.references) : [],
+      references: typeof kb.references === 'string' ? JSON.parse(kb.references) : (kb.references || []),
     }))
 
     return NextResponse.json(formatted)

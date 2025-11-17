@@ -467,10 +467,7 @@ function generateCoverPage(doc: jsPDF, scan: ScanData) {
       doc.setDrawColor(226, 232, 240)
       doc.setLineWidth(0.5)
 
-      // Calculate box height with 10px bottom padding
-      const itemCount = Math.min(allAI.length, 5)
-      const hasMoreIndicator = allAI.length > 5 ? 6 : 0
-      const boxHeight = 12 + 10 + (itemCount * 6) + hasMoreIndicator + 10
+      const boxHeight = Math.min(60, 15 + allAI.length * 8)
       doc.roundedRect(30, yPos, pageWidth - 60, boxHeight, 4, 4, 'FD')
 
       yPos += 12
@@ -493,10 +490,7 @@ function generateCoverPage(doc: jsPDF, scan: ScanData) {
         doc.setFont('helvetica', 'italic')
         setColor(doc, COLORS.slate500)
         doc.text(`... and ${allAI.length - 5} more`, pageWidth / 2, yPos, { align: 'center' })
-        yPos += 6
       }
-
-      // Add 10px bottom padding (already in boxHeight calculation)
     }
 
     yPos += 20

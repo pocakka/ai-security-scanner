@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Scan {
+  id            String   @id @default(uuid())
+  url           String
+  domain        String?
+  status        String   @default("PENDING") // PENDING, SCANNING, COMPLETED, FAILED
+
+  // Results
+  riskScore     Int?
+  riskLevel     String? // LOW, MEDIUM, HIGH, CRITICAL
+  detectedTech  String? // JSON as text
+  findings      String? // JSON as text
+  metadata      String? // JSON as text
+
+  // Timestamps
+  createdAt     DateTime @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  // Relations
+  leads             Lead[]
+  aiTrustScorecard  AiTrustScorecard?
+}
+
+model Lead {
+  id              String   @id @default(uuid())
+  email           String   // Removed @unique to allow multiple scans per email
+  name            String?
+  company         String?
+  role            String?
+
+  // Marketing
+  leadScore       Int      @default(0)
+  lifecycleStage  String   @default("SUBSCRIBER") // SUBSCRIBER, LEAD, MQL, SQL, CUSTOMER
+  source          String?
+
+  // Relations
+  scanId          String
+  scan            Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  lastInteraction DateTime @default(now())
+}
+
+model Job {
+  id          String   @id @default(uuid())
+  type        String   // "scan", "email", etc.
+  data        String   // JSON payload
+  status      String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  error       String?
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  @@index([status, createdAt])
+}
+
+// ========================================
+// AI TRUST SCORECARD
+// ========================================
+// Scamadviser-style trust scoring for AI implementations
+// Evaluates 27 checks across 5 categories
+model AiTrustScorecard {
+  id     String @id @default(uuid())
+  scan   Scan   @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  scanId String @unique // 1:1 relationship with Scan
+
+  // ========================================
+  // 1. TRANSPARENCY (Átláthatóság)
+  // ========================================
+  isProviderDisclosed      Boolean @default(false) // "Powered by OpenAI"
+  isIdentityDisclosed      Boolean @default(false) // "I am an AI assistant"
+  isAiPolicyLinked         Boolean @default(false) // Link to /ai-policy
+  isModelVersionDisclosed  Boolean @default(false) // "Using GPT-4"
+  isLimitationsDisclosed   Boolean @default(false) // "AI may make mistakes"
+  hasDataUsageDisclosure   Boolean @default(false) // "Data not used for training"
+
+  // ========================================
+  // 2. USER CONTROL (Felhasználói Kontroll)
+  // ========================================
+  hasFeedbackMechanism     Boolean @default(false) // Thumbs up/down
+  hasConversationReset     Boolean @default(false) // "New Chat" button
+  hasHumanEscalation       Boolean @default(false) // "Talk to human"
+  hasConversationExport    Boolean @default(false) // "Export chat" feature
+  hasDataDeletionOption    Boolean @default(false) // "Delete my data"
+
+  // ========================================
+  // 3. COMPLIANCE (Szabályozás - GDPR)
+  // ========================================
+  hasDpoContact            Boolean @default(false) // mailto:privacy@
+  hasCookieBanner          Boolean @default(false) // Cookie consent
+  hasPrivacyPolicyLink     Boolean @default(false) // /privacy link
+  hasTermsOfServiceLink    Boolean @default(false) // /terms link
+  hasGdprCompliance        Boolean @default(false) // "GDPR compliant" badge
+
+  // ========================================
+  // 4. SECURITY & RELIABILITY (Robusztusság)
+  // ========================================
+  hasBotProtection         Boolean @default(false) // reCAPTCHA, hCaptcha
+  hasAiRateLimitHeaders    Boolean @default(false) // X-RateLimit-* on AI endpoints
+  hasBasicWebSecurity      Boolean @default(false) // Overall security score > 70
+  hasInputLengthLimit      Boolean @default(false) // textarea maxlength
+  usesInputSanitization    Boolean @default(false) // DOMPurify detection
+  hasErrorHandling         Boolean @default(false) // Graceful error messages
+  hasSessionManagement     Boolean @default(false) // Secure session handling
+
+  // ========================================
+  // 5. ETHICAL AI (Etikus AI Gyakorlatok)
+  // ========================================
+  hasBiasDisclosure        Boolean @default(false) // "May contain biases"
+  hasContentModeration     Boolean @default(false) // Harmful content filter
+  hasAgeVerification       Boolean @default(false) // "Are you 18+"
+  hasAccessibilitySupport  Boolean @default(false) // ARIA labels, screen reader
+
+  // ========================================
+  // SCORES & METADATA
+  // ========================================
+  score            Int     @default(0) // Simple average: 0-100
+  weightedScore    Int     @default(0) // Weighted by category importance
+  categoryScores   String? // JSON: { transparency: 80, userControl: 60, ... }
+
+  passedChecks     Int     @default(0) // How many checks passed
+  totalChecks      Int     @default(0) // Total number of checks
+
+  // ========================================
+  // DETECTED AI TECHNOLOGY
+  // ========================================
+  detectedAiProvider       String? // "OpenAI", "Anthropic", "Google", etc.
+  detectedModel            String? // "GPT-4", "Claude-3-Opus", etc.
+  detectedChatFramework    String? // "Intercom", "Drift", "Custom"
+
+  // Evidence for transparency (JSON: { checkName: ["evidence1", "evidence2"] })
+  evidenceData     String? // JSON as text
+
+  // ========================================
+  // NEW FIELDS (Nov 12, 2025 - Enhanced AI Trust Score)
+  // ========================================
+  hasAiImplementation  Boolean @default(false) // Is AI actually detected?
+  aiConfidenceLevel    String? // "none" | "low" | "medium" | "high"
+  relevantChecks       Int     @default(0) // How many checks are relevant
+  detailedChecks       String? // JSON: CheckResult objects with explanations
+  summary              String? // JSON: { message, strengths, weaknesses, criticalIssues }
+
+  // Timestamp
+  analyzedAt       DateTime @default(now())
+
+  @@index([scanId])
+  @@index([score])
+  @@index([weightedScore])
+}
+
+// ========================================
+// KNOWLEDGE BASE - FINDING EXPLANATIONS
+// ========================================
+// Professional E-E-A-T content for each finding type
+// ~200 words per finding explaining risks, impacts, and solutions
+model KnowledgeBaseFinding {
+  id          String @id @default(uuid())
+
+  // Unique identifier for finding type (e.g., "missing-csp", "expired-ssl-cert")
+  findingKey  String @unique
+
+  // Finding metadata
+  category    String // "security", "ssl", "cookie", "client", "library", "ai"
+  severity    String // "critical", "high", "medium", "low"
+  title       String // Human-readable title
+
+  // E-E-A-T Content (~200 words each section)
+  // What is this issue?
+  explanation String
+
+  // Why is this dangerous? (Consequences/Impact)
+  impact      String
+
+  // How to fix it? (Solution/Remediation)
+  solution    String
+
+  // Technical details (optional)
+  technicalDetails String?
+
+  // References (optional - links to documentation)
+  references  String? // JSON array of URLs
+
+  // SEO & Content Metadata
+  seoKeywords String? // Comma-separated for internal search
+  lastUpdated DateTime @default(now())
+
+  @@index([category])
+  @@index([severity])
+  @@index([findingKey])
+}
+
+// ========================================
+// SITE SETTINGS - GLOBAL CONFIGURATION
+// ========================================
+// Stores global site settings like social media handles, branding, etc.
+// Single row table (id: "global")
+model SiteSettings {
+  id String @id
+
+  // ========================================
+  // SOCIAL MEDIA HANDLES
+  // ========================================
+  twitterHandle   String? // @username (without @)
+  facebookUrl     String? // Full URL to Facebook page
+  linkedinUrl     String? // Full URL to LinkedIn company page
+  instagramHandle String? // @username (without @)
+  youtubeUrl      String? // Full URL to YouTube channel
+  githubUrl       String? // Full URL to GitHub org/repo
+
+  // ========================================
+  // SEO & BRANDING
+  // ========================================
+  siteName        String  @default("AI Security Scanner")
+  siteDescription String? // Default meta description
+  siteUrl         String? // Production URL (e.g., https://aisecurityscanner.com)
+  ogImageUrl      String? // Default Open Graph image URL
+  faviconUrl      String? // Custom favicon URL
+
+  // ========================================
+  // CONTACT & BUSINESS
+  // ========================================
+  supportEmail    String? // support@example.com
+  salesEmail      String? // sales@example.com
+  companyName     String? // Legal company name
+  companyAddress  String? // Physical address
+
+  // ========================================
+  // FEATURES FLAGS
+  // ========================================
+  enableTwitterCards Boolean @default(false) // Enable Twitter meta tags
+  enableOgTags       Boolean @default(true)  // Enable Open Graph tags
+  enableAnalytics    Boolean @default(false) // Google Analytics toggle
+
+  // Timestamps
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}

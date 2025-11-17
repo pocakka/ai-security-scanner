@@ -21,28 +21,29 @@ export async function GET(
       )
     }
 
-    // Parse JSON fields
+    // PostgreSQL returns JSONB as objects, no parsing needed
+    // SQLite returned strings, so check if already parsed
     const response = {
       ...scan,
-      detectedTech: scan.detectedTech ? JSON.parse(scan.detectedTech) : null,
-      findings: scan.findings ? JSON.parse(scan.findings) : null,
-      metadata: scan.metadata ? JSON.parse(scan.metadata) : null,
+      detectedTech: typeof scan.detectedTech === 'string' ? JSON.parse(scan.detectedTech) : scan.detectedTech,
+      findings: typeof scan.findings === 'string' ? JSON.parse(scan.findings) : scan.findings,
+      metadata: typeof scan.metadata === 'string' ? JSON.parse(scan.metadata) : scan.metadata,
 
-      // Parse AI Trust Scorecard JSON fields
+      // AI Trust Scorecard JSON fields
       aiTrustScorecard: scan.aiTrustScorecard ? {
         ...scan.aiTrustScorecard,
-        categoryScores: scan.aiTrustScorecard.categoryScores
+        categoryScores: typeof scan.aiTrustScorecard.categoryScores === 'string'
           ? JSON.parse(scan.aiTrustScorecard.categoryScores)
-          : null,
-        evidenceData: scan.aiTrustScorecard.evidenceData
+          : scan.aiTrustScorecard.categoryScores,
+        evidenceData: typeof scan.aiTrustScorecard.evidenceData === 'string'
           ? JSON.parse(scan.aiTrustScorecard.evidenceData)
-          : null,
-        detailedChecks: scan.aiTrustScorecard.detailedChecks
+          : scan.aiTrustScorecard.evidenceData,
+        detailedChecks: typeof scan.aiTrustScorecard.detailedChecks === 'string'
           ? JSON.parse(scan.aiTrustScorecard.detailedChecks)
-          : null,
-        summary: scan.aiTrustScorecard.summary
+          : scan.aiTrustScorecard.detailedChecks,
+        summary: typeof scan.aiTrustScorecard.summary === 'string'
           ? JSON.parse(scan.aiTrustScorecard.summary)
-          : null,
+          : scan.aiTrustScorecard.summary,
       } : null,
     }
 
