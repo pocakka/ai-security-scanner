@@ -47,11 +47,31 @@ export async function analyzeReconnaissance(crawlResult: CrawlResult): Promise<R
         match.replace(/Disallow:\s*/i, '').trim()
       ).filter(path => path && path !== '/')
 
-      // Check for sensitive paths
-      const sensitivePaths = ['/admin', '/api/', '/backup', '/config', '/staging', '/test', '/dev', '/private', '/.env', '/.git']
-      const exposedSensitive = disallowedPaths.filter(path =>
-        sensitivePaths.some(sensitive => path.toLowerCase().includes(sensitive))
-      )
+      // Check for sensitive paths (Nov 16, 2025: More specific patterns to reduce FPs)
+      // Require path to START with sensitive pattern or be exact match
+      const sensitivePaths = [
+        '/admin',      // Admin panels
+        '/backup',     // Backup files
+        '/config',     // Configuration
+        '/staging',    // Staging environment
+        '/private',    // Private directories
+        '/.env',       // Environment files (CRITICAL)
+        '/.git',       // Git repository (CRITICAL)
+        '/db',         // Database dumps
+        '/sql',        // SQL files
+      ]
+
+      // More specific check - path must START with sensitive pattern
+      const exposedSensitive = disallowedPaths.filter(path => {
+        const lowerPath = path.toLowerCase()
+        return sensitivePaths.some(sensitive =>
+          lowerPath.startsWith(sensitive) || lowerPath === sensitive
+        )
+      })
+
+      // ❌ REMOVED /api/ - too many public APIs (GitHub, Stripe, etc.)
+      // ❌ REMOVED /test/ - common in public test endpoints
+      // ❌ REMOVED /dev/ - common in developer documentation
 
       if (disallowedPaths.length > 0) {
         findings.push({
@@ -86,14 +106,20 @@ export async function analyzeReconnaissance(crawlResult: CrawlResult): Promise<R
         const content = await response.text()
         const urls = content.match(/<loc>(.+?)<\/loc>/gi) || []
 
-        // Check for sensitive URLs in sitemap
+        // Check for sensitive URLs in sitemap (Nov 16, 2025: More specific patterns)
+        // Only flag TRULY sensitive paths, not public APIs
         const sensitiveUrls = urls.filter(url => {
           const lower = url.toLowerCase()
-          return lower.includes('/admin') ||
-                 lower.includes('/api/') ||
-                 lower.includes('/staging') ||
-                 lower.includes('/test') ||
-                 lower.includes('/dev')
+          // Must START with sensitive path or contain specific patterns
+          return lower.includes('/admin/') ||   // Admin panels (with trailing slash)
+                 lower.includes('/backup/') ||  // Backup directories
+                 lower.includes('/staging/') || // Staging environment
+                 lower.includes('/private/') || // Private content
+                 lower.includes('/.env') ||     // Environment files
+                 lower.includes('/.git')        // Git repository
+          // ❌ REMOVED /api/ - too many false positives (public APIs)
+          // ❌ REMOVED /test/ - common in public test endpoints
+          // ❌ REMOVED /dev/ - common in developer docs
         })
 
         if (urls.length > 0) {
