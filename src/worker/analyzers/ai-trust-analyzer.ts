@@ -201,27 +201,157 @@ interface PatternCheckResult {
 // PATTERN DEFINITIONS
 // ========================================
 
-// AI Provider Detection
+/**
+ * Phase 4: Weight System - Nov 17, 2025
+ * Tiered importance weights for each check
+ */
+const CHECK_WEIGHTS: Record<string, number> = {
+  // CRITICAL (weight: 3) - Legal/Compliance requirements
+  hasPrivacyPolicyLink: 3,
+  hasTermsOfServiceLink: 3,
+  hasBasicWebSecurity: 3,
+
+  // HIGH (weight: 2) - Transparency and key security
+  isProviderDisclosed: 2,
+  isIdentityDisclosed: 2,
+  hasCookieBanner: 2,
+  hasContentModeration: 2,
+  hasBotProtection: 2,
+  hasErrorHandling: 2,
+  hasSessionManagement: 2,
+  isLimitationsDisclosed: 2,
+
+  // MEDIUM (weight: 1) - UX features
+  hasConversationReset: 1,
+  hasConversationExport: 1,
+  hasFeedbackMechanism: 1,
+  hasDataDeletionOption: 1,
+  hasHumanEscalation: 1,
+  isAiPolicyLinked: 1,
+  isModelVersionDisclosed: 1,
+  hasDataUsageDisclosure: 1,
+  hasDpoContact: 1,
+  hasGdprCompliance: 1,
+  hasAiRateLimitHeaders: 1,
+  hasInputLengthLimit: 1,
+  usesInputSanitization: 1,
+  hasBiasDisclosure: 1,
+  hasAgeVerification: 1,
+  hasAccessibilitySupport: 1,
+}
+
+// Phase 2: Pattern Refinement - Nov 17, 2025
+// AI Provider Detection with context-aware patterns
 const AI_PROVIDERS: Record<string, string[]> = {
-  'OpenAI': ['powered by openai', 'api.openai.com', 'openai api', 'chatgpt assistant', 'gpt-4', 'gpt-3.5'],
-  'Anthropic': ['powered by anthropic', 'claude.ai', 'api.anthropic.com', 'anthropic api', 'claude assistant', 'claude-3'],
-  'Google': ['powered by google ai', 'generativelanguage.googleapis.com', 'gemini-pro', 'bard ai', 'palm api', 'google ai studio'],
-  'Meta': ['powered by meta ai', 'llama.meta.com', 'llama-2', 'llama-3'],
-  'Cohere': ['powered by cohere', 'api.cohere.ai', 'cohere api'],
-  'Hugging Face': ['huggingface.co/inference', 'transformers.js', 'huggingface api'],
+  'OpenAI': [
+    'powered by openai',
+    'api.openai.com',      // API endpoint pattern
+    '/v1/chat/completions', // OpenAI API endpoint
+    'openai api',
+    'chatgpt assistant',
+    'gpt-4',               // Model mentions (will check word boundaries)
+    'gpt-3.5'
+  ],
+  'Anthropic': [
+    'powered by anthropic',
+    'claude.ai',
+    'api.anthropic.com',   // API endpoint pattern
+    'anthropic api',
+    'claude assistant',
+    'claude-3'
+  ],
+  'Google': [
+    'powered by google ai',
+    'generativelanguage.googleapis.com', // API endpoint
+    'gemini-pro',
+    'bard ai',
+    'palm api',
+    'google ai studio'
+  ],
+  'Meta': [
+    'powered by meta ai',
+    'llama.meta.com',
+    'llama-2',
+    'llama-3'
+  ],
+  'Cohere': [
+    'powered by cohere',
+    'api.cohere.ai',       // API endpoint pattern
+    'cohere api'
+  ],
+  'Hugging Face': [
+    'huggingface.co/inference',
+    'transformers.js',
+    'huggingface api'
+  ],
 }
 
-// AI Model Detection (more specific patterns to avoid false positives)
+// Phase 2: Pattern Refinement - Nov 17, 2025
+// AI Model Detection - context-aware patterns (model["']:value format)
 const AI_MODELS: Record<string, string[]> = {
-  'GPT-4': ['model":"gpt-4', 'gpt-4-turbo', 'gpt-4o', 'using gpt-4', 'model: gpt-4'],
-  'GPT-3.5': ['model":"gpt-3.5', 'gpt-3.5-turbo', 'using gpt-3.5', 'model: gpt-3.5'],
-  'Claude 3': ['model":"claude-3', 'claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku', 'using claude-3', 'model: claude-3'],
-  'Gemini': ['model":"gemini', 'gemini-pro', 'gemini-ultra', 'gemini-1.5', 'using gemini'],
-  'Llama': ['model":"llama', 'llama-2', 'llama-3', 'using llama'],
+  'GPT-4': [
+    'model":"gpt-4',       // JSON format: {"model":"gpt-4"}
+    "model':'gpt-4",       // Single quotes
+    'model: gpt-4',        // YAML/JS format
+    'gpt-4-turbo',         // Specific variant
+    'gpt-4o',              // GPT-4 Omni
+    'using gpt-4'          // Prose format
+  ],
+  'GPT-3.5': [
+    'model":"gpt-3.5',
+    "model':'gpt-3.5",
+    'model: gpt-3.5',
+    'gpt-3.5-turbo',
+    'using gpt-3.5'
+  ],
+  'Claude 3': [
+    'model":"claude-3',
+    "model':'claude-3",
+    'model: claude-3',
+    'claude-3-opus',
+    'claude-3-sonnet',
+    'claude-3-haiku',
+    'using claude-3'
+  ],
+  'Gemini': [
+    'model":"gemini',
+    "model':'gemini",
+    'model: gemini',
+    'gemini-pro',
+    'gemini-ultra',
+    'gemini-1.5',
+    'using gemini'
+  ],
+  'Llama': [
+    'model":"llama',
+    "model':'llama",
+    'model: llama',
+    'llama-2',
+    'llama-3',
+    'using llama'
+  ],
 }
 
-// Chat Framework Detection - EXPANDED (35 chat widgets from ai-detection.ts)
-const CHAT_FRAMEWORKS: Record<string, string[]> = {
+// Phase 2: Pattern Refinement - Nov 17, 2025
+// Chat Framework Categorization: AI-Based vs Traditional
+// AI-Based: Use LLM/NLP for responses (always count as AI implementation)
+// Traditional: Human chat or rule-based (only count as AI if provider detected)
+
+// AI-Based Chat Frameworks (8 services)
+const AI_CHAT_FRAMEWORKS: Record<string, string[]> = {
+  'Chatbase': ['www.chatbase.co', 'cdn.chatbase.co', 'window.chatbase', 'embeddedchatbotconfig', '#chatbase-bubble', '.chatbase-'],
+  'Voiceflow': ['cdn.voiceflow.com', 'window.voiceflow', 'vf-chat', '.vf-'],
+  'Botpress': ['cdn.botpress.cloud', 'mediafiles.botpress.cloud', 'window.botpresswebchat', 'window.botpress', '#bp-web-widget', '.bpwidget'],
+  'Dialogflow Messenger': ['gstatic.com/dialogflow-console', 'window.dialogflow', 'dfmessenger', 'df-messenger', '.df-messenger'],
+  'IBM Watson Assistant': ['web-chat.global.assistant.watson', 'assistant.watson', 'window.watsonassistantchatoptions', 'watsonassistant', '#waccontainer', '.wac__'],
+  'Microsoft Bot Framework': ['cdn.botframework.com', 'window.webchat', 'window.botchat', '#webchat', '.webchat'],
+  'Ada': ['static.ada.support', 'window.adaembed', 'adasettings', '#ada-button-frame', '.ada-'],
+  'Landbot': ['cdn.landbot.io', 'static.landbot.io', 'window.landbot', 'mylandbot', '#landbot-', '.landbot'],
+}
+
+// Traditional Chat Frameworks (27 services)
+// These are human chat / rule-based systems - only count as AI if AI provider also detected
+const TRADITIONAL_CHAT_FRAMEWORKS: Record<string, string[]> = {
   // Tier 1: Market Leaders (10 services)
   'Intercom': ['widget.intercom.io', 'js.intercomcdn.com', 'intercom.com', 'id="intercom', 'intercom-messenger', 'window.intercom', 'intercomsettings', '#intercom-container', '.intercom-messenger-frame'],
   'Drift': ['js.driftt.com', 'js.drift.com', 'drift.com', 'drift-frame', 'id="drift', 'window.drift', 'driftapi', '#drift-widget-container', '#drift-frame-controller'],
@@ -246,18 +376,6 @@ const CHAT_FRAMEWORKS: Record<string, string[]> = {
   'JivoChat': ['code.jivosite.com', 'code.jivo', 'window.jivo_api', 'jivo_config', '#jivo-iframe-container', '.globalclass_'],
   'Userlike': ['userlike-cdn-widgets', 'userlike.com', 'window.userlikeconfig', 'userlike_', '#userlike-widget', '.userlike-'],
 
-  // Tier 3: AI-First / LLM-Based (10 services)
-  'Chatbase': ['www.chatbase.co', 'cdn.chatbase.co', 'window.chatbase', 'embeddedchatbotconfig', '#chatbase-bubble', '.chatbase-'],
-  'Voiceflow': ['cdn.voiceflow.com', 'window.voiceflow', 'vf-chat', '.vf-'],
-  'Botpress': ['cdn.botpress.cloud', 'mediafiles.botpress.cloud', 'window.botpresswebchat', 'window.botpress', '#bp-web-widget', '.bpwidget'],
-  'Dialogflow Messenger': ['gstatic.com/dialogflow-console', 'window.dialogflow', 'dfmessenger', 'df-messenger', '.df-messenger'],
-  'IBM Watson Assistant': ['web-chat.global.assistant.watson', 'assistant.watson', 'window.watsonassistantchatoptions', 'watsonassistant', '#waccontainer', '.wac__'],
-  'Microsoft Bot Framework': ['cdn.botframework.com', 'window.webchat', 'window.botchat', '#webchat', '.webchat'],
-  'Ada': ['static.ada.support', 'window.adaembed', 'adasettings', '#ada-button-frame', '.ada-'],
-  'Landbot': ['cdn.landbot.io', 'static.landbot.io', 'window.landbot', 'mylandbot', '#landbot-', '.landbot'],
-  'Rasa Webchat': ['cdn.jsdelivr.net/npm/rasa-webchat', 'unpkg.com/rasa-webchat', 'window.webchat', 'rasawebchat', '.rasa-chat-', '#rasa-'],
-  'Amazon Lex': ['runtime.lex.', '.amazonaws.com/lex', 'window.aws.lexruntime', 'lexruntime', '#lex-web-ui', '.lex-'],
-
   // Additional Popular Widgets (5 services)
   'Chatra': ['call.chatra.io', 'io.chatra.io', 'window.chatra', 'chatraid', '.chatra-', '#chatra-'],
   'Pure Chat': ['app.purechat.com', 'window.purechatapi', 'pcwidget', '.purechat-', '#purechat-'],
@@ -265,12 +383,23 @@ const CHAT_FRAMEWORKS: Record<string, string[]> = {
   'HelpCrunch': ['widget.helpcrunch.com', 'window.helpcrunch', 'helpcrunchsettings', '.helpcrunch-widget', '#helpcrunch-'],
   'Kommunicate': ['widget.kommunicate.io', 'window.kommunicate', '#kommunicate-widget-iframe', '.kommunicate-'],
 
-  // CRITICAL: GPT4Business (YoloAI) - previously missing!
-  'GPT4Business (YoloAI)': ['app.gpt4business.yoloai.com', 'gpt4business.yoloai.com', 'gpt4business', 'admin.gpt4business.ai', 'chatbubble.js'],
-
   // P0 Missing Chat Widgets (added November 14, 2025)
   'Rocket.Chat': ['rocket.chat/livechat', '/livechat/rocketchat-livechat.min.js', 'window.rocketchat', '.rocketchat-widget', '#rocketchat-iframe', 'rocketchatlivechat'],
   'SnapEngage': ['snapengage.com/cdn/', 'snapabug.appspot.com', 'window.snapengage', 'window.snapabug', '#snapengage-widget', 'snapengage_'],
+}
+
+// Legacy CHAT_FRAMEWORKS - Combined for backward compatibility
+const CHAT_FRAMEWORKS: Record<string, string[]> = {
+  // AI-Based (8 services)
+  ...AI_CHAT_FRAMEWORKS,
+
+  // Traditional (27 services)
+  ...TRADITIONAL_CHAT_FRAMEWORKS,
+
+  // Legacy entries not categorized yet
+  'Rasa Webchat': ['cdn.jsdelivr.net/npm/rasa-webchat', 'unpkg.com/rasa-webchat', 'window.webchat', 'rasawebchat', '.rasa-chat-', '#rasa-'],
+  'Amazon Lex': ['runtime.lex.', '.amazonaws.com/lex', 'window.aws.lexruntime', 'lexruntime', '#lex-web-ui', '.lex-'],
+  'GPT4Business (YoloAI)': ['app.gpt4business.yoloai.com', 'gpt4business.yoloai.com', 'gpt4business', 'admin.gpt4business.ai', 'chatbubble.js'],
   'Kayako': ['kayako.com/api/v1/messenger.js', 'kayakocdn.com', 'window.kayako', '.kayako-messenger', '#kayako-messenger', 'kayakomessenger'],
   'Kustomer': ['cdn.kustomerapp.com/chat-web/', 'kustomerapp.com', 'window.kustomer', '#kustomer-ui-sdk-iframe', '.kustomer-', 'kustomersettings'],
 }
@@ -331,7 +460,11 @@ function isMarketingContent(html: string): boolean {
 // CATEGORY 1: TRANSPARENCY PATTERNS
 // ========================================
 
+// Phase 2: Pattern Refinement - Nov 17, 2025
+// Context-aware patterns with word boundaries to reduce false positives
 const TRANSPARENCY_PATTERNS = {
+  // Phase 2: Pattern Refinement - Nov 17, 2025
+  // Word boundaries added to prevent false matches (e.g., "gpt-4-like" won't match "gpt-4")
   providerDisclosed: [
     'powered by openai',
     'powered by anthropic',
@@ -357,13 +490,15 @@ const TRANSPARENCY_PATTERNS = {
     '/artificial-intelligence-policy',
     '/ai-guidelines',
   ],
+  // Phase 2: Pattern Refinement - Nov 17, 2025
+  // Context-aware regex patterns to prevent "gpt-4" matching in "gpt-4-like" text
   modelVersionDisclosed: [
-    'gpt-4',
-    'gpt-3.5',
-    'claude-3',
+    'gpt-4',        // Will need word boundary check in checkPatternsInText
+    'gpt-3.5',      // Will need word boundary check
+    'claude-3',     // Will need word boundary check
     'gemini-pro',
-    'model:',
-    'version:',
+    'model:',       // Context pattern: model["']:
+    'version:',     // Context pattern: version["']:
     'powered by gpt',
   ],
   limitationsDisclosed: [
@@ -550,21 +685,110 @@ const ETHICAL_AI_PATTERNS = {
 // ========================================
 
 /**
- * Check if any patterns match in text
+ * Phase 3: Relevance Logic - Nov 17, 2025
+ * Determines if a check is relevant for the scanned website
  */
-function checkPatternsInText(text: string, patterns: string[]): PatternCheckResult {
-  const lowerText = text.toLowerCase()
-  const evidence: string[] = []
+function isCheckRelevant(
+  checkName: string,
+  crawlResult: CrawlResult,
+  aiDetection: any,
+  hasChatWidget: boolean,
+  hasApiEndpoint: boolean
+): boolean {
+  // Transparency checks - always relevant if AI detected
+  if (['isProviderDisclosed', 'isIdentityDisclosed', 'isAiPolicyLinked',
+       'isModelVersionDisclosed', 'isLimitationsDisclosed', 'hasDataUsageDisclosure'].includes(checkName)) {
+    return true // Always relevant
+  }
 
-  for (const pattern of patterns) {
-    if (lowerText.includes(pattern.toLowerCase())) {
-      evidence.push(pattern)
-      // Limit evidence to first 3 matches
-      if (evidence.length >= 3) break
+  // User Control checks - only relevant if chat widget present
+  if (['hasFeedbackMechanism', 'hasConversationReset', 'hasHumanEscalation',
+       'hasConversationExport', 'hasDataDeletionOption'].includes(checkName)) {
+    return hasChatWidget
+  }
+
+  // Compliance checks - always relevant (GDPR)
+  if (['hasDpoContact', 'hasCookieBanner', 'hasPrivacyPolicyLink',
+       'hasTermsOfServiceLink', 'hasGdprCompliance'].includes(checkName)) {
+    return true
+  }
+
+  // Security checks
+  if (checkName === 'hasAiRateLimitHeaders') {
+    return hasApiEndpoint // Only relevant if API detected
+  }
+  // Other security checks - always relevant
+  if (['hasBotProtection', 'hasBasicWebSecurity', 'hasInputLengthLimit',
+       'usesInputSanitization', 'hasErrorHandling', 'hasSessionManagement'].includes(checkName)) {
+    return true
+  }
+
+  // Ethical AI checks - always relevant if AI detected
+  if (['hasBiasDisclosure', 'hasContentModeration', 'hasAgeVerification',
+       'hasAccessibilitySupport'].includes(checkName)) {
+    return true
+  }
+
+  return true // Default: relevant
+}
+
+/**
+ * Phase 5: Proximity Check - Nov 17, 2025
+ * Check if two patterns appear close to each other (within 200 chars)
+ */
+function checkProximity(html: string, pattern1: string, pattern2: string, maxDistance: number = 200): boolean {
+  const regex1 = new RegExp(pattern1, 'gi')
+  const regex2 = new RegExp(pattern2, 'gi')
+
+  let match1
+  while ((match1 = regex1.exec(html)) !== null) {
+    const startPos = Math.max(0, match1.index - maxDistance)
+    const endPos = Math.min(html.length, match1.index + pattern1.length + maxDistance)
+    const window = html.substring(startPos, endPos)
+
+    if (regex2.test(window)) {
+      return true
     }
   }
 
-  return { found: evidence.length > 0, evidence }
+  return false
+}
+
+/**
+ * Phase 5: Word Boundary Enhancement - Nov 17, 2025
+ * Check if any patterns match in text with word boundary support
+ */
+function checkPatternsInText(html: string, patterns: string[]): PatternCheckResult {
+  const evidence: string[] = []
+  let found = false
+
+  for (const pattern of patterns) {
+    // Phase 5: Word boundary check for model names - Nov 17, 2025
+    // Patterns like 'gpt-4', 'claude-3' need word boundaries to avoid matching 'gpt-4-like'
+    if (/^[a-z0-9-]+$/i.test(pattern)) {
+      // Simple alphanumeric pattern - add word boundaries
+      const wordBoundaryRegex = new RegExp(`\\b${pattern}\\b`, 'i')
+      if (wordBoundaryRegex.test(html)) {
+        found = true
+        // Extract context (50 chars before/after)
+        const match = html.match(new RegExp(`.{0,50}\\b${pattern}\\b.{0,50}`, 'i'))
+        if (match) evidence.push(match[0].trim())
+      }
+    } else {
+      // Complex pattern or contains special chars - use as-is
+      if (html.toLowerCase().includes(pattern.toLowerCase())) {
+        found = true
+        const index = html.toLowerCase().indexOf(pattern.toLowerCase())
+        const context = html.substring(Math.max(0, index - 50), Math.min(html.length, index + pattern.length + 50))
+        evidence.push(context.trim())
+      }
+    }
+
+    // Limit evidence to first 3 matches
+    if (evidence.length >= 3) break
+  }
+
+  return { found, evidence: evidence.slice(0, 3) }
 }
 
 /**
@@ -727,10 +951,23 @@ function detectAiImplementation(html: string, scripts: string[], networkRequests
     signals.push(`Model detected: ${model}`)
   }
 
-  // Check for chat framework
+  // Phase 2: Pattern Refinement - Nov 17, 2025
+  // Check for chat framework with AI vs Traditional categorization
   const framework = detectChatFramework(html, scripts)
   if (framework) {
-    signals.push(`Framework detected: ${framework}`)
+    // Check if it's an AI-based chat framework
+    const isAiChatFramework = Object.keys(AI_CHAT_FRAMEWORKS).includes(framework)
+
+    if (isAiChatFramework) {
+      // AI-based frameworks always count as AI implementation
+      signals.push(`AI Chat Framework detected: ${framework}`)
+    } else {
+      // Traditional frameworks only count if AI provider is also detected
+      if (provider) {
+        signals.push(`Traditional Chat Framework with AI Provider: ${framework}`)
+      }
+      // Otherwise, don't add to signals (not AI-based)
+    }
   }
 
   // Check for AI-specific DOM elements (chatbox, assistant UI)
@@ -924,10 +1161,20 @@ function createNotApplicableResult(
  * @returns AI Trust analysis result
  */
 export function analyzeAiTrust(crawlResult: CrawlResult, securityScore: number = 0): AiTrustResult {
-  const html = crawlResult.html || ''
+  let html = crawlResult.html || ''
   const scripts = crawlResult.scripts || []
   const networkRequests = crawlResult.networkRequests || []
   const url = crawlResult.url
+
+  // ========================================
+  // PHASE 2.3: HTML Preprocessing Enhancement - Nov 17, 2025
+  // Remove noise that causes false positives in pattern detection
+  // ========================================
+  // Remove JSON-LD structured data (SEO metadata, not actual AI implementation)
+  html = html.replace(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi, '')
+
+  // Remove article tags (blog posts, news articles - often mention AI without using it)
+  html = html.replace(/<article\b[^>]*>[\s\S]*?<\/article>/gi, '')
 
   const evidenceData: Record<string, string[]> = {}
 
@@ -1118,9 +1365,44 @@ export function analyzeAiTrust(crawlResult: CrawlResult, securityScore: number =
   }
 
   // ========================================
+  // DETECT AI TECHNOLOGY EARLY (needed for relevance logic)
+  // ========================================
+  const detectedAiProvider = aiDetection.provider || detectAiProvider(html, scripts)
+  const detectedModel = aiDetection.model || detectAiModel(html, scripts)
+  const detectedChatFramework = aiDetection.framework || detectChatFramework(html, scripts)
+
+  // ========================================
   // CALCULATE SCORES
   // ========================================
-  const totalChecks = Object.keys(checks).length
+
+  // Phase 3: Dynamic Total Checks Count - Nov 17, 2025
+  // Detect if chat widget or API endpoint is present
+  const hasChatWidget = !!detectedChatFramework
+  const hasApiEndpoint = networkRequests.some(req =>
+    /\/api\/(?:chat|ai|assistant|completion)/i.test(req.url)
+  )
+
+  // All check names (27 checks total)
+  const allCheckNames = [
+    'isProviderDisclosed', 'isIdentityDisclosed', 'isAiPolicyLinked',
+    'isModelVersionDisclosed', 'isLimitationsDisclosed', 'hasDataUsageDisclosure',
+    'hasFeedbackMechanism', 'hasConversationReset', 'hasHumanEscalation',
+    'hasConversationExport', 'hasDataDeletionOption',
+    'hasDpoContact', 'hasCookieBanner', 'hasPrivacyPolicyLink',
+    'hasTermsOfServiceLink', 'hasGdprCompliance',
+    'hasBotProtection', 'hasAiRateLimitHeaders', 'hasBasicWebSecurity',
+    'hasInputLengthLimit', 'usesInputSanitization', 'hasErrorHandling',
+    'hasSessionManagement',
+    'hasBiasDisclosure', 'hasContentModeration', 'hasAgeVerification',
+    'hasAccessibilitySupport'
+  ]
+
+  // Count only relevant checks
+  const relevantCheckCount = allCheckNames.filter(checkName =>
+    isCheckRelevant(checkName, crawlResult, aiDetection, hasChatWidget, hasApiEndpoint)
+  ).length
+
+  const totalChecks = relevantCheckCount // Dynamic: 10-27 based on context
   const passedChecks = Object.values(checks).filter(Boolean).length
   const score = Math.round((passedChecks / totalChecks) * 100)
 
@@ -1134,7 +1416,28 @@ export function analyzeAiTrust(crawlResult: CrawlResult, securityScore: number =
   }
 
   // ========================================
-  // WEIGHTED SCORE (Category importance)
+  // Phase 4: Weighted Score Calculation - Nov 17, 2025
+  // ========================================
+  let totalWeight = 0
+  let passedWeight = 0
+
+  allCheckNames.forEach(checkName => {
+    const isRelevant = isCheckRelevant(checkName, crawlResult, aiDetection, hasChatWidget, hasApiEndpoint)
+    if (!isRelevant) return
+
+    const weight = CHECK_WEIGHTS[checkName] || 1
+    totalWeight += weight
+
+    const checkPassed = (checks as any)[checkName] || false
+    if (checkPassed) {
+      passedWeight += weight
+    }
+  })
+
+  const newWeightedScore = totalWeight > 0 ? Math.round((passedWeight / totalWeight) * 100) : 0
+
+  // ========================================
+  // Legacy WEIGHTED SCORE (Category importance) - Kept for comparison
   // ========================================
   const weights = {
     transparency: 0.25,  // 25% - Most important for trust
@@ -1144,7 +1447,7 @@ export function analyzeAiTrust(crawlResult: CrawlResult, securityScore: number =
     ethicalAi: 0.10,     // 10% - Nice to have
   }
 
-  const weightedScore = Math.round(
+  const legacyWeightedScore = Math.round(
     categoryScores.transparency * weights.transparency +
     categoryScores.userControl * weights.userControl +
     categoryScores.compliance * weights.compliance +
@@ -1155,70 +1458,64 @@ export function analyzeAiTrust(crawlResult: CrawlResult, securityScore: number =
   // ========================================
   // GRADE ASSIGNMENT
   // ========================================
+  // Phase 4: Use new weighted score for grading - Nov 17, 2025
   let grade: 'excellent' | 'good' | 'fair' | 'poor'
-  if (weightedScore >= 85) grade = 'excellent'
-  else if (weightedScore >= 70) grade = 'good'
-  else if (weightedScore >= 50) grade = 'fair'
+  if (newWeightedScore >= 85) grade = 'excellent'
+  else if (newWeightedScore >= 70) grade = 'good'
+  else if (newWeightedScore >= 50) grade = 'fair'
   else grade = 'poor'
-
-  // ========================================
-  // DETECT AI TECHNOLOGY (use cached from aiDetection)
-  // ========================================
-  const detectedAiProvider = aiDetection.provider || detectAiProvider(html, scripts)
-  const detectedModel = aiDetection.model || detectAiModel(html, scripts)
-  const detectedChatFramework = aiDetection.framework || detectChatFramework(html, scripts)
 
   // ========================================
   // BUILD DETAILED CHECKS (NEW! - for transparency)
   // ========================================
-  // TODO: Convert all PatternCheckResult to CheckResult with explanations
-  // For now, create simplified versions
-  const createCheckResult = (check: PatternCheckResult, explanation: string, recommendation: string, weight: number = 2): CheckResult => ({
+  // Phase 3: Set relevant field based on isCheckRelevant - Nov 17, 2025
+  // Phase 4: Set weight from CHECK_WEIGHTS - Nov 17, 2025
+  const createCheckResult = (checkName: string, check: PatternCheckResult, explanation: string, recommendation: string): CheckResult => ({
     passed: check.found,
-    relevant: true, // All checks are relevant if AI is detected
+    relevant: isCheckRelevant(checkName, crawlResult, aiDetection, hasChatWidget, hasApiEndpoint), // Phase 3
     evidence: check.evidence,
     explanation,
     recommendation,
-    weight
+    weight: CHECK_WEIGHTS[checkName] || 1 // Phase 4
   })
 
   const detailedChecks = {
     // Transparency
-    isProviderDisclosed: createCheckResult(transparency.isProviderDisclosed, 'Users should know which AI provider powers the system', 'Add clear disclosure like "Powered by OpenAI" or "Uses Claude AI"', 3),
-    isIdentityDisclosed: createCheckResult(transparency.isIdentityDisclosed, 'AI should identify itself as AI, not impersonate humans', 'Add disclaimer like "You are chatting with an AI assistant"', 3),
-    isAiPolicyLinked: createCheckResult(transparency.isAiPolicyLinked, 'Specific AI usage policy builds trust', 'Link to AI-specific terms or usage policy', 2),
-    isModelVersionDisclosed: createCheckResult(transparency.isModelVersionDisclosed, 'Model version disclosure helps users understand capabilities', 'Disclose model version (e.g., "GPT-4", "Claude 2")', 1),
-    isLimitationsDisclosed: createCheckResult(transparency.isLimitationsDisclosed, 'Users should know AI limitations to set proper expectations', 'Add limitations notice (e.g., "AI may make mistakes")', 2),
-    hasDataUsageDisclosure: createCheckResult(transparency.hasDataUsageDisclosure, 'Users must know how their data is used for AI training', 'Clearly state if conversations are used for training', 3),
+    isProviderDisclosed: createCheckResult('isProviderDisclosed', transparency.isProviderDisclosed, 'Users should know which AI provider powers the system', 'Add clear disclosure like "Powered by OpenAI" or "Uses Claude AI"'),
+    isIdentityDisclosed: createCheckResult('isIdentityDisclosed', transparency.isIdentityDisclosed, 'AI should identify itself as AI, not impersonate humans', 'Add disclaimer like "You are chatting with an AI assistant"'),
+    isAiPolicyLinked: createCheckResult('isAiPolicyLinked', transparency.isAiPolicyLinked, 'Specific AI usage policy builds trust', 'Link to AI-specific terms or usage policy'),
+    isModelVersionDisclosed: createCheckResult('isModelVersionDisclosed', transparency.isModelVersionDisclosed, 'Model version disclosure helps users understand capabilities', 'Disclose model version (e.g., "GPT-4", "Claude 2")'),
+    isLimitationsDisclosed: createCheckResult('isLimitationsDisclosed', transparency.isLimitationsDisclosed, 'Users should know AI limitations to set proper expectations', 'Add limitations notice (e.g., "AI may make mistakes")'),
+    hasDataUsageDisclosure: createCheckResult('hasDataUsageDisclosure', transparency.hasDataUsageDisclosure, 'Users must know how their data is used for AI training', 'Clearly state if conversations are used for training'),
 
     // User Control
-    hasFeedbackMechanism: createCheckResult(userControl.hasFeedbackMechanism, 'Users should be able to provide feedback on AI responses', 'Add thumbs up/down or feedback form', 2),
-    hasConversationReset: createCheckResult(userControl.hasConversationReset, 'Users should be able to reset AI conversation context', 'Add "Clear conversation" or "Start over" button', 2),
-    hasHumanEscalation: createCheckResult(userControl.hasHumanEscalation, 'Users should be able to escalate to human support', 'Add "Talk to human" or "Contact support" option', 3),
-    hasConversationExport: createCheckResult(userControl.hasConversationExport, 'Users should be able to export their conversation data', 'Add "Download conversation" feature', 1),
-    hasDataDeletionOption: createCheckResult(userControl.hasDataDeletionOption, 'Users should be able to delete their AI conversation data', 'Add "Delete my data" option per GDPR', 3),
+    hasFeedbackMechanism: createCheckResult('hasFeedbackMechanism', userControl.hasFeedbackMechanism, 'Users should be able to provide feedback on AI responses', 'Add thumbs up/down or feedback form'),
+    hasConversationReset: createCheckResult('hasConversationReset', userControl.hasConversationReset, 'Users should be able to reset AI conversation context', 'Add "Clear conversation" or "Start over" button'),
+    hasHumanEscalation: createCheckResult('hasHumanEscalation', userControl.hasHumanEscalation, 'Users should be able to escalate to human support', 'Add "Talk to human" or "Contact support" option'),
+    hasConversationExport: createCheckResult('hasConversationExport', userControl.hasConversationExport, 'Users should be able to export their conversation data', 'Add "Download conversation" feature'),
+    hasDataDeletionOption: createCheckResult('hasDataDeletionOption', userControl.hasDataDeletionOption, 'Users should be able to delete their AI conversation data', 'Add "Delete my data" option per GDPR'),
 
     // Compliance
-    hasDpoContact: createCheckResult(compliance.hasDpoContact, 'GDPR requires DPO contact for data protection queries', 'Add Data Protection Officer contact information', 3),
-    hasCookieBanner: createCheckResult(compliance.hasCookieBanner, 'EU law requires cookie consent banner', 'Implement GDPR-compliant cookie banner', 3),
-    hasPrivacyPolicyLink: createCheckResult(compliance.hasPrivacyPolicyLink, 'Privacy policy is legally required', 'Link to comprehensive privacy policy', 3),
-    hasTermsOfServiceLink: createCheckResult(compliance.hasTermsOfServiceLink, 'Terms of service protect both user and provider', 'Link to terms of service', 3),
-    hasGdprCompliance: createCheckResult(compliance.hasGdprCompliance, 'GDPR compliance signals responsible data handling', 'Implement full GDPR compliance measures', 3),
+    hasDpoContact: createCheckResult('hasDpoContact', compliance.hasDpoContact, 'GDPR requires DPO contact for data protection queries', 'Add Data Protection Officer contact information'),
+    hasCookieBanner: createCheckResult('hasCookieBanner', compliance.hasCookieBanner, 'EU law requires cookie consent banner', 'Implement GDPR-compliant cookie banner'),
+    hasPrivacyPolicyLink: createCheckResult('hasPrivacyPolicyLink', compliance.hasPrivacyPolicyLink, 'Privacy policy is legally required', 'Link to comprehensive privacy policy'),
+    hasTermsOfServiceLink: createCheckResult('hasTermsOfServiceLink', compliance.hasTermsOfServiceLink, 'Terms of service protect both user and provider', 'Link to terms of service'),
+    hasGdprCompliance: createCheckResult('hasGdprCompliance', compliance.hasGdprCompliance, 'GDPR compliance signals responsible data handling', 'Implement full GDPR compliance measures'),
 
     // Security & Reliability
-    hasBotProtection: createCheckResult(security.hasBotProtection, 'Bot protection prevents AI abuse and spam', 'Add reCAPTCHA or similar bot protection', 2),
-    hasAiRateLimitHeaders: createCheckResult(security.hasAiRateLimitHeaders, 'Rate limiting prevents API abuse', 'Implement rate limiting headers', 2),
-    hasBasicWebSecurity: createCheckResult(security.hasBasicWebSecurity, 'Basic web security protects AI interactions', 'Ensure HTTPS, CSP, security headers', 3),
-    hasInputLengthLimit: createCheckResult(security.hasInputLengthLimit, 'Input limits prevent prompt injection attacks', 'Implement reasonable input length limits', 2),
-    usesInputSanitization: createCheckResult(security.usesInputSanitization, 'Input sanitization prevents injection attacks', 'Sanitize all user inputs before AI processing', 3),
-    hasErrorHandling: createCheckResult(security.hasErrorHandling, 'Proper error handling prevents information disclosure', 'Implement graceful error messages', 2),
-    hasSessionManagement: createCheckResult(security.hasSessionManagement, 'Session management protects conversation privacy', 'Implement secure session management', 2),
+    hasBotProtection: createCheckResult('hasBotProtection', security.hasBotProtection, 'Bot protection prevents AI abuse and spam', 'Add reCAPTCHA or similar bot protection'),
+    hasAiRateLimitHeaders: createCheckResult('hasAiRateLimitHeaders', security.hasAiRateLimitHeaders, 'Rate limiting prevents API abuse', 'Implement rate limiting headers'),
+    hasBasicWebSecurity: createCheckResult('hasBasicWebSecurity', security.hasBasicWebSecurity, 'Basic web security protects AI interactions', 'Ensure HTTPS, CSP, security headers'),
+    hasInputLengthLimit: createCheckResult('hasInputLengthLimit', security.hasInputLengthLimit, 'Input limits prevent prompt injection attacks', 'Implement reasonable input length limits'),
+    usesInputSanitization: createCheckResult('usesInputSanitization', security.usesInputSanitization, 'Input sanitization prevents injection attacks', 'Sanitize all user inputs before AI processing'),
+    hasErrorHandling: createCheckResult('hasErrorHandling', security.hasErrorHandling, 'Proper error handling prevents information disclosure', 'Implement graceful error messages'),
+    hasSessionManagement: createCheckResult('hasSessionManagement', security.hasSessionManagement, 'Session management protects conversation privacy', 'Implement secure session management'),
 
     // Ethical AI
-    hasBiasDisclosure: createCheckResult(ethicalAi.hasBiasDisclosure, 'AI bias disclosure builds trust and sets expectations', 'Disclose potential AI biases', 2),
-    hasContentModeration: createCheckResult(ethicalAi.hasContentModeration, 'Content moderation prevents harmful AI outputs', 'Implement content filtering and moderation', 3),
-    hasAgeVerification: createCheckResult(ethicalAi.hasAgeVerification, 'Age verification protects minors from inappropriate AI content', 'Add age verification for sensitive AI features', 2),
-    hasAccessibilitySupport: createCheckResult(ethicalAi.hasAccessibilitySupport, 'Accessibility ensures AI is usable by everyone', 'Implement WCAG accessibility standards', 2),
+    hasBiasDisclosure: createCheckResult('hasBiasDisclosure', ethicalAi.hasBiasDisclosure, 'AI bias disclosure builds trust and sets expectations', 'Disclose potential AI biases'),
+    hasContentModeration: createCheckResult('hasContentModeration', ethicalAi.hasContentModeration, 'Content moderation prevents harmful AI outputs', 'Implement content filtering and moderation'),
+    hasAgeVerification: createCheckResult('hasAgeVerification', ethicalAi.hasAgeVerification, 'Age verification protects minors from inappropriate AI content', 'Add age verification for sensitive AI features'),
+    hasAccessibilitySupport: createCheckResult('hasAccessibilitySupport', ethicalAi.hasAccessibilitySupport, 'Accessibility ensures AI is usable by everyone', 'Implement WCAG accessibility standards'),
   }
 
   // ========================================
@@ -1243,31 +1540,32 @@ export function analyzeAiTrust(crawlResult: CrawlResult, securityScore: number =
   if (categoryScores.ethicalAi >= 70) strengths.push('Strong ethical AI practices')
   else if (categoryScores.ethicalAi < 30) weaknesses.push('Limited ethical AI considerations')
 
+  // Phase 4: Use new weighted score in summary - Nov 17, 2025
   const summary = {
-    message: weightedScore >= 70
-      ? `This AI implementation demonstrates good trust practices with a weighted score of ${weightedScore}/100.`
-      : weightedScore >= 50
-      ? `This AI implementation has moderate trust practices (${weightedScore}/100). Several improvements recommended.`
-      : `This AI implementation has significant trust concerns (${weightedScore}/100). Critical improvements needed.`,
+    message: newWeightedScore >= 70
+      ? `This AI implementation demonstrates good trust practices with a weighted score of ${newWeightedScore}/100.`
+      : newWeightedScore >= 50
+      ? `This AI implementation has moderate trust practices (${newWeightedScore}/100). Several improvements recommended.`
+      : `This AI implementation has significant trust concerns (${newWeightedScore}/100). Critical improvements needed.`,
     strengths: strengths.length > 0 ? strengths : ['AI implementation detected'],
     weaknesses,
     criticalIssues
   }
 
   return {
-    score,
-    weightedScore,
+    score, // Keep unweighted for backward compatibility
+    weightedScore: newWeightedScore, // Phase 4: NEW weighted score based on check importance
     categoryScores,
     passedChecks,
-    totalChecks,
-    relevantChecks: totalChecks, // All checks relevant when AI is detected
+    totalChecks, // Phase 3: Dynamic count (10-27 based on relevance)
+    relevantChecks: relevantCheckCount, // Phase 3: How many checks are applicable
     grade,
     hasAiImplementation: true, // NEW
     aiConfidenceLevel: aiDetection.confidenceLevel, // NEW
     detectedAiProvider,
     detectedModel,
     detectedChatFramework,
-    detailedChecks, // NEW
+    detailedChecks, // NEW - Phase 3: includes relevant field for each check
     checks, // Legacy format
     evidenceData,
     // NEW: Extended AI Detection Results (P0 Detectors)
