@@ -12,8 +12,8 @@
 This document provides a **systematic, step-by-step protocol** for identifying and eliminating false positives in all 21 security analyzers.
 
 **Current Status:**
-- ✅ **7/21 analyzers audited** (Compliance, Admin Discovery, LLM06, Error Disclosure, Reconnaissance, JS Libraries, CORS)
-- ⏳ **14/21 analyzers pending audit**
+- ✅ **8/21 analyzers audited** (Compliance, Admin Discovery, LLM06, Error Disclosure, Reconnaissance, JS Libraries, CORS, MFA Detection)
+- ⏳ **13/21 analyzers pending audit**
 - 🎯 **Target:** <3% false positive rate across all analyzers
 
 ---
@@ -51,7 +51,7 @@ This document provides a **systematic, step-by-step protocol** for identifying a
 
 ## 🔍 21 Analyzers - Complete Audit Checklist
 
-### ✅ COMPLETED (7/21)
+### ✅ COMPLETED (8/21)
 
 #### 1. **compliance-analyzer.ts** ✅
 - **Audited:** November 16, 2025
@@ -122,9 +122,20 @@ This document provides a **systematic, step-by-step protocol** for identifying a
   - ✅ document.domain only flags assignment (not reads)
   - ✅ Severity downgrade: wildcard CORS MEDIUM → LOW for non-static
 
+#### 8. **mfa-detection-analyzer.ts** ✅
+- **Audited:** November 17, 2025
+- **Commit:** `96f017c`
+- **False Positive Rate:** 40% → <10%
+- **Fixes:**
+  - ✅ HTML preprocessing removes <article>, <code>, <pre> tags
+  - ✅ Removes FAQ/help/docs/guide/tutorial/blog sections
+  - ✅ Login functionality detection (hasLoginFunctionality)
+  - ✅ "No MFA" only flagged on pages with password inputs/login forms
+  - ✅ All detection functions use cleaned HTML (OAuth, SAML, TOTP, etc.)
+
 ---
 
-### ⏳ PENDING AUDIT (14/21)
+### ⏳ PENDING AUDIT (13/21)
 
 #### 4. **admin-detection-analyzer.ts** ⏳
 **Risk Level:** 🟡 MEDIUM
