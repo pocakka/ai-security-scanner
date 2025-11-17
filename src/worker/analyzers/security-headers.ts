@@ -208,15 +208,21 @@ function checkServerInformationHeaders(
   }
 
   // 7. Via header - exposes proxy/CDN information
+  // Nov 17, 2025: Reduced FP - Via header is normal for CDNs (Cloudflare, Akamai, etc.)
   const viaHeader = headers['via']
   if (viaHeader) {
-    result.findings.push({
-      header: 'via',
-      status: 'present',
-      severity: 'low',
-      description: `Proxy/CDN information exposed: ${viaHeader}`,
-      recommendation: 'Consider removing Via header if not needed for debugging. It reveals infrastructure details.'
-    })
+    // Only flag if it contains internal/private information
+    const containsPrivateInfo = viaHeader.match(/\b(internal|private|local|dev|staging|test)\b/i)
+    if (containsPrivateInfo) {
+      result.findings.push({
+        header: 'via',
+        status: 'present',
+        severity: 'low',
+        description: `Internal proxy information exposed: ${viaHeader}`,
+        recommendation: 'Via header contains internal naming. Consider sanitizing in production.'
+      })
+    }
+    // Don't flag normal CDN Via headers (e.g., "1.1 cloudflare", "1.1 varnish")
   }
 
   // 8. X-Runtime - exposes application runtime
