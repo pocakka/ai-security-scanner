@@ -12,8 +12,8 @@
 This document provides a **systematic, step-by-step protocol** for identifying and eliminating false positives in all 21 security analyzers.
 
 **Current Status:**
-- ✅ **6/21 analyzers audited** (Compliance, Admin Discovery, LLM06, Error Disclosure, Reconnaissance, JS Libraries)
-- ⏳ **15/21 analyzers pending audit**
+- ✅ **7/21 analyzers audited** (Compliance, Admin Discovery, LLM06, Error Disclosure, Reconnaissance, JS Libraries, CORS)
+- ⏳ **14/21 analyzers pending audit**
 - 🎯 **Target:** <3% false positive rate across all analyzers
 
 ---
@@ -51,7 +51,7 @@ This document provides a **systematic, step-by-step protocol** for identifying a
 
 ## 🔍 21 Analyzers - Complete Audit Checklist
 
-### ✅ COMPLETED (6/21)
+### ✅ COMPLETED (7/21)
 
 #### 1. **compliance-analyzer.ts** ✅
 - **Audited:** November 16, 2025
@@ -111,9 +111,20 @@ This document provides a **systematic, step-by-step protocol** for identifying a
   - ✅ SRI check supports any attribute order
   - ✅ Analytics patterns use specific domains
 
+#### 7. **cors-analyzer.ts** ✅
+- **Audited:** November 17, 2025
+- **Commit:** `1bd0088`
+- **False Positive Rate:** 50% → <10%
+- **Fixes:**
+  - ✅ Static asset detection (CSS, fonts, images) - wildcard CORS now allowed
+  - ✅ JSONP detection with Content-Type + pattern verification
+  - ✅ postMessage detection with HTML preprocessing (remove code blocks)
+  - ✅ document.domain only flags assignment (not reads)
+  - ✅ Severity downgrade: wildcard CORS MEDIUM → LOW for non-static
+
 ---
 
-### ⏳ PENDING AUDIT (15/21)
+### ⏳ PENDING AUDIT (14/21)
 
 #### 4. **admin-detection-analyzer.ts** ⏳
 **Risk Level:** 🟡 MEDIUM
