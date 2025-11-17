@@ -1,0 +1,256 @@
+// Production-ready Prisma Schema
+// Optimized for 1M+ scans with PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"  // ✅ Production-ready
+  url      = env("DATABASE_URL")
+}
+
+// ========================================
+// SCAN MODEL - Optimized for scale
+// ========================================
+model Scan {
+  id            String   @id @default(uuid())
+  url           String
+  domain        String?
+  status        String   @default("PENDING") // PENDING, SCANNING, COMPLETED, FAILED
+
+  // Results
+  riskScore     Int?
+  riskLevel     String? // LOW, MEDIUM, HIGH, CRITICAL
+
+  // JSON columns (PostgreSQL native JSONB - queryable!)
+  detectedTech  Json?   // ✅ JSONB instead of String
+  findings      Json?   // ✅ JSONB instead of String
+  metadata      Json?   // ✅ JSONB instead of String
+
+  // Timestamps
+  createdAt     DateTime @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  // Relations
+  leads             Lead[]
+  aiTrustScorecard  AiTrustScorecard?
+
+  // ========================================
+  // CRITICAL INDEXES for 10M+ scans
+  // ========================================
+  @@index([url])                          // Search by URL
+  @@index([domain])                       // Search by domain
+  @@index([status])                       // Filter by status
+  @@index([createdAt])                    // Order by date
+  @@index([status, createdAt])            // Combined index
+  @@index([riskLevel, riskScore])         // Filter by risk
+  @@index([completedAt])                  // Completed scans
+  @@index([domain, createdAt])            // Domain timeline
+
+  // Partial index for active scans (PostgreSQL specific)
+  // Only indexes PENDING/SCANNING status (much smaller index)
+  @@index([status, createdAt], map: "active_scans_idx", where: { status: { in: ["PENDING", "SCANNING"] } })
+}
+
+model Lead {
+  id              String   @id @default(uuid())
+  email           String   // Multiple scans per email allowed
+  name            String?
+  company         String?
+  role            String?
+
+  // Marketing
+  leadScore       Int      @default(0)
+  lifecycleStage  String   @default("SUBSCRIBER")
+  source          String?
+
+  // Relations
+  scanId          String
+  scan            Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  lastInteraction DateTime @default(now())
+
+  // Indexes
+  @@index([email])                        // Search by email
+  @@index([scanId])                       // Join optimization
+  @@index([lifecycleStage])               // Marketing filters
+  @@index([createdAt])                    // Timeline
+}
+
+model Job {
+  id          String   @id @default(uuid())
+  type        String
+  data        String   // JSON payload (could be JSONB too)
+  status      String   @default("PENDING")
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  error       String?
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  // Indexes
+  @@index([status, createdAt])
+  @@index([type, status])                 // Filter by job type
+  @@index([completedAt])                  // Cleanup old jobs
+}
+
+model AiTrustScorecard {
+  id     String @id @default(uuid())
+  scan   Scan   @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  scanId String @unique
+
+  // Transparency checks
+  isProviderDisclosed      Boolean @default(false)
+  isIdentityDisclosed      Boolean @default(false)
+  isAiPolicyLinked         Boolean @default(false)
+  isModelVersionDisclosed  Boolean @default(false)
+  isLimitationsDisclosed   Boolean @default(false)
+  hasDataUsageDisclosure   Boolean @default(false)
+
+  // User control checks
+  hasFeedbackMechanism     Boolean @default(false)
+  hasConversationReset     Boolean @default(false)
+  hasHumanEscalation       Boolean @default(false)
+  hasConversationExport    Boolean @default(false)
+  hasDataDeletionOption    Boolean @default(false)
+
+  // Compliance checks
+  hasDpoContact            Boolean @default(false)
+  hasCookieBanner          Boolean @default(false)
+  hasPrivacyPolicyLink     Boolean @default(false)
+  hasTermsOfServiceLink    Boolean @default(false)
+  hasGdprCompliance        Boolean @default(false)
+
+  // Security checks
+  hasBotProtection         Boolean @default(false)
+  hasAiRateLimitHeaders    Boolean @default(false)
+  hasBasicWebSecurity      Boolean @default(false)
+  hasInputLengthLimit      Boolean @default(false)
+  usesInputSanitization    Boolean @default(false)
+  hasErrorHandling         Boolean @default(false)
+  hasSessionManagement     Boolean @default(false)
+
+  // Ethical AI checks
+  hasBiasDisclosure        Boolean @default(false)
+  hasContentModeration     Boolean @default(false)
+  hasAgeVerification       Boolean @default(false)
+  hasAccessibilitySupport  Boolean @default(false)
+
+  // Scores & metadata
+  score            Int     @default(0)
+  weightedScore    Int     @default(0)
+  categoryScores   Json?   // ✅ JSONB instead of String
+  passedChecks     Int     @default(0)
+  totalChecks      Int     @default(0)
+
+  // Detected AI technology
+  detectedAiProvider       String?
+  detectedModel            String?
+  detectedChatFramework    String?
+  evidenceData             Json?   // ✅ JSONB
+
+  // Enhanced fields
+  hasAiImplementation  Boolean @default(false)
+  aiConfidenceLevel    String?
+  relevantChecks       Int     @default(0)
+  detailedChecks       Json?   // ✅ JSONB
+  summary              Json?   // ✅ JSONB
+
+  // Timestamp
+  analyzedAt       DateTime @default(now())
+
+  // Indexes
+  @@index([scanId])
+  @@index([score])
+  @@index([weightedScore])
+  @@index([hasAiImplementation])          // Filter AI sites
+  @@index([detectedAiProvider])           // Group by provider
+  @@index([analyzedAt])                   // Timeline
+}
+
+model KnowledgeBaseFinding {
+  id          String @id @default(uuid())
+  findingKey  String @unique
+  category    String
+  severity    String
+  title       String
+  explanation String @db.Text             // ✅ TEXT for long content
+  impact      String @db.Text
+  solution    String @db.Text
+  technicalDetails String? @db.Text
+  references  Json?                       // ✅ JSONB array of URLs
+  seoKeywords String?
+  lastUpdated DateTime @default(now())
+
+  // Indexes
+  @@index([category])
+  @@index([severity])
+  @@index([findingKey])
+
+  // Full-text search index (PostgreSQL)
+  @@index([title], type: Gin)            // Full-text search on title
+}
+
+model SiteSettings {
+  id String @id
+
+  // Social media
+  twitterHandle   String?
+  facebookUrl     String?
+  linkedinUrl     String?
+  instagramHandle String?
+  youtubeUrl      String?
+  githubUrl       String?
+
+  // SEO & branding
+  siteName        String  @default("AI Security Scanner")
+  siteDescription String?
+  siteUrl         String?
+  ogImageUrl      String?
+  faviconUrl      String?
+
+  // Contact
+  supportEmail    String?
+  salesEmail      String?
+  companyName     String?
+  companyAddress  String?
+
+  // Feature flags
+  enableTwitterCards Boolean @default(false)
+  enableOgTags       Boolean @default(true)
+  enableAnalytics    Boolean @default(false)
+
+  // Timestamps
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+// ========================================
+// NEW: SCAN ARCHIVE (Data retention)
+// ========================================
+// Archive old scans (> 1 year) to reduce main table size
+model ScanArchive {
+  id            String   @id
+  url           String
+  domain        String?
+  status        String
+  riskScore     Int?
+  riskLevel     String?
+  detectedTech  Json?
+  findings      Json?
+  metadata      Json?
+
+  createdAt     DateTime
+  completedAt   DateTime?
+  archivedAt    DateTime @default(now())
+
+  @@index([domain])
+  @@index([archivedAt])
+}
