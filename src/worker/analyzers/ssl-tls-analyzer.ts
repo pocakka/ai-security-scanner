@@ -84,7 +84,8 @@ export function analyzeSSLTLS(crawlResult: CrawlResult): SSLTLSResult {
     const cert = crawlResult.sslCertificate
     result.certificate = parseCertificateInfo(cert)
 
-    // Check certificate expiry
+    // Check certificate expiry with reasonable thresholds
+    // Nov 17, 2025: Adjusted thresholds to reduce false positives
     if (result.certificate.isExpired) {
       result.findings.push({
         type: 'certificate',
@@ -95,27 +96,41 @@ export function analyzeSSLTLS(crawlResult: CrawlResult): SSLTLSResult {
         evidence: `Expired ${Math.abs(result.certificate.daysUntilExpiry)} days ago`,
       })
       score -= 40
+    } else if (result.certificate.daysUntilExpiry <= 14) {
+      // Critical - expiring very soon
+      result.findings.push({
+        type: 'certificate',
+        severity: 'critical',
+        title: 'SSL certificate expiring imminently',
+        description: `Certificate expires in ${result.certificate.daysUntilExpiry} days`,
+        recommendation: 'Renew the SSL certificate immediately to avoid service disruption.',
+        evidence: `Expires: ${result.certificate.validTo}`,
+      })
+      score -= 30
     } else if (result.certificate.daysUntilExpiry <= 30) {
+      // High - expiring soon
       result.findings.push({
         type: 'certificate',
         severity: 'high',
         title: 'SSL certificate expiring soon',
         description: `Certificate expires in ${result.certificate.daysUntilExpiry} days`,
-        recommendation: 'Renew the SSL certificate before expiration to avoid service disruption.',
+        recommendation: 'Renew the SSL certificate before expiration. Most CAs recommend renewal at 30 days.',
         evidence: `Expires: ${result.certificate.validTo}`,
       })
       score -= 20
-    } else if (result.certificate.daysUntilExpiry <= 90) {
+    } else if (result.certificate.daysUntilExpiry <= 60) {
+      // Low - informational only
       result.findings.push({
         type: 'certificate',
-        severity: 'medium',
-        title: 'SSL certificate renewal recommended',
+        severity: 'low',
+        title: 'SSL certificate renewal reminder',
         description: `Certificate expires in ${result.certificate.daysUntilExpiry} days`,
         recommendation: 'Plan certificate renewal. Consider automated renewal with Let\'s Encrypt.',
         evidence: `Expires: ${result.certificate.validTo}`,
       })
-      score -= 10
+      score -= 5
     }
+    // Removed 90-day warning - too early for most organizations
 
     // Check for self-signed certificates
     if (result.certificate.isSelfSigned) {
@@ -207,10 +222,23 @@ function parseCertificateInfo(cert: any): CertificateInfo {
   const isExpired = isValidToValid && daysUntilExpiry < 0
 
   // Check if self-signed (issuer === subject)
-  // Extract CN (Common Name) from issuer and subject objects
-  const issuerCN = cert.issuer?.CN || cert.issuer || 'Unknown'
-  const subjectCN = cert.subject?.CN || cert.subject || 'Unknown'
-  const isSelfSigned = issuerCN === subjectCN && issuerCN !== 'Unknown'
+  // Nov 17, 2025: Improved self-signed detection to reduce false positives
+  // Extract CN and O (Organization) from issuer and subject objects
+  const issuerCN = cert.issuer?.CN || cert.issuer || ''
+  const subjectCN = cert.subject?.CN || cert.subject || ''
+  const issuerO = cert.issuer?.O || ''
+  const subjectO = cert.subject?.O || ''
+
+  // Self-signed if issuer and subject are identical (both CN and O)
+  // But not if it's a CA certificate or has different organizations
+  const isSelfSigned = (
+    issuerCN === subjectCN &&
+    issuerO === subjectO &&
+    issuerCN !== '' &&
+    !issuerCN.toLowerCase().includes(' ca') && // Not a CA certificate
+    !issuerCN.toLowerCase().includes('certificate authority') &&
+    !issuerO.toLowerCase().includes('certificate authority')
+  )
 
   // Format issuer name (include organization if available)
   let issuerName = issuerCN
@@ -231,6 +259,7 @@ function parseCertificateInfo(cert: any): CertificateInfo {
 
 /**
  * Detect mixed content (HTTP resources on HTTPS pages)
+ * Nov 17, 2025: Reduced false positives for tracking pixels and localhost
  */
 function detectMixedContent(crawlResult: CrawlResult): MixedContentIssue[] {
   const issues: MixedContentIssue[] = []
@@ -241,31 +270,76 @@ function detectMixedContent(crawlResult: CrawlResult): MixedContentIssue[] {
     return issues
   }
 
+  // Whitelist of common HTTP-only tracking/analytics services
+  const httpOnlyServices = [
+    'pixel.adsafeprotected.com',
+    'pixel.quantserve.com',
+    'b.scorecardresearch.com',
+    'pixel.mathtag.com',
+    'impression.appsflyer.com',
+    'pixel.tapad.com'
+  ]
+
   // Check network requests for HTTP resources
   for (const request of crawlResult.networkRequests) {
-    const resourceURL = request.url.toLowerCase()
+    const resourceURL = request.url
 
-    if (resourceURL.startsWith('http://')) {
+    // Skip non-HTTP, data:, and blob: URLs
+    if (!resourceURL.toLowerCase().startsWith('http://')) continue
+    if (resourceURL.startsWith('data:') || resourceURL.startsWith('blob:')) continue
+
+    try {
+      const urlObj = new URL(resourceURL)
+
+      // Skip localhost/development URLs
+      if (urlObj.hostname === 'localhost' ||
+          urlObj.hostname === '127.0.0.1' ||
+          urlObj.hostname.startsWith('192.168.') ||
+          urlObj.hostname.startsWith('10.') ||
+          urlObj.hostname.endsWith('.local') ||
+          urlObj.hostname.endsWith('.localhost')) continue
+
+      // Skip known HTTP-only services
+      if (httpOnlyServices.some(service => urlObj.hostname.includes(service))) continue
+
+      // Categorize by type with proper severity
       const type = request.resourceType || 'other'
       const severity: 'high' | 'medium' =
-        type === 'script' || type === 'xhr' || type === 'fetch' ? 'high' : 'medium'
+        (type === 'script' || type === 'stylesheet' || type === 'xhr' || type === 'fetch')
+          ? 'high'  // Active mixed content
+          : 'medium' // Passive mixed content (images, etc.)
 
       issues.push({
         url: request.url,
         type: type as any,
         severity,
       })
+    } catch (e) {
+      // Invalid URL, skip
+      continue
     }
   }
 
-  // Check scripts for HTTP URLs
+  // Check scripts for HTTP URLs (but apply same filtering)
   for (const script of crawlResult.scripts) {
     if (script.toLowerCase().startsWith('http://')) {
-      issues.push({
-        url: script,
-        type: 'script',
-        severity: 'high',
-      })
+      try {
+        const urlObj = new URL(script)
+
+        // Skip localhost and known services
+        if (urlObj.hostname === 'localhost' ||
+            urlObj.hostname === '127.0.0.1' ||
+            httpOnlyServices.some(service => urlObj.hostname.includes(service))) continue
+
+        issues.push({
+          url: script,
+          type: 'script',
+          severity: 'high',
+        })
+      } catch (e) {
+        // Invalid URL, skip
+        continue
+      }
     }
   }
 
@@ -274,6 +348,7 @@ function detectMixedContent(crawlResult: CrawlResult): MixedContentIssue[] {
 
 /**
  * Check for weak/outdated TLS protocols
+ * Nov 17, 2025: Improved detection to reduce false positives
  */
 function checkWeakProtocol(crawlResult: CrawlResult): { description: string; evidence: string } | null {
   // Check response headers for protocol information
@@ -283,8 +358,9 @@ function checkWeakProtocol(crawlResult: CrawlResult): { description: string; evi
   const protocolHeader = headers['x-tls-version'] || headers['x-ssl-version']
 
   if (protocolHeader) {
-    const version = protocolHeader.toLowerCase()
-    if (version.includes('1.0') || version.includes('1.1') || version.includes('ssl')) {
+    // Use specific version patterns with word boundaries
+    // Match: SSL 2.0, SSL 3.0, TLS 1.0, TLS 1.1
+    if (/\b(SSL\s*[23]\.0|TLS\s*1\.[01])\b/i.test(protocolHeader)) {
       return {
         description: `Server supports outdated protocol: ${protocolHeader}`,
         evidence: `Header: ${protocolHeader}`,
@@ -292,14 +368,8 @@ function checkWeakProtocol(crawlResult: CrawlResult): { description: string; evi
     }
   }
 
-  // Check for SSLv3/TLS1.0/TLS1.1 indicators in server headers
-  const server = headers['server']?.toLowerCase() || ''
-  if (server.includes('sslv3') || server.includes('tls/1.0') || server.includes('tls/1.1')) {
-    return {
-      description: 'Server may support outdated TLS versions',
-      evidence: `Server: ${headers['server']}`,
-    }
-  }
+  // Don't check server header for protocol info - too many false positives
+  // Many servers include "SSL" or "TLS" in their name without indicating version support
 
   return null
 }
