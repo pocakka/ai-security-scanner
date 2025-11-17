@@ -35,15 +35,15 @@ async function testCrawler() {
       console.log(`  Status Code: ${result.statusCode}`)
       console.log(`  Final URL: ${result.finalUrl}`)
       console.log(`  Load Time: ${result.loadTime}ms`)
-      console.log(`  Requests: ${result.requests.length}`)
-      console.log(`  Responses: ${result.responses.length}`)
-      console.log(`  Cookies: ${result.cookies.length}`)
-      console.log(`  HTML Length: ${result.html.length} characters`)
+      console.log(`  Requests: ${result.requests?.length || 0}`)
+      console.log(`  Responses: ${result.responses?.length || 0}`)
+      console.log(`  Cookies: ${result.cookies?.length || 0}`)
+      console.log(`  HTML Length: ${result.html?.length || 0} characters`)
 
       // Show AI provider detection
-      const aiProviders = result.responses.filter((r) =>
+      const aiProviders = result.responses?.filter((r) =>
         r.url.match(/openai\.com|anthropic\.com|azure\.com|bedrock/)
-      )
+      ) || []
       if (aiProviders.length > 0) {
         console.log(`\n🤖 AI Providers Detected:`)
         aiProviders.forEach((r) => {
@@ -66,7 +66,7 @@ async function testCrawler() {
       }
 
       // Show cookies summary
-      if (result.cookies.length > 0) {
+      if (result.cookies && result.cookies.length > 0) {
         console.log(`\n🍪 Cookies:`)
         result.cookies.slice(0, 5).forEach((cookie) => {
           console.log(

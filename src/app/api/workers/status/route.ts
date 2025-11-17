@@ -47,9 +47,7 @@ export async function GET(request: NextRequest) {
           const processingJob = await prisma.job.findFirst({
             where: { status: 'PROCESSING' },
             orderBy: { startedAt: 'desc' },
-            include: {
-              // We don't have direct relation, so we'll parse the data JSON
-            },
+            // We don't have direct relation, so we'll parse the data JSON
           })
 
           let currentUrl: string | undefined
