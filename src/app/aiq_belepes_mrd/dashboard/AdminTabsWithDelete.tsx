@@ -15,8 +15,24 @@ function formatDate(date: Date | string): string {
   }).format(d)
 }
 
+// Helper function to convert domain to slug: reddit.com -> reddit-com
+function domainToSlug(domain: string): string {
+  return domain.replace(/\./g, '-')
+}
+
+// Helper function to generate SEO-friendly URL
+function getSeoUrl(scan: { domain: string | null; scanNumber?: number; id: string }): string {
+  if (scan.domain && scan.scanNumber) {
+    const domainSlug = domainToSlug(scan.domain)
+    return `/s/${domainSlug}/${scan.scanNumber}`
+  }
+  // Fallback to UUID URL if scanNumber not available
+  return `/scan/${scan.id}`
+}
+
 interface Scan {
   id: string
+  scanNumber?: number
   url: string
   domain: string | null
   status: string
@@ -34,6 +50,7 @@ interface Lead {
   createdAt: Date
   scan: {
     id: string
+    scanNumber?: number
     domain: string | null
     url: string
     riskScore: number | null
@@ -351,7 +368,7 @@ export default function AdminTabsWithDelete({ scans, leads, onDataChange }: Admi
                     <td className="px-6 py-4 text-sm">
                       <div className="flex items-center gap-3">
                         <a
-                          href={`/scan/${scan.id}`}
+                          href={getSeoUrl(scan)}
                           className="text-blue-400 hover:text-blue-300 font-semibold transition-colors"
                         >
                           View
@@ -477,7 +494,7 @@ export default function AdminTabsWithDelete({ scans, leads, onDataChange }: Admi
                     <td className="px-6 py-4 text-sm">
                       <div className="flex items-center gap-3">
                         <a
-                          href={`/scan/${lead.scan.id}`}
+                          href={getSeoUrl(lead.scan)}
                           className="text-blue-400 hover:text-blue-300 font-semibold transition-colors"
                         >
                           View Scan

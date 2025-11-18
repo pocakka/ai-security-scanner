@@ -7,6 +7,7 @@ import WorkerStatusPanel from './WorkerStatusPanel'
 
 interface Scan {
   id: string
+  scanNumber?: number
   url: string
   domain: string | null
   status: string
@@ -24,6 +25,7 @@ interface Lead {
   createdAt: Date
   scan: {
     id: string
+    scanNumber?: number
     domain: string | null
     url: string
     riskScore: number | null

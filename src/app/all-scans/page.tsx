@@ -5,8 +5,24 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Search, Shield, RefreshCw } from 'lucide-react'
 
+// Helper function to convert domain to slug: reddit.com -> reddit-com
+function domainToSlug(domain: string): string {
+  return domain.replace(/\./g, '-')
+}
+
+// Helper function to generate SEO-friendly URL
+function getSeoUrl(scan: { domain: string | null; scanNumber?: number; id: string }): string {
+  if (scan.domain && scan.scanNumber) {
+    const domainSlug = domainToSlug(scan.domain)
+    return `/s/${domainSlug}/${scan.scanNumber}`
+  }
+  // Fallback to UUID URL if scanNumber not available
+  return `/scan/${scan.id}`
+}
+
 interface Scan {
   id: string
+  scanNumber?: number
   url: string
   domain: string | null
   status: string
@@ -232,7 +248,7 @@ export default function AllScansPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <Link
-                          href={`/scan/${scan.id}`}
+                          href={getSeoUrl(scan)}
                           className="inline-flex items-center px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-sm font-medium rounded-lg transition-colors"
                         >
                           View Report
