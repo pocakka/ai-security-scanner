@@ -7,10 +7,14 @@ Logs only to file, clean progress display
 import requests, time, sys, json, os, signal, re, logging, threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+import psycopg2
 
 # Config
 API_URL = "http://localhost:3000/api/scan"
+QUEUE_STATUS_URL = "postgresql://localhost/ai_security_scanner"  # Direct DB connection
 MAX_WORKERS = 5
+MAX_PENDING_SCANS = 20  # Maximum PENDING scans allowed in queue
+THROTTLE_CHECK_INTERVAL = 5  # Check queue every 5s when throttled
 RETRY_ATTEMPTS = 3
 RETRY_DELAY = 10
 PROGRESS_FILE = "bulk-scan-progress.json"
@@ -53,6 +57,37 @@ NON_ENGLISH_PATTERNS = {
     'chinese': re.compile(r'[\u4E00-\u9FFF]'),
     'accented': re.compile(r'[áéíóúàèìòùäëïöüâêîôûãõñçřščž]', re.IGNORECASE),
 }
+
+def get_pending_count():
+    """Check how many PENDING scans are in the queue (PostgreSQL)"""
+    try:
+        conn = psycopg2.connect(QUEUE_STATUS_URL)
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM \"Scan\" WHERE status = 'PENDING'")
+        count = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return count
+    except Exception as e:
+        logger.error(f"Failed to check queue status: {e}")
+        return 0  # Assume queue is empty if check fails (allow progress)
+
+def wait_for_queue_space():
+    """Wait until queue has space (< MAX_PENDING_SCANS)"""
+    while True:
+        pending = get_pending_count()
+        if pending < MAX_PENDING_SCANS:
+            return pending
+
+        # Queue full - wait and show status
+        with progress_lock:
+            print(f"\r⏸️  Queue full ({pending} PENDING) - waiting {THROTTLE_CHECK_INTERVAL}s...{' '*40}", end='', flush=True)
+
+        logger.info(f"THROTTLE: Queue full ({pending} PENDING), waiting...")
+        time.sleep(THROTTLE_CHECK_INTERVAL)
+
+        if shutdown_requested:
+            return 0
 
 def signal_handler(sig, frame):
     global shutdown_requested
@@ -145,20 +180,25 @@ def create_scan(domain):
 def process_domain(domain, progress):
     if shutdown_requested:
         return
-    
+
+    # THROTTLE: Wait if queue is full
+    pending = wait_for_queue_space()
+    if shutdown_requested:
+        return
+
     with progress_lock:
         stats['processed'] += 1
         pct = (stats['processed'] / stats['total']) * 100
-        # Clean single-line progress
-        print(f"\rProgress: {stats['processed']}/{stats['total']} ({pct:.1f}%) | ✅ {stats['success']} | ❌ {stats['failed']} | ⏭ {stats['skipped_lang']+stats['skipped_dup']}", end='', flush=True)
-    
+        # Clean single-line progress (show PENDING count)
+        print(f"\rProgress: {stats['processed']}/{stats['total']} ({pct:.1f}%) | ✅ {stats['success']} | ❌ {stats['failed']} | ⏭ {stats['skipped_lang']+stats['skipped_dup']} | Queue: {pending}", end='', flush=True)
+
     success, scan_id = create_scan(domain)
-    
+
     if success:
         progress['processed'].append(domain)
     else:
         progress['failed'].append(domain)
-    
+
     save_progress(progress)
     time.sleep(RATE_LIMIT_DELAY)
 
