@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "worker": "tsx src/worker/index-sqlite.ts",
+    "worker:monitor": "tsx scripts/worker-monitor.ts",
     "cleanup": "tsx scripts/cleanup-stuck-scans.ts",
     "docs": "typedoc",
     "docs:watch": "typedoc --watch",

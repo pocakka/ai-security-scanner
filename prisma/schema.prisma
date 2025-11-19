@@ -19,6 +19,7 @@ model Scan {
   url           String
   domain        String?
   status        String   @default("PENDING") // PENDING, SCANNING, COMPLETED, FAILED
+  workerId      String?  // Track which worker process is handling this scan
 
   // Results
   riskScore     Int?

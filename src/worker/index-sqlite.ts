@@ -93,6 +93,7 @@ async function processScanJob(data: { scanId: string; url: string }) {
       data: {
         status: 'SCANNING',
         startedAt: new Date(),
+        workerId: process.pid.toString(), // Store worker PID for monitoring
       },
     })
 
@@ -702,6 +703,7 @@ async function processScanJob(data: { scanId: string; url: string }) {
         status: 'COMPLETED',
         riskScore: scoreBreakdown.overallScore,
         riskLevel: scoreBreakdown.riskLevel,
+        workerId: null, // Clear worker PID on completion
         hasAI: hasAI,  // ✨ NEW: Track AI presence
         // PostgreSQL JSONB: store as objects, not strings
         detectedTech: report.detectedTech,
@@ -886,6 +888,7 @@ async function processScanJob(data: { scanId: string; url: string }) {
       where: { id: scanId },
       data: {
         status: 'FAILED',
+        workerId: null, // Clear worker PID on failure
         metadata: {
           error: error instanceof Error ? error.message : 'Unknown error',
         },
@@ -934,6 +937,7 @@ async function processOneJob() {
               where: { id: job.data.scanId },
               data: {
                 status: 'FAILED',
+                workerId: null, // Clear worker PID on failure
                 completedAt: new Date(),
               },
             })
