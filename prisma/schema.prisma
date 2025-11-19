@@ -23,6 +23,7 @@ model Scan {
   // Results
   riskScore     Int?
   riskLevel     String? // LOW, MEDIUM, HIGH, CRITICAL
+  hasAI         Boolean  @default(false) // True if AI detected on site
 
   // JSON columns (PostgreSQL native JSONB - queryable!)
   detectedTech  Json?   // ✅ JSONB instead of String
@@ -50,6 +51,7 @@ model Scan {
   @@index([riskLevel, riskScore])         // Filter by risk
   @@index([completedAt])                  // Completed scans
   @@index([domain, createdAt])            // Domain timeline
+  @@index([hasAI])                        // Filter AI-enabled sites
 
   // Note: scanNumber is @id, automatically has index
   // Partial index for active scans (PostgreSQL specific)

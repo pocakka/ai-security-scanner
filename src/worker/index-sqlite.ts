@@ -693,12 +693,17 @@ async function processScanJob(data: { scanId: string; url: string }) {
 
     // Step 5: Save results
     console.log(`[Worker] Saving results...`)
+    // Detect if AI is present on the site
+    const hasAI = (report.detectedTech?.aiProviders?.length ?? 0) > 0
+    console.log(`[Worker] AI detected: ${hasAI} (${report.detectedTech?.aiProviders?.length ?? 0} providers)`)
+
     await prisma.scan.update({
       where: { id: scanId },
       data: {
         status: 'COMPLETED',
         riskScore: scoreBreakdown.overallScore,
         riskLevel: scoreBreakdown.riskLevel,
+        hasAI: hasAI,  // ✨ NEW: Track AI presence
         // PostgreSQL JSONB: store as objects, not strings
         detectedTech: report.detectedTech,
         findings: report,
@@ -805,11 +810,11 @@ async function processScanJob(data: { scanId: string; url: string }) {
       await prisma.scan.update({
         where: { id: scanId },
         data: {
-          findings: JSON.stringify(report),
-          metadata: JSON.stringify({
+          findings: report,  // PostgreSQL JSONB - store as object
+          metadata: {
             ...performanceData,
             timings: { ...timings, dns: timings.dns }
-          }),
+          },
         },
       })
       console.log(`[Worker] ✅ DNS results added to scan`)
@@ -837,9 +842,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
       where: { id: scanId },
       data: {
         status: 'FAILED',
-        metadata: JSON.stringify({
+        metadata: {
           error: error instanceof Error ? error.message : 'Unknown error',
-        }),
+        },
         completedAt: new Date(),
       },
     })
