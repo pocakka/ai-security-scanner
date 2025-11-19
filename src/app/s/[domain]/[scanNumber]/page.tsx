@@ -532,6 +532,113 @@ export default function ScanResultPage() {
   }
 
   if (error) {
+    // If scan not found, show beautiful 404 page instead of ugly error
+    if (error.includes('not found') || error.includes('404')) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+          {/* Animated background gradient */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.3),rgba(255,255,255,0))]"></div>
+
+          <div className="relative max-w-6xl mx-auto px-6 pt-20 pb-32">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-20">
+              <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <Shield className="w-8 h-8 text-blue-400" />
+                <span className="text-xl font-bold text-white">AI Security Scanner</span>
+              </a>
+              <a
+                href="/all-scans"
+                className="text-sm text-blue-300 hover:text-blue-200 transition-colors flex items-center gap-2"
+              >
+                View All Scans
+              </a>
+            </div>
+
+            {/* 404 Content */}
+            <div className="text-center">
+              <div className="mb-8">
+                <AlertTriangle className="w-24 h-24 text-blue-400 mx-auto" />
+              </div>
+
+              <h1 className="text-6xl font-bold mb-4 text-white">Scan Not Found</h1>
+              <p className="text-xl text-blue-200 mb-2">
+                The scan you're looking for doesn't exist or has been removed.
+              </p>
+              <p className="text-gray-400 text-sm mb-12">
+                Requested: /s/{domainSlug}/{scanNumberParam}
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-2xl mx-auto">
+                <a
+                  href="/"
+                  className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                  Go Home
+                </a>
+                <a
+                  href="/all-scans"
+                  className="flex-1 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+                >
+                  Browse All Scans
+                </a>
+              </div>
+
+              {/* New Scan Form */}
+              <div className="mt-16 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 max-w-3xl mx-auto">
+                <h3 className="text-xl font-semibold text-white mb-6">
+                  Start a New Security Scan
+                </h3>
+                <form onSubmit={handleNewScan} className="flex flex-col sm:flex-row gap-4">
+                  <input
+                    type="url"
+                    value={newScanUrl}
+                    onChange={(e) => setNewScanUrl(e.target.value)}
+                    placeholder="Enter website URL (e.g., https://example.com)"
+                    className="flex-1 px-6 py-4 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                    disabled={newScanLoading}
+                  />
+                  <button
+                    type="submit"
+                    disabled={newScanLoading}
+                    className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-cyan-600 transition-all disabled:opacity-50 shadow-lg shadow-blue-500/50"
+                  >
+                    {newScanLoading ? (
+                      <span className="flex items-center gap-2">
+                        <RefreshCw className="animate-spin h-5 w-5" />
+                        Starting...
+                      </span>
+                    ) : (
+                      'Scan Now'
+                    )}
+                  </button>
+                </form>
+              </div>
+
+              {/* Popular Domains */}
+              <div className="mt-12">
+                <h4 className="text-gray-400 text-sm mb-4">Popular Recent Scans</h4>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {['google.com', 'github.com', 'openai.com', 'anthropic.com'].map((domain) => (
+                    <a
+                      key={domain}
+                      href={`/all-scans?search=${domain}`}
+                      className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-sm text-gray-300 hover:text-white transition-all"
+                    >
+                      {domain}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // For other errors, show simple error message
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-4xl mx-auto">
