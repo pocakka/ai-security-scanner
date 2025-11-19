@@ -166,7 +166,7 @@ export const DEFAULT_CRAWLER_CONFIG: CrawlerConfig = {
     width: 1920,
     height: 1080,
   },
-  timeout: 60000, // 60 seconds
+  timeout: 25000, // 25 seconds (must be less than 30s worker timeout)
   waitUntil: 'networkidle',
   captureScreenshot: false, // Disabled by default for performance
   blockResources: ['media'], // Block videos/audio for performance

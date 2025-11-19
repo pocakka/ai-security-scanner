@@ -257,7 +257,7 @@ export class PlaywrightCrawler {
     try {
       // Wait for network to be idle (no more than 2 connections for 500ms)
       await this.page!.waitForLoadState('networkidle', {
-        timeout: 10000, // 10s max wait for network idle
+        timeout: 5000, // 5s max wait for network idle (reduced from 10s)
       })
     } catch (error) {
       // Timeout is acceptable - page might have long-polling connections
