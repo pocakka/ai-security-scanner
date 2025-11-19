@@ -10,6 +10,7 @@ Features:
 - Progress tracking and resume capability
 - Worker pool (max 5 parallel scans)
 - Graceful shutdown
+- Detailed logging (all actions, errors, skipped domains)
 
 Usage:
     python3 scripts/bulk-scan.py domains.txt
@@ -28,7 +29,9 @@ import os
 import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
+from datetime import datetime
 import re
+import logging
 
 # Configuration
 API_URL = "http://localhost:3000/api/scan"
@@ -37,6 +40,40 @@ RETRY_ATTEMPTS = 3
 RETRY_DELAY = 10  # seconds
 PROGRESS_FILE = "bulk-scan-progress.json"
 RATE_LIMIT_DELAY = 2  # seconds between requests
+
+# Logging configuration
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+MAIN_LOG_FILE = f"{LOG_DIR}/bulk-scan_{timestamp}.log"
+SKIPPED_LOG_FILE = f"{LOG_DIR}/bulk-scan-skipped_{timestamp}.log"
+ERROR_LOG_FILE = f"{LOG_DIR}/bulk-scan-errors_{timestamp}.log"
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler(MAIN_LOG_FILE),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+# Separate loggers for skipped and errors
+skipped_logger = logging.getLogger('skipped')
+skipped_handler = logging.FileHandler(SKIPPED_LOG_FILE)
+skipped_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+skipped_logger.addHandler(skipped_handler)
+skipped_logger.setLevel(logging.INFO)
+
+error_logger = logging.getLogger('errors')
+error_handler = logging.FileHandler(ERROR_LOG_FILE)
+error_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+error_logger.addHandler(error_handler)
+error_logger.setLevel(logging.ERROR)
 
 # Language detection patterns (simple heuristic)
 NON_ENGLISH_PATTERNS = {
@@ -64,34 +101,60 @@ stats = {
 def signal_handler(sig, frame):
     """Handle Ctrl+C gracefully"""
     global shutdown_requested
+    logger.warning("🛑 Shutdown requested (Ctrl+C). Finishing current scans...")
     print("\n\n🛑 Shutdown requested. Finishing current scans...")
     shutdown_requested = True
 
 def load_progress():
     """Load progress from previous run"""
     if os.path.exists(PROGRESS_FILE):
+        logger.info(f"📂 Loading progress from {PROGRESS_FILE}")
         with open(PROGRESS_FILE, 'r') as f:
-            return json.load(f)
-    return {'processed_domains': [], 'failed_domains': []}
+            progress = json.load(f)
+            logger.info(f"   Already processed: {len(progress.get('processed_domains', []))} domains")
+            logger.info(f"   Previously failed: {len(progress.get('failed_domains', []))} domains")
+            return progress
+    logger.info("🆕 No previous progress found, starting fresh")
+    return {
+        'processed_domains': [],
+        'failed_domains': [],
+        'skipped_domains': {},  # {domain: reason}
+        'session_start': datetime.now().isoformat(),
+        'last_saved': None
+    }
 
 def save_progress(progress):
     """Save progress to file"""
+    progress['last_saved'] = datetime.now().isoformat()
     with open(PROGRESS_FILE, 'w') as f:
         json.dump(progress, f, indent=2)
+    logger.debug(f"💾 Progress saved ({len(progress['processed_domains'])} processed)")
 
-def check_language(url):
+def check_language(url, domain):
     """
     Quick language check by fetching HTML and analyzing content
-    Returns: True if English, False if non-English
+    Returns: (is_english: bool, reason: str, status_code: int)
     """
+    start_time = time.time()
+
     try:
+        logger.info(f"  🌐 [{domain}] Checking language...")
+
         # Quick HEAD request first to check if site is accessible
+        logger.debug(f"  📡 [{domain}] Sending HEAD request...")
         response = requests.head(url, timeout=5, allow_redirects=True)
-        if response.status_code >= 400:
-            print(f"  ⚠️  Site not accessible: {response.status_code}")
-            return False
+        status_code = response.status_code
+
+        logger.info(f"  📊 [{domain}] HEAD response: {status_code}")
+
+        if status_code >= 400:
+            reason = f"Site not accessible (HTTP {status_code})"
+            logger.warning(f"  ⚠️  [{domain}] {reason}")
+            skipped_logger.info(f"{domain} | HTTP_ERROR | {status_code} | {url}")
+            return False, reason, status_code
 
         # Fetch content (first 50KB is enough for language detection)
+        logger.debug(f"  📥 [{domain}] Fetching content (max 50KB)...")
         response = requests.get(url, timeout=10, stream=True)
         content = b''
         for chunk in response.iter_content(chunk_size=1024):
@@ -99,12 +162,16 @@ def check_language(url):
             if len(content) > 50000:  # 50KB
                 break
 
+        content_size = len(content)
+        logger.info(f"  📦 [{domain}] Downloaded {content_size} bytes")
+
         text = content.decode('utf-8', errors='ignore')
 
         # Count non-English characters
         total_chars = len(text)
         if total_chars < 100:
-            return True  # Too short to determine, allow it
+            logger.info(f"  ✅ [{domain}] Content too short ({total_chars} chars), allowing")
+            return True, "Content too short to analyze", status_code
 
         non_english_chars = 0
         detected_languages = []
@@ -113,20 +180,44 @@ def check_language(url):
             matches = pattern.findall(text)
             if matches:
                 non_english_chars += len(matches)
-                detected_languages.append(lang_name)
+                detected_languages.append(f"{lang_name}({len(matches)})")
 
         non_english_ratio = (non_english_chars / total_chars) * 100
+        elapsed = time.time() - start_time
+
+        logger.info(f"  📊 [{domain}] Language analysis: {non_english_ratio:.1f}% non-English ({total_chars} chars, {elapsed:.2f}s)")
 
         # If more than 10% non-English characters, skip it
         if non_english_ratio > 10:
-            print(f"  🌐 Non-English content detected: {non_english_ratio:.1f}% ({', '.join(detected_languages)})")
-            return False
+            reason = f"Non-English: {non_english_ratio:.1f}% ({', '.join(detected_languages)})"
+            logger.warning(f"  ❌ [{domain}] SKIPPED - {reason}")
+            skipped_logger.info(f"{domain} | NON_ENGLISH | {non_english_ratio:.1f}% | {','.join(detected_languages)} | {url}")
+            return False, reason, status_code
 
-        return True
+        logger.info(f"  ✅ [{domain}] English content detected ({100-non_english_ratio:.1f}% English)")
+        return True, "English", status_code
+
+    except requests.exceptions.Timeout as e:
+        reason = f"Timeout: {str(e)}"
+        elapsed = time.time() - start_time
+        logger.error(f"  ⏱️  [{domain}] {reason} (after {elapsed:.2f}s)")
+        error_logger.error(f"{domain} | TIMEOUT | {url} | {str(e)}")
+        skipped_logger.info(f"{domain} | TIMEOUT | {elapsed:.2f}s | {url}")
+        return False, reason, 0
+
+    except requests.exceptions.ConnectionError as e:
+        reason = f"Connection error: {str(e)}"
+        logger.error(f"  🔌 [{domain}] {reason}")
+        error_logger.error(f"{domain} | CONNECTION_ERROR | {url} | {str(e)}")
+        skipped_logger.info(f"{domain} | CONNECTION_ERROR | - | {url}")
+        return False, reason, 0
 
     except Exception as e:
-        print(f"  ⚠️  Language check failed: {str(e)}")
-        return True  # Allow if check fails
+        reason = f"Language check failed: {str(e)}"
+        logger.error(f"  ⚠️  [{domain}] {reason}")
+        error_logger.error(f"{domain} | CHECK_FAILED | {url} | {str(e)}")
+        # Allow if check fails (don't skip good sites due to check errors)
+        return True, reason, 0
 
 def create_scan(domain, retry_count=0):
     """
