@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "worker": "tsx src/worker/index-sqlite.ts",
+    "cleanup": "tsx scripts/cleanup-stuck-scans.ts",
     "docs": "typedoc",
     "docs:watch": "typedoc --watch",
     "docs:serve": "typedoc && cd docs/api && python3 -m http.server 8080"
