@@ -59,17 +59,22 @@ console.log(`[Worker] Using ${USE_REAL_CRAWLER ? 'REAL Playwright' : 'MOCK'} cra
 async function runWithTimeout<T>(
   analyzerFn: () => Promise<T>,
   timeoutMs: number,
-  analyzerName: string
-): Promise<T | null> {
-  return Promise.race([
-    analyzerFn(),
-    new Promise<null>((resolve) =>
-      setTimeout(() => {
-        console.log(`[Worker] ⏰ ${analyzerName} timeout after ${timeoutMs}ms - skipping`)
-        resolve(null)
-      }, timeoutMs)
-    )
-  ])
+  analyzerName: string,
+  defaultValue: T
+): Promise<T> {
+  try {
+    const result = await Promise.race([
+      analyzerFn(),
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs)
+      )
+    ])
+    return result
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+    console.log(`[Worker] ⏰ ${analyzerName} ${errorMsg} - using default`)
+    return defaultValue
+  }
 }
 
 async function processScanJob(data: { scanId: string; url: string }) {
@@ -287,29 +292,14 @@ async function processScanJob(data: { scanId: string; url: string }) {
       console.log(`[Worker]   - Security findings: ${frontendFramework.findings.length}`)
     }
 
-    // ⭐ NEW: Passive API Discovery analyzer (with timeout protection)
+    // ⭐ NEW: Passive API Discovery analyzer (with 5s timeout)
     console.log(`[Worker] 🔍 Analyzing Passive API Discovery...`)
     const passiveAPIStart = Date.now()
-    let passiveAPI
-    try {
-      passiveAPI = await analyzePassiveAPIDiscovery(
-        crawlResult.html,
-        url
-      )
-      timings.passiveAPI = Date.now() - passiveAPIStart
-      console.log(`[Worker] ✓ Passive API Discovery completed in ${timings.passiveAPI}ms`)
-      console.log(`[Worker]   - JWT tokens: ${passiveAPI.hasJWT ? 'FOUND' : 'none'}`)
-      console.log(`[Worker]   - API keys: ${passiveAPI.hasAPIKeys ? 'FOUND' : 'none'}`)
-      console.log(`[Worker]   - SQL errors: ${passiveAPI.hasSQLErrors ? 'FOUND' : 'none'}`)
-      console.log(`[Worker]   - Stack traces: ${passiveAPI.hasStackTraces ? 'FOUND' : 'none'}`)
-      console.log(`[Worker]   - API endpoints discovered: ${passiveAPI.discoveredAPIs.length}`)
-      console.log(`[Worker]   - Risk level: ${passiveAPI.riskLevel.toUpperCase()}`)
-      console.log(`[Worker]   - Security findings: ${passiveAPI.findings.length}`)
-    } catch (error: any) {
-      timings.passiveAPI = Date.now() - passiveAPIStart
-      console.log(`[Worker] ⚠️  Passive API Discovery analyzer skipped: ${error.message}`)
-      // Return empty result on timeout/error
-      passiveAPI = {
+    const passiveAPI = await runWithTimeout(
+      () => analyzePassiveAPIDiscovery(crawlResult.html, url),
+      5000,
+      'Passive API Discovery',
+      {
         findings: [],
         discoveredAPIs: [],
         exposedTokens: [],
@@ -323,7 +313,16 @@ async function processScanJob(data: { scanId: string; url: string }) {
         hasDebugMode: false,
         riskLevel: 'none' as const
       }
-    }
+    )
+    timings.passiveAPI = Date.now() - passiveAPIStart
+    console.log(`[Worker] ✓ Passive API Discovery completed in ${timings.passiveAPI}ms`)
+    console.log(`[Worker]   - JWT tokens: ${passiveAPI.hasJWT ? 'FOUND' : 'none'}`)
+    console.log(`[Worker]   - API keys: ${passiveAPI.hasAPIKeys ? 'FOUND' : 'none'}`)
+    console.log(`[Worker]   - SQL errors: ${passiveAPI.hasSQLErrors ? 'FOUND' : 'none'}`)
+    console.log(`[Worker]   - Stack traces: ${passiveAPI.hasStackTraces ? 'FOUND' : 'none'}`)
+    console.log(`[Worker]   - API endpoints discovered: ${passiveAPI.discoveredAPIs.length}`)
+    console.log(`[Worker]   - Risk level: ${passiveAPI.riskLevel.toUpperCase()}`)
+    console.log(`[Worker]   - Security findings: ${passiveAPI.findings.length}`)
 
     // Step 2.5: Analyze AI Trust Score (MOVED HERE - BEFORE OWASP LLM!)
     console.log(`[Worker] Analyzing AI Trust Score...`)
@@ -715,10 +714,11 @@ async function processScanJob(data: { scanId: string; url: string }) {
       },
     })
 
-    // Step 5.5: Save AI Trust Scorecard (NEW!)
+    // Step 5.5: Save AI Trust Scorecard (UPSERT - handles retries!)
     console.log(`[Worker] Saving AI Trust Scorecard...`)
-    await prisma.aiTrustScorecard.create({
-      data: {
+    await prisma.aiTrustScorecard.upsert({
+      where: { scanId: scanId },
+      create: {
         scanId: scanId,
 
         // Transparency
@@ -783,8 +783,52 @@ async function processScanJob(data: { scanId: string; url: string }) {
         detailedChecks: aiTrustResult.detailedChecks || {},
         summary: aiTrustResult.summary || {},
       },
+      update: {
+        // Update all fields on retry
+        isProviderDisclosed: aiTrustResult.checks.isProviderDisclosed,
+        isIdentityDisclosed: aiTrustResult.checks.isIdentityDisclosed,
+        isAiPolicyLinked: aiTrustResult.checks.isAiPolicyLinked,
+        isModelVersionDisclosed: aiTrustResult.checks.isModelVersionDisclosed,
+        isLimitationsDisclosed: aiTrustResult.checks.isLimitationsDisclosed,
+        hasDataUsageDisclosure: aiTrustResult.checks.hasDataUsageDisclosure,
+        hasFeedbackMechanism: aiTrustResult.checks.hasFeedbackMechanism,
+        hasConversationReset: aiTrustResult.checks.hasConversationReset,
+        hasHumanEscalation: aiTrustResult.checks.hasHumanEscalation,
+        hasConversationExport: aiTrustResult.checks.hasConversationExport,
+        hasDataDeletionOption: aiTrustResult.checks.hasDataDeletionOption,
+        hasDpoContact: aiTrustResult.checks.hasDpoContact,
+        hasCookieBanner: aiTrustResult.checks.hasCookieBanner,
+        hasPrivacyPolicyLink: aiTrustResult.checks.hasPrivacyPolicyLink,
+        hasTermsOfServiceLink: aiTrustResult.checks.hasTermsOfServiceLink,
+        hasGdprCompliance: aiTrustResult.checks.hasGdprCompliance,
+        hasBotProtection: aiTrustResult.checks.hasBotProtection,
+        hasAiRateLimitHeaders: aiTrustResult.checks.hasAiRateLimitHeaders,
+        hasBasicWebSecurity: aiTrustResult.checks.hasBasicWebSecurity,
+        hasInputLengthLimit: aiTrustResult.checks.hasInputLengthLimit,
+        usesInputSanitization: aiTrustResult.checks.usesInputSanitization,
+        hasErrorHandling: aiTrustResult.checks.hasErrorHandling,
+        hasSessionManagement: aiTrustResult.checks.hasSessionManagement,
+        hasBiasDisclosure: aiTrustResult.checks.hasBiasDisclosure,
+        hasContentModeration: aiTrustResult.checks.hasContentModeration,
+        hasAgeVerification: aiTrustResult.checks.hasAgeVerification,
+        hasAccessibilitySupport: aiTrustResult.checks.hasAccessibilitySupport,
+        score: aiTrustResult.score ?? 0,
+        weightedScore: aiTrustResult.weightedScore ?? 0,
+        categoryScores: aiTrustResult.categoryScores,
+        passedChecks: aiTrustResult.passedChecks,
+        totalChecks: aiTrustResult.totalChecks,
+        relevantChecks: aiTrustResult.relevantChecks || 0,
+        hasAiImplementation: aiTrustResult.hasAiImplementation || false,
+        aiConfidenceLevel: aiTrustResult.aiConfidenceLevel || 'none',
+        detectedAiProvider: aiTrustResult.detectedAiProvider,
+        detectedModel: aiTrustResult.detectedModel,
+        detectedChatFramework: aiTrustResult.detectedChatFramework,
+        evidenceData: aiTrustResult.evidenceData || {},
+        detailedChecks: aiTrustResult.detailedChecks || {},
+        summary: aiTrustResult.summary || {},
+      },
     })
-    console.log(`[Worker] ✅ AI Trust Scorecard saved`)
+    console.log(`[Worker] ✅ AI Trust Scorecard saved (upsert)`)
 
     // Step 6: DNS Security analyzer (OPTIONAL - with 10 second timeout)
     console.log(`[Worker] 🌍 Running DNS Security check (10s timeout)...`)
@@ -854,20 +898,10 @@ async function processScanJob(data: { scanId: string; url: string }) {
 }
 
 /**
- * Main worker function - processes ONE job then exits
- * This ensures each scan runs with fresh code (no caching issues)
+ * Process one job from the queue
+ * Called in a loop by workerLoop()
  */
 async function processOneJob() {
-  // Check if we should start (prevents multiple workers)
-  const canStart = await workerManager.start()
-  if (!canStart) {
-    console.log('[Worker] Another worker is already running, exiting...')
-    process.exit(0)
-  }
-
-  console.log('[Worker] ✅ SQLite Queue Worker started')
-  console.log('[Worker] 🔍 Checking for pending jobs...')
-
   try {
     // Get next pending job from SQLite queue
     const job = await jobQueue.getNext()
@@ -877,52 +911,87 @@ async function processOneJob() {
 
       try {
         if (job.type === 'scan') {
-          await processScanJob(job.data)
+          // Wrap scan in 30s timeout
+          const scanPromise = processScanJob(job.data)
+          const timeoutPromise = new Promise<void>((_, reject) =>
+            setTimeout(() => reject(new Error('⏰ Scan timeout after 30s')), 30000)
+          )
+
+          await Promise.race([scanPromise, timeoutPromise])
           await jobQueue.complete(job.id)
-          console.log(`[Worker] ✅ Job completed successfully, worker shutting down...`)
+          console.log(`[Worker] ✅ Job completed successfully`)
         } else {
           console.log(`[Worker] ⚠️  Unknown job type: ${job.type}`)
           await jobQueue.fail(job.id, `Unknown job type: ${job.type}`)
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        await jobQueue.fail(job.id, errorMessage)
-        console.log(`[Worker] ❌ Job failed, worker shutting down...`)
-      }
 
-      // Close browser and cleanup before exit
-      await crawler.close()
-      await workerManager.shutdown()
-      process.exit(0)
+        // Mark scan as FAILED in database
+        if (job.type === 'scan' && job.data.scanId) {
+          try {
+            await prisma.scan.update({
+              where: { id: job.data.scanId },
+              data: {
+                status: 'FAILED',
+                completedAt: new Date(),
+              },
+            })
+            console.log(`[Worker] 📝 Marked scan ${job.data.scanId} as FAILED`)
+          } catch (dbError) {
+            console.error('[Worker] ❌ Failed to update scan status:', dbError)
+          }
+        }
+
+        await jobQueue.fail(job.id, errorMessage)
+        console.log(`[Worker] ❌ Job failed: ${errorMessage}`)
+      }
     } else {
-      console.log('[Worker] 💤 No jobs found, worker shutting down...')
-      await crawler.close()
-      await workerManager.shutdown()
-      process.exit(0)
+      console.log('[Worker] 💤 No jobs found, waiting 2s...')
+      await new Promise(resolve => setTimeout(resolve, 2000))
     }
   } catch (error) {
     console.error('[Worker] ❌ Error checking for jobs:', error)
-    await crawler.close()
-    await workerManager.shutdown()
-    process.exit(1)
+    await new Promise(resolve => setTimeout(resolve, 2000))
   }
 }
 
-// Always use one-shot mode: process one job then exit
-// This ensures workers are short-lived and don't accumulate
-processOneJob()
+// Continuous worker loop - processes jobs until stopped
+async function workerLoop() {
+  // Check if we should start (prevents multiple workers)
+  const canStart = await workerManager.start()
+  if (!canStart) {
+    console.log('[Worker] Another worker is already running, exiting...')
+    process.exit(0)
+  }
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('[Worker] Shutting down...')
+  console.log('[Worker] ✅ SQLite Queue Worker started')
+  console.log('[Worker] 🔄 Continuous mode - will process jobs until stopped')
+
+  let running = true
+  let jobsProcessed = 0
+
+  // Graceful shutdown handler
+  const shutdown = async () => {
+    running = false
+    console.log('[Worker] 🛑 Shutdown signal received, will exit after current job...')
+  }
+  process.on('SIGINT', shutdown)
+  process.on('SIGTERM', shutdown)
+
+  while (running) {
+    await processOneJob()
+    jobsProcessed++
+
+    if (!running) break
+  }
+
+  // Cleanup
+  console.log(`[Worker] 🧹 Cleaning up... (processed ${jobsProcessed} jobs)`)
   await crawler.close()
   await workerManager.shutdown()
   process.exit(0)
-})
+}
 
-process.on('SIGTERM', async () => {
-  console.log('[Worker] Shutting down...')
-  await crawler.close()
-  await workerManager.shutdown()
-  process.exit(0)
-})
+// Start the worker loop
+workerLoop()

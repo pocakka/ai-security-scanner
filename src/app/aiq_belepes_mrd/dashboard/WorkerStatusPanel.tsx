@@ -143,18 +143,23 @@ export default function WorkerStatusPanel() {
         </div>
       </div>
 
-      {/* Process Pending Scans Button */}
-      {status.queue.pending > 0 && status.activeWorkers === 0 && (
+      {/* Process Pending Scans Button - ALWAYS SHOW if any jobs exist */}
+      {(status.queue.pending > 0 || status.queue.processing > 0) && (
         <div className="mb-4">
           <button
             onClick={handleTriggerWorker}
-            disabled={triggerLoading}
+            disabled={triggerLoading || status.activeWorkers > 0}
             className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
           >
             {triggerLoading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                 <span>Starting Worker...</span>
+              </>
+            ) : status.activeWorkers > 0 ? (
+              <>
+                <span>⚙️</span>
+                <span>Worker Running ({status.queue.pending} pending)</span>
               </>
             ) : (
               <>

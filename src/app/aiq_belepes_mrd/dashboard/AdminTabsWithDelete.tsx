@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash2, RefreshCw } from 'lucide-react'
 
 // Format date with time consistently for server and client
 function formatDate(date: Date | string): string {
@@ -69,6 +69,7 @@ export default function AdminTabsWithDelete({ scans, leads, onDataChange }: Admi
   const [selectedScans, setSelectedScans] = useState<Set<string>>(new Set())
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
+  const [retrying, setRetrying] = useState<Set<string>>(new Set())
 
   // Toggle individual scan selection
   const toggleScanSelection = (scanId: string) => {
@@ -184,6 +185,36 @@ export default function AdminTabsWithDelete({ scans, leads, onDataChange }: Admi
       alert('Failed to delete lead')
     } finally {
       setDeleting(false)
+    }
+  }
+
+  // Retry FAILED scan
+  const retryScan = async (scanId: string, scanUrl: string) => {
+    try {
+      const newRetrying = new Set(retrying)
+      newRetrying.add(scanId)
+      setRetrying(newRetrying)
+
+      // Create new scan with same URL
+      const response = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: scanUrl }),
+      })
+
+      if (!response.ok) throw new Error('Failed to retry scan')
+
+      const data = await response.json()
+      alert(`Scan queued successfully! New scan ID: ${data.scanId}`)
+
+      onDataChange()
+    } catch (error) {
+      console.error('Error retrying scan:', error)
+      alert('Failed to retry scan')
+    } finally {
+      const newRetrying = new Set(retrying)
+      newRetrying.delete(scanId)
+      setRetrying(newRetrying)
     }
   }
 
@@ -373,6 +404,16 @@ export default function AdminTabsWithDelete({ scans, leads, onDataChange }: Admi
                         >
                           View
                         </a>
+                        {scan.status === 'FAILED' && (
+                          <button
+                            onClick={() => retryScan(scan.id, scan.url)}
+                            disabled={retrying.has(scan.id)}
+                            className="text-yellow-400 hover:text-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Retry scan"
+                          >
+                            <RefreshCw className={`w-4 h-4 ${retrying.has(scan.id) ? 'animate-spin' : ''}`} />
+                          </button>
+                        )}
                         <button
                           onClick={() => deleteScan(scan.id)}
                           disabled={deleting}

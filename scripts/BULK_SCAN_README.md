@@ -1,4 +1,4 @@
-# Bulk Scan Script
+# Bulk Scan Script - CLEAN VERSION
 
 ## 🎯 Célja
 
@@ -12,6 +12,8 @@
 - ✅ **Progress tracking** - Folyamat mentése és folytatása
 - ✅ **Graceful shutdown** - Ctrl+C-vel biztonságosan leállítható
 - ✅ **Rate limiting** - 2 mp késleltetés kérések között
+- ✅ **Clean single-line progress** - Thread-safe, no duplicate output
+- ✅ **Detailed logging** - Separate logs for main, skipped, and errors
 
 ## 📋 Előfeltételek
 
@@ -43,9 +45,18 @@ vercel.com
 # Indítsd el a worker-t egy külön terminálban
 npm run worker
 
-# Indítsd el a bulk scan-t
-python3 scripts/bulk-scan.py domains.txt
+# Indítsd el a CLEAN bulk scan-t (ajánlott)
+python3 scripts/bulk-scan-v2-clean.py domains.txt
+
+# VAGY az eredeti verzió (lehet fura kimenet duplikációk miatt)
+# python3 scripts/bulk-scan.py domains.txt
 ```
+
+**Miért a CLEAN verzió?**
+- Tiszta single-line progress kijelző
+- Nincs duplikált kimenet
+- Thread-safe logging
+- Olvasható, professzionális megjelenés
 
 ### 3. Megállítás (Ctrl+C)
 
@@ -56,10 +67,20 @@ A script **gracefully** leáll - befejezi az aktuális scan-eket, majd elmenti a
 Ha a script leállt vagy te leállítottad, egyszerűen indítsd újra:
 
 ```bash
-python3 scripts/bulk-scan.py domains.txt
+python3 scripts/bulk-scan-v2-clean.py domains.txt
 ```
 
 A script automatikusan folytatja ahol abbahagyta (a `bulk-scan-progress.json` fájlból olvassa be).
+
+**Progress file struktúra:**
+```json
+{
+  "processed": ["github.com", "google.com", ...],
+  "failed": ["broken-site.com", ...],
+  "start": "2025-11-19T20:43:55.313165",
+  "last_saved": "2025-11-19T20:44:05.707668"
+}
+```
 
 ## 🌐 Nyelv Detektálás
 
@@ -193,22 +214,48 @@ watch -n 5 'cat bulk-scan-progress.json | jq "{processed: .processed_domains | l
 4. **Memory Usage:** 5 worker ~500MB RAM-ot használ
 5. **Disk Space:** Minden scan ~500KB adatbázisban
 
-## 🎓 Példa Output
+## 🎓 Példa Output (CLEAN verzió)
 
 ```
-============================================================
-Progress: 42/100 (42.0%)
-Success: 35 | Failed: 2 | Skipped: 5
-############################################################
+📊 BULK SCAN
+   Total: 20 domains
+   Done: 0
+   To scan: 20
+   Workers: 5
 
-============================================================
-🔍 Scanning: example.com
-============================================================
-  📝 Checking language...
-  ✅ English site detected
-  🚀 Creating scan...
-  ✅ Scan created: abc123-def456
-  📊 View at: http://localhost:3000/scan/abc123-def456
+📝 Logs: logs/scan_20251119_204355.log
+
+Starting...
+
+Progress: 15/20 (75.0%) | ✅ 12 | ❌ 0 | ⏭ 3
+
+✅ DONE!
+   Success: 16
+   Failed: 0
+   Skipped: 4
+```
+
+**Log fájlok:**
+```
+logs/scan_20251119_204355.log    - Main log (minden esemény)
+logs/skip_20251119_204355.log    - Skipped domains (HTTP 403/404, non-English)
+logs/error_20251119_204355.log   - Errors only
+```
+
+**Skip log példa:**
+```
+en.wikipedia.org|HTTP_403|https://en.wikipedia.org
+x.com|HTTP_403|https://x.com
+twitter.com|HTTP_403|https://twitter.com
+support.google.com|HTTP_404|https://support.google.com
+```
+
+**Main log példa:**
+```
+2025-11-19 20:44:01,773 [INFO] [google.com] English OK (100.0%)
+2025-11-19 20:44:01,796 [INFO] [google.com] SUCCESS: 6c373d54-5b05-4fae-9c7a-f7c199fdac39
+2025-11-19 20:44:02,519 [INFO] [medium.com] English OK (100.0%)
+2025-11-19 20:44:02,550 [INFO] [medium.com] SUCCESS: 3d4e4b9d-c461-4fd2-9947-daa76703115f
 ```
 
 ## 📚 További Dokumentáció
