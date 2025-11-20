@@ -204,21 +204,21 @@ def process_domain(domain, progress):
 
 def main():
     signal.signal(signal.SIGINT, signal_handler)
-    
+
     if len(sys.argv) < 2:
         print("Usage: python3 bulk-scan-v2-clean.py domains.txt")
         sys.exit(1)
-    
+
     domains_file = sys.argv[1]
     with open(domains_file) as f:
         domains = [l.strip() for l in f if l.strip() and not l.startswith('#')]
-    
+
     progress = load_progress()
     done = set(progress['processed'])
     to_scan = [d for d in domains if d not in done]
-    
+
     stats['total'] = len(to_scan)
-    
+
     print(f"\n📊 BULK SCAN")
     print(f"   Total: {len(domains)} domains")
     print(f"   Done: {len(done)}")
@@ -226,13 +226,44 @@ def main():
     print(f"   Workers: {MAX_WORKERS}\n")
     print(f"📝 Logs: {MAIN_LOG}\n")
     print("Starting...\n")
-    
+
+    # FIXED: Submit domains gradually, not all at once!
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = [executor.submit(process_domain, d, progress) for d in to_scan]
-        for f in as_completed(futures):
+        futures = set()
+        domain_iter = iter(to_scan)
+        domains_submitted = 0
+
+        # Initial batch - submit only MAX_PENDING_SCANS domains
+        for _ in range(min(MAX_PENDING_SCANS, len(to_scan))):
+            try:
+                domain = next(domain_iter)
+                futures.add(executor.submit(process_domain, domain, progress))
+                domains_submitted += 1
+            except StopIteration:
+                break
+
+        # Process completed futures and submit new ones
+        while futures:
             if shutdown_requested:
                 executor.shutdown(wait=False, cancel_futures=True)
                 break
+
+            # Wait for at least one to complete
+            done_futures = set()
+            for f in as_completed(futures, timeout=0.1):
+                done_futures.add(f)
+
+            # Remove completed futures
+            futures -= done_futures
+
+            # Submit new domains to maintain queue pressure
+            while len(futures) < MAX_PENDING_SCANS and domains_submitted < len(to_scan):
+                try:
+                    domain = next(domain_iter)
+                    futures.add(executor.submit(process_domain, domain, progress))
+                    domains_submitted += 1
+                except StopIteration:
+                    break
     
     print(f"\n\n✅ DONE!")
     print(f"   Success: {stats['success']}")
