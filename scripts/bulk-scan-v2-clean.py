@@ -5,7 +5,7 @@ Logs only to file, clean progress display
 """
 
 import requests, time, sys, json, os, signal, re, logging, threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime
 import psycopg2
 
@@ -248,22 +248,33 @@ def main():
                 executor.shutdown(wait=False, cancel_futures=True)
                 break
 
-            # Wait for at least one to complete
+            # Wait for at least one to complete (with proper timeout handling)
             done_futures = set()
-            for f in as_completed(futures, timeout=0.1):
-                done_futures.add(f)
+            try:
+                # Use a short timeout to check for completions
+                for f in as_completed(futures, timeout=1):
+                    done_futures.add(f)
+                    break  # Process one at a time to maintain steady flow
+            except TimeoutError:
+                # No futures completed yet, that's OK - continue loop
+                pass
 
             # Remove completed futures
-            futures -= done_futures
+            if done_futures:
+                futures -= done_futures
 
-            # Submit new domains to maintain queue pressure
-            while len(futures) < MAX_PENDING_SCANS and domains_submitted < len(to_scan):
-                try:
-                    domain = next(domain_iter)
-                    futures.add(executor.submit(process_domain, domain, progress))
-                    domains_submitted += 1
-                except StopIteration:
-                    break
+                # Submit new domains to replace completed ones
+                for _ in range(len(done_futures)):
+                    if domains_submitted < len(to_scan):
+                        try:
+                            domain = next(domain_iter)
+                            futures.add(executor.submit(process_domain, domain, progress))
+                            domains_submitted += 1
+                        except StopIteration:
+                            break
+
+            # Small sleep to prevent CPU spinning
+            time.sleep(0.1)
     
     print(f"\n\n✅ DONE!")
     print(f"   Success: {stats['success']}")
