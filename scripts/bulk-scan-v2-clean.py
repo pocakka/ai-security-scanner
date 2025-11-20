@@ -233,8 +233,12 @@ def main():
         domain_iter = iter(to_scan)
         domains_submitted = 0
 
-        # Initial batch - submit only MAX_PENDING_SCANS domains
-        for _ in range(min(MAX_PENDING_SCANS, len(to_scan))):
+        # Initial batch - submit ONLY MAX_WORKERS domains to start (not MAX_PENDING_SCANS!)
+        # This ensures we don't overwhelm the system at startup
+        initial_batch = min(MAX_WORKERS, len(to_scan))
+        print(f"Submitting initial batch: {initial_batch} domains\n")
+
+        for _ in range(initial_batch):
             try:
                 domain = next(domain_iter)
                 futures.add(executor.submit(process_domain, domain, progress))
@@ -263,9 +267,10 @@ def main():
             if done_futures:
                 futures -= done_futures
 
-                # Submit new domains to replace completed ones
+                # Submit new domains to replace completed ones (one for one)
+                # But never exceed MAX_WORKERS active futures
                 for _ in range(len(done_futures)):
-                    if domains_submitted < len(to_scan):
+                    if len(futures) < MAX_WORKERS and domains_submitted < len(to_scan):
                         try:
                             domain = next(domain_iter)
                             futures.add(executor.submit(process_domain, domain, progress))
