@@ -27,12 +27,12 @@ export async function GET(
       )
     }
 
-    // Parse JSON fields
+    // No need to parse - PostgreSQL JSONB fields are already objects
     const scanData = {
       ...scan,
-      detectedTech: scan.detectedTech ? JSON.parse(scan.detectedTech) : null,
-      findings: scan.findings ? JSON.parse(scan.findings) : null,
-      metadata: scan.metadata ? JSON.parse(scan.metadata) : null,
+      detectedTech: scan.detectedTech || null,
+      findings: scan.findings || null,
+      metadata: scan.metadata || null,
     }
 
     // Generate PDF
