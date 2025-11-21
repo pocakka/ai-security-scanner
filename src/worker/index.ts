@@ -24,19 +24,39 @@ async function processScan(data: ScanJobData) {
   console.log(`[Worker] Processing scan ${scanId} for ${url}`)
 
   try {
-    // Update status to scanning
-    await prisma.scan.update({
-      where: { id: scanId },
-      data: {
-        status: 'SCANNING',
-        startedAt: new Date(),
-      },
+    // Fetch scan to check if crawl_result already exists (TURBO v5 hybrid)
+    const scan = await prisma.scan.findUnique({
+      where: { id: scanId }
     })
 
-    // Step 1: Crawl the website
-    console.log(`[Worker] Crawling ${url}...`)
-    const crawlResult = await crawler.crawl(url)
-    console.log(`[Worker] Crawl completed in ${crawlResult.loadTime}ms`)
+    if (!scan) {
+      throw new Error('Scan not found')
+    }
+
+    // Update status to scanning (if not already)
+    if (scan.status !== 'SCANNING') {
+      await prisma.scan.update({
+        where: { id: scanId },
+        data: {
+          status: 'SCANNING',
+          startedAt: new Date(),
+        },
+      })
+    }
+
+    // Step 1: Crawl the website (OR use pre-crawled data from TURBO scanner)
+    let crawlResult
+
+    if (scan.metadata && typeof scan.metadata === 'object' && 'crawl_result' in scan.metadata) {
+      // TURBO v5: Use pre-crawled data (FAST PATH!)
+      console.log(`[Worker] Using pre-crawled data from TURBO scanner (FAST!)`)
+      crawlResult = (scan.metadata as any).crawl_result
+    } else {
+      // Standard path: Crawl now
+      console.log(`[Worker] Crawling ${url}...`)
+      crawlResult = await crawler.crawl(url)
+      console.log(`[Worker] Crawl completed in ${crawlResult.loadTime}ms`)
+    }
 
     // Step 2: Run all analyzers
     console.log(`[Worker] Running analyzers...`)
@@ -195,20 +215,43 @@ async function processScan(data: ScanJobData) {
   }
 }
 
-// Register worker processor
-console.log('[Worker] Registering processor...')
-scanQueue.process(async (data) => {
-  await processScan(data)
-})
+// Check if running in CLI mode (TURBO v5 hybrid)
+const args = process.argv.slice(2)
+const scanIdArgIndex = args.indexOf('--scan-id')
 
-console.log('[Worker] ✅ Worker started and waiting for jobs...')
+if (scanIdArgIndex !== -1 && args[scanIdArgIndex + 1]) {
+  // CLI MODE: Process single scan directly (for TURBO scanner)
+  const scanId = args[scanIdArgIndex + 1]
+  const urlArgIndex = args.indexOf('--url')
+  const url = urlArgIndex !== -1 ? args[urlArgIndex + 1] : ''
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('[Worker] Shutting down...')
-  await crawler.close()
-  process.exit(0)
-})
+  console.log(`[Worker] CLI MODE: Processing scan ${scanId}`)
+
+  processScan({ scanId, url })
+    .then(() => {
+      console.log('[Worker] ✅ Scan completed')
+      process.exit(0)
+    })
+    .catch(error => {
+      console.error('[Worker] ❌ Scan failed:', error)
+      process.exit(1)
+    })
+} else {
+  // DAEMON MODE: Queue-based processing (original)
+  console.log('[Worker] DAEMON MODE: Registering queue processor...')
+  scanQueue.process(async (data) => {
+    await processScan(data)
+  })
+
+  console.log('[Worker] ✅ Worker started and waiting for jobs...')
+
+  // Graceful shutdown
+  process.on('SIGINT', async () => {
+    console.log('[Worker] Shutting down...')
+    await crawler.close()
+    process.exit(0)
+  })
+}
 
 // Keep process alive
 setInterval(() => {

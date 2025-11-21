@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-TURBO MASTER SCANNER v4 - Ultra-Fast with Queue Control
-========================================================
+TURBO MASTER SCANNER v5 - HYBRID (Python Crawl + TypeScript Analysis)
+======================================================================
 
 KEY INNOVATIONS:
 1. Shared Browser Instance - 1 browser, multiple contexts (70% faster)
@@ -37,6 +37,7 @@ import sys
 import os
 import json
 import time
+import subprocess
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
@@ -484,19 +485,60 @@ class TurboMasterScanner:
         ''', (json.dumps(crawl_result), scan_id))
         cur.close()
 
-        # Now let the existing worker process this scan
-        # (Worker will read crawl_result from metadata instead of crawling again!)
-        # This way we reuse all 41+ analyzers without rewriting them!
+        # TURBO v5 HYBRID: Call TypeScript worker exactly like master-scanner.py
+        # Worker will check metadata.crawl_result and skip crawling (FAST!)
+        try:
+            print(f"  {Colors.BLUE}📊 Starting worker (will use pre-crawled data)...{Colors.RESET}")
 
-        # For now, mark as PENDING so worker picks it up
-        # (In production, you'd call the worker directly with crawl_result)
+            # CLI mode: Pass scan ID and URL as arguments (TURBO v5)
+            worker_cmd = [
+                'npx', 'tsx', 'src/worker/index.ts',
+                '--scan-id', scan_id,
+                '--url', f'https://{domain}'
+            ]
 
-        # NOTE: To fully integrate, you need to modify worker to:
-        # 1. Check if metadata.crawl_result exists
-        # 2. If yes, skip crawling and use that data
-        # 3. If no, crawl normally (backward compatible)
+            # Run worker async (non-blocking) - let asyncio handle it
+            process = await asyncio.create_subprocess_exec(
+                *worker_cmd,
+                cwd='/Users/racz-akacosiattila/Desktop/10_M_USD/ai-security-scanner',
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
 
-        print(f"  {Colors.BLUE}📊 Crawl data saved for worker processing{Colors.RESET}")
+            # Wait for worker to complete with timeout
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(),
+                    timeout=SCAN_TIMEOUT - 10  # Leave 10s buffer
+                )
+
+                if process.returncode == 0:
+                    print(f"  {Colors.GREEN}✅ Analysis complete: {domain}{Colors.RESET}")
+                    self.stats['success'] += 1
+                else:
+                    error_msg = stderr.decode()[:200] if stderr else "Unknown error"
+                    print(f"  {Colors.RED}✗ Worker failed: {error_msg}{Colors.RESET}")
+                    self.stats['failed'] += 1
+
+            except asyncio.TimeoutError:
+                print(f"  {Colors.RED}⏱️  Worker timeout: {domain}{Colors.RESET}")
+                process.kill()
+                await process.wait()
+                self.stats['timeout'] += 1
+
+                # Mark as FAILED
+                cur = self.conn.cursor()
+                cur.execute('''
+                    UPDATE "Scan"
+                    SET status = 'FAILED', "completedAt" = NOW(),
+                        metadata = jsonb_build_object('error', 'Worker timeout after 120s')
+                    WHERE id = %s
+                ''', (scan_id,))
+                cur.close()
+
+        except Exception as e:
+            print(f"  {Colors.RED}✗ Worker error: {domain} - {e}{Colors.RESET}")
+            self.stats['failed'] += 1
 
     async def process_batch(self, batch: List[tuple]):
         """Process batch of scans in parallel"""
@@ -529,7 +571,7 @@ class TurboMasterScanner:
         os.system('clear')
 
         print(f"{Colors.CYAN}{'═'*80}{Colors.RESET}")
-        print(f"{Colors.BOLD}{Colors.MAGENTA}              🚀 TURBO MASTER SCANNER v4 🚀{Colors.RESET}")
+        print(f"{Colors.BOLD}{Colors.MAGENTA}              🚀 TURBO MASTER SCANNER v5 HYBRID 🚀{Colors.RESET}")
         print(f"{Colors.CYAN}{'═'*80}{Colors.RESET}")
 
         # Stats
@@ -574,7 +616,7 @@ class TurboMasterScanner:
             print(f"  ... and {len(self.active_scans) - 10} more")
 
         print(f"\n{Colors.CYAN}{'─'*80}{Colors.RESET}")
-        print(f"{Colors.MAGENTA}⚡ TURBO v4: Shared Browser + Context Pool + Queue Control{Colors.RESET}")
+        print(f"{Colors.MAGENTA}⚡ TURBO v5 HYBRID: Python Crawl + TypeScript Analysis + Queue Control{Colors.RESET}")
         print(f"[Ctrl+C to stop] [Auto-save every 10 scans] [Auto-cleanup every 5min]")
 
     async def run(self):
@@ -582,7 +624,7 @@ class TurboMasterScanner:
         await self.init()
         self.load_domains()
 
-        print(f"\n{Colors.GREEN}🚀 TURBO Scanner v4 starting (with Queue Control){Colors.RESET}")
+        print(f"\n{Colors.GREEN}🚀 TURBO Scanner v5 HYBRID starting{Colors.RESET}")
         print(f"  Domains: {len(self.domains)}")
         print(f"  Parallel Contexts: {MAX_PARALLEL_CONTEXTS}")
         print(f"  MAX_SCANNING: {MAX_SCANNING} (database limit)")
