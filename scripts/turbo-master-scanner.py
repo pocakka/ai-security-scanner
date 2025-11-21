@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TURBO MASTER SCANNER v3 - Ultra-Fast Browser Automation
+TURBO MASTER SCANNER v4 - Ultra-Fast with Queue Control
 ========================================================
 
 KEY INNOVATIONS:
@@ -10,6 +10,7 @@ KEY INNOVATIONS:
 4. Smart Wait Strategy - domcontentloaded instead of networkidle
 5. Python Asyncio - Native async (no subprocess overhead)
 6. M4 Pro Optimization - 12 parallel contexts (14 CPU cores)
+7. **NEW: Queue Control** - Prevents queue overflow (like master-scanner)
 
 PERFORMANCE:
 - OLD: ~10-15s per scan, 10 parallel → ~4-6 scans/min
@@ -20,6 +21,12 @@ FULL QUALITY MAINTAINED:
 - All 41+ analyzers run
 - All data collected (HTML, cookies, network, SSL)
 - Same output quality, just faster!
+
+QUEUE CONTROL (v4):
+- MAX_SCANNING limit prevents database overflow
+- Timeout cleanup for stuck scans
+- Periodic cleanup every 5 minutes
+- Status monitoring before adding new scans
 """
 
 import asyncio
@@ -42,10 +49,12 @@ API_URL = "http://localhost:3000/api/scan"
 DB_URL = os.environ.get("DATABASE_URL", "postgresql://localhost/ai_security_scanner")
 
 # M4 Pro Optimized Settings (14 CPU cores)
-MAX_PARALLEL_CONTEXTS = 12   # 14 cores * 0.85 = 12 optimal
-MAX_PENDING = 20             # Higher queue (faster throughput)
-SCAN_TIMEOUT = 120           # 120s per scan (same as before)
+MAX_PARALLEL_CONTEXTS = 12   # 14 cores * 0.85 = 12 optimal (same as MAX_SCANNING)
+MAX_SCANNING = 12            # Max concurrent scans in database (QUEUE CONTROL)
+MAX_PENDING = 8              # Max waiting scans in database (QUEUE CONTROL)
+SCAN_TIMEOUT = 120           # 120s per scan timeout
 CONTEXT_REUSE_LIMIT = 50     # Reuse context max 50 times (prevent memory leak)
+CLEANUP_INTERVAL = 300       # 5 minutes - periodic cleanup
 
 # Browser Settings
 HEADLESS = True              # Headless mode (20-30% faster)
@@ -195,6 +204,9 @@ class TurboMasterScanner:
         # Active scans tracking
         self.active_scans = {}  # scan_id -> {"domain": ..., "start": ..., "task": ...}
 
+        # Queue control (v4)
+        self.last_cleanup = time.time()
+
         # Signal handlers
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTERM, self.signal_handler)
@@ -239,6 +251,56 @@ class TurboMasterScanner:
         except Exception as e:
             print(f"{Colors.RED}✗ Database error: {e}{Colors.RESET}")
             sys.exit(1)
+
+    def get_queue_status(self):
+        """Get current queue status from database (QUEUE CONTROL v4)"""
+        cur = self.conn.cursor()
+        cur.execute('''
+            SELECT
+                COUNT(*) FILTER (WHERE status = 'PENDING') as pending,
+                COUNT(*) FILTER (WHERE status = 'SCANNING') as scanning
+            FROM "Scan"
+        ''')
+        result = cur.fetchone()
+        cur.close()
+
+        return {
+            'pending': result[0] or 0,
+            'scanning': result[1] or 0
+        }
+
+    def cleanup_stuck_scans(self):
+        """Cleanup stuck SCANNING scans (QUEUE CONTROL v4)"""
+        cur = self.conn.cursor()
+
+        # Mark scans as FAILED if SCANNING for more than SCAN_TIMEOUT
+        cur.execute('''
+            UPDATE "Scan"
+            SET status = 'FAILED',
+                "completedAt" = NOW(),
+                metadata = jsonb_build_object('error', 'Timeout - exceeded 120 seconds')
+            WHERE status = 'SCANNING'
+            AND "startedAt" < NOW() - INTERVAL '%s seconds'
+            RETURNING id, url
+        ''', (SCAN_TIMEOUT,))
+
+        cleaned = cur.fetchall()
+        cur.close()
+
+        if cleaned:
+            print(f"\n{Colors.YELLOW}🧹 Cleanup: {len(cleaned)} stuck scans marked as FAILED{Colors.RESET}")
+            for scan_id, url in cleaned:
+                print(f"  {Colors.RED}✗{Colors.RESET} Timeout: {url}")
+                self.stats['timeout'] += 1
+
+        return len(cleaned)
+
+    def periodic_cleanup(self):
+        """Periodic cleanup every 5 minutes (QUEUE CONTROL v4)"""
+        if time.time() - self.last_cleanup > CLEANUP_INTERVAL:
+            print(f"\n{Colors.YELLOW}🧹 Periodic cleanup (every {CLEANUP_INTERVAL}s)...{Colors.RESET}")
+            self.cleanup_stuck_scans()
+            self.last_cleanup = time.time()
 
     def load_domains(self):
         """Load domain list from file"""
@@ -467,7 +529,7 @@ class TurboMasterScanner:
         os.system('clear')
 
         print(f"{Colors.CYAN}{'═'*80}{Colors.RESET}")
-        print(f"{Colors.BOLD}{Colors.MAGENTA}              🚀 TURBO MASTER SCANNER v3 🚀{Colors.RESET}")
+        print(f"{Colors.BOLD}{Colors.MAGENTA}              🚀 TURBO MASTER SCANNER v4 🚀{Colors.RESET}")
         print(f"{Colors.CYAN}{'═'*80}{Colors.RESET}")
 
         # Stats
@@ -477,9 +539,21 @@ class TurboMasterScanner:
         print(f"Progress: {self.stats['processed']}/{self.stats['total']} ({progress_pct:.1f}%) | ", end="")
         print(f"✅ {Colors.GREEN}{self.stats['success']}{Colors.RESET} | ", end="")
         print(f"❌ {Colors.RED}{self.stats['failed']}{Colors.RESET} | ", end="")
+        print(f"⏱  {Colors.YELLOW}{self.stats['timeout']}{Colors.RESET} | ", end="")
         print(f"⏭  {Colors.YELLOW}{self.stats['skipped']}{Colors.RESET}")
 
         print(f"{Colors.CYAN}{'═'*80}{Colors.RESET}\n")
+
+        # Queue status (v4)
+        queue = self.get_queue_status()
+        total_queue = queue['pending'] + queue['scanning']
+        queue_pct = (total_queue / (MAX_PENDING + MAX_SCANNING) * 100) if (MAX_PENDING + MAX_SCANNING) > 0 else 0
+
+        print(f"{Colors.YELLOW}📊 QUEUE STATUS:{Colors.RESET}")
+        print(f"  PENDING: {queue['pending']}/{MAX_PENDING} | ", end="")
+        print(f"SCANNING: {queue['scanning']}/{MAX_SCANNING} | ", end="")
+        print(f"Total: {total_queue}/{MAX_PENDING + MAX_SCANNING} ({queue_pct:.0f}%)")
+        print()
 
         # Active scans
         print(f"{Colors.BLUE}🔄 ACTIVE SCANS ({len(self.active_scans)}/{MAX_PARALLEL_CONTEXTS}):{Colors.RESET}")
@@ -500,30 +574,51 @@ class TurboMasterScanner:
             print(f"  ... and {len(self.active_scans) - 10} more")
 
         print(f"\n{Colors.CYAN}{'─'*80}{Colors.RESET}")
-        print(f"{Colors.MAGENTA}⚡ TURBO MODE: Shared Browser + Context Pool + Resource Blocking{Colors.RESET}")
-        print(f"[Ctrl+C to stop] [Auto-save every 10 scans]")
+        print(f"{Colors.MAGENTA}⚡ TURBO v4: Shared Browser + Context Pool + Queue Control{Colors.RESET}")
+        print(f"[Ctrl+C to stop] [Auto-save every 10 scans] [Auto-cleanup every 5min]")
 
     async def run(self):
-        """Main async run loop"""
+        """Main async run loop with QUEUE CONTROL (v4)"""
         await self.init()
         self.load_domains()
 
-        print(f"\n{Colors.GREEN}🚀 TURBO Scanner starting{Colors.RESET}")
+        print(f"\n{Colors.GREEN}🚀 TURBO Scanner v4 starting (with Queue Control){Colors.RESET}")
         print(f"  Domains: {len(self.domains)}")
         print(f"  Parallel Contexts: {MAX_PARALLEL_CONTEXTS}")
+        print(f"  MAX_SCANNING: {MAX_SCANNING} (database limit)")
+        print(f"  MAX_PENDING: {MAX_PENDING} (queue limit)")
         print(f"  Resource Blocking: {RESOURCE_BLOCKING}")
         print(f"  Expected speedup: 3-4x faster!\n")
 
-        # Process in batches
+        # Initial cleanup
+        print(f"{Colors.YELLOW}🧹 Initial cleanup of stuck scans...{Colors.RESET}")
+        self.cleanup_stuck_scans()
+
+        # Process in batches with QUEUE CONTROL
         while self.running and self.domain_index < len(self.domains):
-            # Create batch
+            # Periodic cleanup every 5 minutes
+            self.periodic_cleanup()
+
+            # Get current queue status
+            queue = self.get_queue_status()
+
+            # QUEUE CONTROL: Check if we can add more scans
+            total_in_queue = queue['pending'] + queue['scanning']
+
+            # Create batch - respect MAX_PENDING limit
             batch = []
-            while len(batch) < MAX_PARALLEL_CONTEXTS and self.domain_index < len(self.domains):
+            while (len(batch) < MAX_PARALLEL_CONTEXTS and
+                   self.domain_index < len(self.domains) and
+                   queue['pending'] < MAX_PENDING and
+                   total_in_queue < MAX_PENDING + MAX_SCANNING):
+
                 domain = self.domains[self.domain_index]
                 scan_id = self.create_scan(domain)
 
                 if scan_id:
                     batch.append((scan_id, domain))
+                    queue['pending'] += 1  # Update local counter
+                    total_in_queue += 1
 
                 self.domain_index += 1
 
@@ -533,6 +628,11 @@ class TurboMasterScanner:
 
                 # Show status
                 self.show_status()
+            else:
+                # No space in queue, wait a bit
+                if self.domain_index < len(self.domains):
+                    print(f"{Colors.YELLOW}⏸  Queue full (PENDING: {queue['pending']}, SCANNING: {queue['scanning']}), waiting...{Colors.RESET}")
+                    await asyncio.sleep(5)  # Wait 5 seconds
 
                 # Save progress
                 if self.stats['processed'] % 10 == 0:
