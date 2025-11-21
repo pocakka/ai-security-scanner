@@ -27,10 +27,10 @@ import threading
 API_URL = "http://localhost:3000/api/scan"
 DB_URL = "postgresql://localhost/ai_security_scanner"
 
-MAX_SCANNING = 15        # Max párhuzamos scan
-MAX_PENDING = 6         # Max várakozó
+MAX_SCANNING = 10        # Max párhuzamos scan
+MAX_PENDING = 8         # Max várakozó
 SCAN_TIMEOUT = 120      # 120 másodperc per scan
-CLEANUP_INTERVAL = 240  # 5 percenként cleanup
+CLEANUP_INTERVAL = 300  # 5 percenként cleanup
 HEARTBEAT_INTERVAL = 10 # Worker életjel
 
 # Színek

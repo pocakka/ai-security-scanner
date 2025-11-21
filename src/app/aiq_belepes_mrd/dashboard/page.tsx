@@ -39,6 +39,11 @@ export default function ProtectedAdminPage() {
   const [scans, setScans] = useState<Scan[]>([])
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(50)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalScansCount, setTotalScansCount] = useState(0)
+  const [totalLeadsCount, setTotalLeadsCount] = useState(0)
 
   useEffect(() => {
     // Check authentication
@@ -49,18 +54,24 @@ export default function ProtectedAdminPage() {
     }
 
     setIsAuthenticated(true)
-    loadData()
-  }, [router])
+    loadData(currentPage, itemsPerPage)
+  }, [router, currentPage, itemsPerPage])
 
-  const loadData = async () => {
+  const loadData = async (page: number = 1, limit: number = 50) => {
     try {
       setLoading(true)
-      const response = await fetch('/api/admin/data')
+      const response = await fetch(`/api/admin/data?page=${page}&limit=${limit}`)
       if (!response.ok) throw new Error('Failed to load data')
       const data = await response.json()
 
       setScans(data.scans)
       setLeads(data.leads)
+
+      if (data.pagination) {
+        setTotalPages(data.pagination.totalPages)
+        setTotalScansCount(data.pagination.totalScans)
+        setTotalLeadsCount(data.pagination.totalLeads)
+      }
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -81,10 +92,10 @@ export default function ProtectedAdminPage() {
     )
   }
 
-  // Calculate statistics
-  const totalScans = scans.length
+  // Calculate statistics (use total counts instead of current page)
+  const totalScans = totalScansCount || scans.length
   const completedScans = scans.filter(s => s.status === 'COMPLETED').length
-  const totalLeads = leads.length
+  const totalLeads = totalLeadsCount || leads.length
   const avgRiskScore = scans
     .filter(s => s.riskScore !== null)
     .reduce((sum, s) => sum + (s.riskScore || 0), 0) / (completedScans || 1)
@@ -157,7 +168,81 @@ export default function ProtectedAdminPage() {
         </div>
 
         {/* Tabs Component */}
-        <AdminTabsWithDelete scans={scans} leads={leads} onDataChange={loadData} />
+        <AdminTabsWithDelete scans={scans} leads={leads} onDataChange={() => loadData(currentPage, itemsPerPage)} />
+
+        {/* Pagination */}
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
+          <div className="text-white text-sm">
+            Showing page <span className="font-bold">{currentPage}</span> of <span className="font-bold">{totalPages}</span>
+            {' '}(Total: <span className="font-bold">{totalScansCount}</span> scans, <span className="font-bold">{totalLeadsCount}</span> leads)
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Items per page selector */}
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value))
+                setCurrentPage(1)
+              }}
+              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white backdrop-blur-lg"
+            >
+              <option value="25">25 per page</option>
+              <option value="50">50 per page</option>
+              <option value="100">100 per page</option>
+              <option value="200">200 per page</option>
+            </select>
+
+            {/* Page navigation */}
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="px-3 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+            >
+              ⏮️ First
+            </button>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+            >
+              ⬅️ Prev
+            </button>
+
+            {/* Page number input */}
+            <div className="flex items-center gap-2">
+              <span className="text-white">Page:</span>
+              <input
+                type="number"
+                min="1"
+                max={totalPages}
+                value={currentPage}
+                onChange={(e) => {
+                  const page = Math.min(Math.max(1, Number(e.target.value)), totalPages)
+                  setCurrentPage(page)
+                }}
+                className="w-20 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-center backdrop-blur-lg"
+              />
+            </div>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+            >
+              Next ➡️
+            </button>
+
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+            >
+              Last ⏭️
+            </button>
+          </div>
+        </div>
       </div>
     </main>
   )
