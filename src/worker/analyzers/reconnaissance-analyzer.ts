@@ -155,8 +155,11 @@ export async function analyzeReconnaissance(crawlResult: CrawlResult): Promise<R
         redirect: 'manual' // Don't follow redirects
       })
 
-      // Status 200 = exposed, 403 = exists but forbidden (still bad)
-      if (response.ok || response.status === 403) {
+      // ✅ ONLY 200 OK = real vulnerability (file is ACCESSIBLE)
+      // ❌ 403 Forbidden = GOOD! Server is blocking access (not a vulnerability)
+      // ❌ 404 Not Found = GOOD! File doesn't exist
+      // ❌ 301/302 Redirect = Not conclusive (may redirect to 404 or homepage)
+      if (response.ok) {  // Only 200-299 status codes
         findings.push({
           type: 'critical-exposure',
           severity: 'critical',
@@ -248,7 +251,9 @@ export async function analyzeReconnaissance(crawlResult: CrawlResult): Promise<R
         redirect: 'manual'
       })
 
-      if (response.ok || response.status === 403) {
+      // ✅ ONLY 200 OK = real vulnerability (directory is ACCESSIBLE)
+      // ❌ 403 Forbidden = GOOD! Server is blocking access
+      if (response.ok) {
         findings.push({
           type: 'information-disclosure',
           severity: 'medium',
@@ -367,7 +372,9 @@ export async function analyzeReconnaissance(crawlResult: CrawlResult): Promise<R
         redirect: 'manual'
       })
 
-      if (response.ok || response.status === 403) {
+      // ✅ ONLY 200 OK = real vulnerability (IDE files are ACCESSIBLE)
+      // ❌ 403 Forbidden = GOOD! Server is blocking access
+      if (response.ok) {
         findings.push({
           type: 'information-disclosure',
           severity: 'low',

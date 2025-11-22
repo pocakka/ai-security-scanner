@@ -217,26 +217,11 @@ export async function analyzeAdminDiscovery(crawlResult: CrawlResult): Promise<A
           if (adminUrls.length >= 5) break
         }
 
-        // Check for redirect to login (only if NOT already skipped by false positive check)
-        if ((response.status === 301 || response.status === 302) && redirectLocation) {
-          if (redirectLocation && redirectLocation.toLowerCase().includes('login')) {
-            hasAdminPanel = true
-            adminUrls.push(adminUrl)
+        // ❌ REMOVED: 301/302 redirect check - too many false positives
+        // 301/302 can mean: page moved, not found, redirect to homepage, etc.
+        // NOT a vulnerability unless we can confirm it's actually an admin panel
 
-            findings.push({
-              type: 'admin-panel',
-              severity: 'medium',
-              title: `Login page found: ${path}`,
-              url: adminUrl,
-              status: response.status,
-              redirectsTo: redirectLocation,
-              impact: 'Admin panel redirects to login page',
-              recommendation: 'Implement IP whitelisting and rate limiting for login attempts.'
-            })
-
-            if (adminUrls.length >= 5) break
-          }
-        }
+        // ONLY 200 (open) or 401/403 (auth-protected) = real finding
       } catch (error) {
         // Network errors ignored (expected for most paths)
       }
