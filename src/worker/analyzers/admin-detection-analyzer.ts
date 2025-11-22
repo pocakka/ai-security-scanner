@@ -89,8 +89,12 @@ export async function analyzeAdminDetection(crawlResult: CrawlResult): Promise<A
         }
       })
 
-      // Check if admin panel exists (200, 301, 302, 401, 403 all indicate it exists)
-      if (response.ok || [301, 302, 401, 403].includes(response.status)) {
+      // ✅ ONLY real vulnerabilities (NOT redirects!)
+      // 200 = Open admin panel (CRITICAL)
+      // 401/403 = Auth-protected admin panel (HIGH - exists but protected)
+      // ❌ 301/302 = Redirect (NOT a vulnerability - could redirect anywhere)
+      // ❌ 404 = Not found (good)
+      if (response.ok || response.status === 401 || response.status === 403) {
         hasAdminPanel = true
         adminPanels++
 
