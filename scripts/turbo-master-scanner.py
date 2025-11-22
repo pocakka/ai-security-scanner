@@ -421,17 +421,38 @@ class TurboMasterScanner:
             await page.close()
             await self.context_pool.release(context)
 
-            return {
+            # Format result to match TypeScript CrawlerResult interface (camelCase!)
+            crawl_result = {
                 "success": True,
                 "url": url,
-                "final_url": final_url,
-                "status_code": status_code,
+                "finalUrl": final_url,  # camelCase!
+                "statusCode": status_code,  # camelCase!
                 "html": html,
                 "title": title,
-                "cookies": [{"name": c["name"], "value": c["value"], "domain": c.get("domain")} for c in cookies],
-                "security_details": security_details,
-                "load_time": elapsed
+                "cookies": [
+                    {
+                        "name": c["name"],
+                        "value": c["value"],
+                        "domain": c.get("domain", ""),
+                        "path": c.get("path", "/"),
+                        "httpOnly": c.get("httpOnly", False),
+                        "secure": c.get("secure", False),
+                        "sameSite": c.get("sameSite", "Lax")
+                    } for c in cookies
+                ],
+                "sslCertificate": security_details,  # camelCase!
+                "loadTime": int(elapsed * 1000),  # Convert to ms (camelCase!)
+                "timestamp": datetime.now().isoformat(),
+                "userAgent": "TURBO Scanner v5 (Playwright/Python)",
+
+                # Mock crawler compatibility fields
+                "domain": domain,
+                "networkRequests": [],  # TODO: Could capture from Playwright
+                "scripts": [],  # TODO: Could extract from page
+                "responseHeaders": {}  # TODO: Could capture from response
             }
+
+            return crawl_result
 
         except Exception as e:
             print(f"  {Colors.RED}✗ Scan failed: {domain} - {e}{Colors.RESET}")
