@@ -31,9 +31,10 @@ from playwright.async_api import async_playwright, Browser, BrowserContext, Page
 
 DB_URL = os.environ.get("DATABASE_URL", "postgresql://localhost/ai_security_scanner")
 
-# M4 Pro: 10 Performance cores + 4 Efficiency cores = 14 cores
-# Conservative: 12 parallel workers (85% of cores)
-MAX_WORKERS = 40  # i9 Ubuntu optimized            # Parallel scans (M4 optimized)
+# i9 24-core + 128GB RAM optimization
+# Calculation: 100 workers × 400MB = 40GB RAM (31% usage)
+#              100 workers @ 50% CPU = 104% of 48 logical cores (optimal!)
+MAX_WORKERS = 100  # i9 24-core optimized (sweet spot: CPU+RAM balanced)
 SCAN_TIMEOUT = 300          # 5min per scan (full 30+ analyzers need time!)
 CLEANUP_INTERVAL = 300      # 5 min cleanup
 BATCH_SIZE = 10             # Batch insert size
