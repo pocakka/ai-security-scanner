@@ -130,6 +130,21 @@ const PII_EXCLUSION_CONTEXTS = {
     /app_id/i,              // Generic app IDs
     /application_id/i,      // Application IDs
     /version["\s:=]/i,      // Version numbers
+    /<line\s+/i,            // SVG line elements (chart coordinates)
+    /opacity=["']/i,        // SVG opacity attributes (decimal numbers)
+    /stroke=["']/i,         // SVG stroke attributes
+    /<path\s+/i,            // SVG path elements
+    /<rect\s+/i,            // SVG rect elements
+    /<circle\s+/i,          // SVG circle elements
+    /<svg\s+/i,             // SVG elements
+    /viewBox=/i,            // SVG viewBox attributes
+    /transform=/i,          // SVG transform attributes
+    /d=["'][M\s\d]/i,       // SVG path data attributes (M command)
+    /points=["']/i,         // SVG polygon/polyline points
+    /x[12]?=["']\d/i,       // SVG x/x1/x2 coordinates
+    /y[12]?=["']\d/i,       // SVG y/y1/y2 coordinates
+    /width=["']\d/i,        // SVG width attributes
+    /height=["']\d/i,       // SVG height attributes
   ],
   'phone': [
     /\d{13,}/,              // Numbers longer than 13 digits (not phone numbers)
