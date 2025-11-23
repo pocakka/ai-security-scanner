@@ -45,8 +45,10 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
+    console.log('[Settings API PUT] Received body:', JSON.stringify(body, null, 2))
 
     // Update or create settings (upsert)
+    console.log('[Settings API PUT] Attempting upsert...')
     const settings = await prisma.siteSettings.upsert({
       where: { id: 'global' },
       update: {
@@ -75,6 +77,7 @@ export async function PUT(request: NextRequest) {
         enableTwitterCards: body.enableTwitterCards ?? false,
         enableOgTags: body.enableOgTags ?? true,
         enableAnalytics: body.enableAnalytics ?? false,
+        showExpertAuditPopup: body.showExpertAuditPopup ?? true,
       },
       create: {
         id: 'global',
@@ -82,14 +85,17 @@ export async function PUT(request: NextRequest) {
       },
     })
 
+    console.log('[Settings API PUT] ✅ Upsert successful')
     return NextResponse.json({
       success: true,
       settings,
     })
-  } catch (error) {
-    console.error('Failed to update settings:', error)
+  } catch (error: any) {
+    console.error('[Settings API PUT] ❌ Error:', error)
+    console.error('[Settings API PUT] Error message:', error.message)
+    console.error('[Settings API PUT] Error stack:', error.stack)
     return NextResponse.json(
-      { error: 'Failed to update settings' },
+      { error: 'Failed to update settings', details: error.message },
       { status: 500 }
     )
   }
