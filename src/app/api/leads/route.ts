@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     // Send email notification (localhost: saves to file)
     if (scan.status === 'COMPLETED' && scan.findings) {
       try {
-        const findings = JSON.parse(scan.findings)
+        const findings = typeof scan.findings === 'string' ? JSON.parse(scan.findings) : scan.findings
         await sendLeadCaptureEmail({
           leadName: name,
           leadEmail: email,

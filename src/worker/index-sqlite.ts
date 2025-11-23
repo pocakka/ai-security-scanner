@@ -417,7 +417,19 @@ async function processScanJob(data: { scanId: string; url: string }) {
       const llm06Result = await runWithTimeout(
         () => analyzeLLM06SensitiveInfo(crawlResult.html, crawlResult.responseHeaders || {}),
         25000, // 25 seconds max
-        'LLM06'
+        'LLM06',
+        {
+          findings: [],
+          hasAPIKeys: false,
+          hasSystemPrompts: false,
+          hasTrainingData: false,
+          hasPII: false,
+          hasInternalEndpoints: false,
+          hasModelInfo: false,
+          exposedDataTypes: [],
+          overallRisk: 'none' as const,
+          timeout: true
+        }
       )
       timings.llm06 = Date.now() - llm06Start
 
@@ -707,11 +719,11 @@ async function processScanJob(data: { scanId: string; url: string }) {
         hasAI: hasAI,  // ✨ NEW: Track AI presence
         // PostgreSQL JSONB: store as objects, not strings
         detectedTech: report.detectedTech,
-        findings: report,
+        findings: report as any, // Prisma JSON type
         metadata: {
           ...performanceData,
           scoreBreakdown, // ✨ NEW: Include v2 professional scoring breakdown
-        },
+        } as any,
         completedAt: new Date(),
       },
     })
@@ -779,11 +791,11 @@ async function processScanJob(data: { scanId: string; url: string }) {
         detectedChatFramework: aiTrustResult.detectedChatFramework,
 
         // Evidence (PostgreSQL JSONB)
-        evidenceData: aiTrustResult.evidenceData || {},
+        evidenceData: (aiTrustResult.evidenceData || {}) as any,
 
         // NEW: Detailed checks and summary (PostgreSQL JSONB)
-        detailedChecks: aiTrustResult.detailedChecks || {},
-        summary: aiTrustResult.summary || {},
+        detailedChecks: (aiTrustResult.detailedChecks || {}) as any,
+        summary: (aiTrustResult.summary || {}) as any,
       },
       update: {
         // Update all fields on retry
@@ -825,9 +837,9 @@ async function processScanJob(data: { scanId: string; url: string }) {
         detectedAiProvider: aiTrustResult.detectedAiProvider,
         detectedModel: aiTrustResult.detectedModel,
         detectedChatFramework: aiTrustResult.detectedChatFramework,
-        evidenceData: aiTrustResult.evidenceData || {},
-        detailedChecks: aiTrustResult.detailedChecks || {},
-        summary: aiTrustResult.summary || {},
+        evidenceData: (aiTrustResult.evidenceData || {}) as any,
+        detailedChecks: (aiTrustResult.detailedChecks || {}) as any,
+        summary: (aiTrustResult.summary || {}) as any,
       },
     })
     console.log(`[Worker] ✅ AI Trust Scorecard saved (upsert)`)
@@ -856,11 +868,11 @@ async function processScanJob(data: { scanId: string; url: string }) {
       await prisma.scan.update({
         where: { id: scanId },
         data: {
-          findings: report,  // PostgreSQL JSONB - store as object
+          findings: report as any,  // PostgreSQL JSONB - store as object
           metadata: {
             ...performanceData,
             timings: { ...timings, dns: timings.dns }
-          },
+          } as any,
         },
       })
       console.log(`[Worker] ✅ DNS results added to scan`)
@@ -917,7 +929,7 @@ async function processOneJob() {
           // Wrap scan in 30s timeout
           const scanPromise = processScanJob(job.data)
           const timeoutPromise = new Promise<void>((_, reject) =>
-            setTimeout(() => reject(new Error('⏰ Scan timeout after 30s')), 30000)
+            setTimeout(() => reject(new Error('⏰ Scan timeout after 30s')), 120000)
           )
 
           await Promise.race([scanPromise, timeoutPromise])

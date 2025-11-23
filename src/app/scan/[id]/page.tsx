@@ -351,10 +351,10 @@ export default function ScanResultPage() {
     // Standard Meta Tags
     setMetaTag('description', metaDescription)
 
-    // Canonical URL - SEO-friendly format with domain and scanNumber
+    // Canonical URL - SEO-friendly format with scanNumber and domain
     if (scan.domain && scan.scanNumber) {
       const domainSlug = domainToSlug(scan.domain)
-      const canonicalUrl = `${window.location.origin}/s/${domainSlug}/${scan.scanNumber}`
+      const canonicalUrl = `${window.location.origin}/s/${scan.scanNumber}/${domainSlug}`
 
       // Set canonical link tag
       let canonicalLink = document.querySelector('link[rel="canonical"]') as HTMLLinkElement
@@ -372,7 +372,7 @@ export default function ScanResultPage() {
     setMetaTag('og:description', ogDescription, true)
     // Use SEO-friendly URL for og:url if available
     const ogUrl = (scan.domain && scan.scanNumber)
-      ? `${window.location.origin}/s/${domainToSlug(scan.domain)}/${scan.scanNumber}`
+      ? `${window.location.origin}/s/${scan.scanNumber}/${domainToSlug(scan.domain)}`
       : `${window.location.origin}/scan/${scanId}`
     setMetaTag('og:url', ogUrl, true)
     setMetaTag('og:site_name', 'AI Security Scanner', true)

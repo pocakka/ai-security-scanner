@@ -25,12 +25,19 @@ import threading
 # ════════════════════════════════════════════════════════════════════
 
 API_URL = "http://localhost:3000/api/scan"
-DB_URL = "postgresql://localhost/ai_security_scanner"
+DB_URL = "postgresql://scanner:ai_scanner_2025@localhost:6432/ai_security_scanner"
 
-MAX_SCANNING = 10        # Max párhuzamos scan
-MAX_PENDING = 8         # Max várakozó
-SCAN_TIMEOUT = 120      # 120 másodperc per scan
-CLEANUP_INTERVAL = 300  # 5 percenként cleanup
+
+#EREDETI
+#MAX_SCANNING = 10        # Max párhuzamos scan
+#MAX_PENDING = 8         # Max várakozó
+#SCAN_TIMEOUT = 120      # 120 másodperc per scan
+
+
+MAX_SCANNING = 40        # Max párhuzamos scan
+MAX_PENDING = 10         # Max várakozó
+SCAN_TIMEOUT = 160      # 120 másodperc per scan
+CLEANUP_INTERVAL = 120  # 5 percenként cleanup
 HEARTBEAT_INTERVAL = 10 # Worker életjel
 
 # Színek
@@ -77,7 +84,8 @@ class MasterScanner:
         """PostgreSQL kapcsolat"""
         try:
             self.conn = psycopg2.connect(DB_URL)
-            self.conn.autocommit = True
+            # CRITICAL: NO autocommit! We need explicit transactions for FOR UPDATE SKIP LOCKED
+            self.conn.autocommit = False
             print(f"{Colors.GREEN}✓ Adatbázis kapcsolat OK{Colors.RESET}")
         except Exception as e:
             print(f"{Colors.RED}✗ Adatbázis hiba: {e}{Colors.RESET}")
@@ -129,10 +137,11 @@ class MasterScanner:
         scanning = cur.fetchone()[0]
 
         cur.close()
+        self.conn.commit()  # Commit read transaction
         return {"pending": pending, "scanning": scanning}
 
-    def create_scan(self, domain: str) -> Optional[str]:
-        """Új scan létrehozása"""
+    def create_scan(self, domain: str) -> Optional[Dict]:
+        """Új scan létrehozása - ÚJ /s/ route-tal"""
         url = f'https://{domain}' if not domain.startswith('http') else domain
 
         try:
@@ -145,35 +154,38 @@ class MasterScanner:
             if resp.status_code in [200, 201]:
                 data = resp.json()
                 scan_id = data.get('scanId')
-                print(f"  {Colors.GREEN}✓{Colors.RESET} Scan létrehozva: {domain} → {scan_id[:8]}...")
-                return scan_id
+                scan_number = data.get('scanNumber')
+
+                # ÚJ: /s/ route URL generálás
+                scan_url = f"http://localhost:3000/s/{scan_number}/{domain}"
+
+                print(f"  {Colors.GREEN}✓{Colors.RESET} Scan létrehozva: {domain}")
+                print(f"    {Colors.CYAN}→ {scan_url}{Colors.RESET}")
+
+                return {
+                    'scan_id': scan_id,
+                    'scan_number': scan_number,
+                    'domain': domain,
+                    'scan_url': scan_url
+                }
             else:
                 print(f"  {Colors.RED}✗{Colors.RESET} Hiba: {domain} (HTTP {resp.status_code})")
                 return None
 
         except Exception as e:
-            print(f"  {Colors.RED}✗{Colors.RESET} API hiba: {domain}")
+            print(f"  {Colors.RED}✗{Colors.RESET} API hiba: {domain} - {e}")
             return None
 
     def process_scan(self, scan_id: str, domain: str):
-        """Scan feldolgozása workerrel"""
+        """Scan feldolgozása workerrel - már SCANNING státuszban van"""
         # Worker indítás
         worker_cmd = ['npx', 'tsx', 'src/worker/index-sqlite.ts']
 
         try:
-            # Update to SCANNING
-            cur = self.conn.cursor()
-            cur.execute('''
-                UPDATE "Scan"
-                SET status = 'SCANNING', "startedAt" = NOW(), "workerId" = %s
-                WHERE id = %s
-            ''', (str(os.getpid()), scan_id))
-            cur.close()
-
-            # Worker process indítás
+            # Worker process indítás (scan már SCANNING státuszban a main loop-ból)
             worker = subprocess.Popen(
                 worker_cmd,
-                cwd='/Users/racz-akacosiattila/Desktop/10_M_USD/ai-security-scanner',
+                cwd='/home/aiq/Asztal/10_M_USD/ai-security-scanner',
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
             )
@@ -233,6 +245,7 @@ class MasterScanner:
                 cur.execute('SELECT status FROM "Scan" WHERE id = %s', (scan_id,))
                 result = cur.fetchone()
                 cur.close()
+                self.conn.commit()  # Commit read
 
                 if result:
                     status = result[0]
@@ -262,6 +275,7 @@ class MasterScanner:
             WHERE id = %s
         ''', (scan_id,))
         cur.close()
+        self.conn.commit()
 
     def mark_failed(self, scan_id: str):
         """Scan failed-re állítása"""
@@ -272,6 +286,7 @@ class MasterScanner:
             WHERE id = %s
         ''', (scan_id,))
         cur.close()
+        self.conn.commit()
 
     def periodic_cleanup(self):
         """5 percenkénti cleanup"""
@@ -293,6 +308,7 @@ class MasterScanner:
                 cur.execute('DELETE FROM "Scan" WHERE id = %s', (scan_id,))
 
             cur.close()
+            self.conn.commit()  # Commit cleanup
             self.last_cleanup = time.time()
 
     def cleanup_all_workers(self):
@@ -345,6 +361,7 @@ class MasterScanner:
             cur.execute('SELECT url FROM "Scan" WHERE status = \'PENDING\' LIMIT 5')
             pending = cur.fetchall()
             cur.close()
+            self.conn.commit()  # Commit read
 
             for url, in pending[:5]:
                 print(f"  • {url}")
@@ -381,12 +398,12 @@ class MasterScanner:
                    queue['pending'] + queue['scanning'] < MAX_PENDING + MAX_SCANNING):
 
                 domain = self.domains[self.domain_index]
-                scan_id = self.create_scan(domain)
+                scan_data = self.create_scan(domain)
 
-                if scan_id:
+                if scan_data:
                     # Ha van szabad worker slot, azonnal indítjuk
                     if len(self.active_workers) < MAX_SCANNING:
-                        self.process_scan(scan_id, domain)
+                        self.process_scan(scan_data['scan_id'], domain)
 
                 self.domain_index += 1
                 queue = self.get_queue_status()
@@ -394,21 +411,44 @@ class MasterScanner:
 
             # PENDING -> SCANNING ha van hely
             if len(self.active_workers) < MAX_SCANNING and queue['pending'] > 0:
-                # Get next pending scan
-                cur = self.conn.cursor()
-                cur.execute('''
-                    SELECT id, url FROM "Scan"
-                    WHERE status = 'PENDING'
-                    ORDER BY "createdAt" ASC
-                    LIMIT 1
-                ''')
-                result = cur.fetchone()
-                cur.close()
+                # Get next pending scan with row-level locking to prevent race conditions
+                try:
+                    cur = self.conn.cursor()
 
-                if result:
-                    scan_id, url = result
-                    domain = url.replace('https://', '').replace('http://', '')
-                    self.process_scan(scan_id, domain)
+                    # BEGIN TRANSACTION (implicit with first query in non-autocommit mode)
+                    cur.execute('''
+                        SELECT id, url FROM "Scan"
+                        WHERE status = 'PENDING'
+                        ORDER BY "createdAt" ASC
+                        LIMIT 1
+                        FOR UPDATE SKIP LOCKED
+                    ''')
+                    result = cur.fetchone()
+
+                    if result:
+                        scan_id, url = result
+                        # Immediately mark as SCANNING to reserve this scan
+                        cur.execute('''
+                            UPDATE "Scan"
+                            SET status = 'SCANNING', "startedAt" = NOW(), "workerId" = %s
+                            WHERE id = %s
+                        ''', (str(os.getpid()), scan_id))
+
+                        # COMMIT to release the lock
+                        self.conn.commit()
+
+                        # Now start the worker
+                        domain = url.replace('https://', '').replace('http://', '')
+                        self.process_scan(scan_id, domain)
+                    else:
+                        # No result, rollback to end transaction
+                        self.conn.rollback()
+
+                    cur.close()
+
+                except Exception as e:
+                    print(f"  {Colors.RED}✗ Worker fetch error: {e}{Colors.RESET}")
+                    self.conn.rollback()
 
             # UI frissítés
             self.show_status()

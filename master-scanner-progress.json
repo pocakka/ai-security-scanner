@@ -1,11 +1,11 @@
 {
-  "last_index": 20681,
+  "last_index": 21750,
   "stats": {
-    "total": 276223,
-    "processed": 6385,
+    "total": 49,
+    "processed": 6563,
     "success": 15,
     "failed": 17,
-    "timeout": 6034
+    "timeout": 6315
   },
-  "timestamp": "2025-11-21T21:10:46.166268"
+  "timestamp": "2025-11-23T16:00:34.431624"
 }

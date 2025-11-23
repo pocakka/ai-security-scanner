@@ -186,7 +186,7 @@ if [ "$TERMINAL" = "gnome-terminal" ]; then
                 \\\"riskScore\\\",
                 status
             FROM \\\"Scan\\\"
-            WHERE \\\"createdAt\\\" > NOW() - INTERVAL '5 minutes'
+            WHERE \\\"createdAt\\\" > NOW() - INTERVAL '\''5 minutes'\''
             ORDER BY \\\"createdAt\\\" DESC
             LIMIT 10;
         \"'

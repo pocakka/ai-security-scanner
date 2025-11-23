@@ -1,0 +1,12 @@
+{
+  "last_index": 82,
+  "stats": {
+    "total": 255566,
+    "processed": 70,
+    "success": 51,
+    "failed": 19,
+    "timeout": 0,
+    "skipped": 0
+  },
+  "timestamp": "2025-11-22T12:24:54.152840"
+}

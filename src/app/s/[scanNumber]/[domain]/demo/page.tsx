@@ -754,14 +754,12 @@ export default function ScanResultPage() {
   const generalAiFindings = findingsByCategory[generalAiCategory] || []
   const traditionalFindings = findings.filter((f: any) => traditionalSecurityCategories.includes(f.category))
 
-  // Group AI security findings by OWASP category for category-level display
-  const owaspCategoryGroups = aiSecurityCategories.reduce((acc: any, category: string) => {
-    const categoryFindings = findings.filter((f: any) => f.category === category)
-    if (categoryFindings.length > 0) {
-      acc[category] = categoryFindings
-    }
-    return acc
-  }, {})
+  // *** FIXED: Use same logic as original page.tsx ***
+  // In full report mode, show ALL OWASP LLM categories even if no findings
+  // In normal mode, only show OWASP categories with findings
+  const owaspCategoriesToShow = isFullReport
+    ? aiSecurityCategories
+    : aiSecurityCategories.filter(cat => findingsByCategory[cat])
 
   // In full report mode, show ALL categories even if no findings
   const traditionalCategoriesToShow = isFullReport
@@ -1032,7 +1030,7 @@ export default function ScanResultPage() {
             )}
 
             {/* SUBSECTION 2: AI Security Vulnerabilities (OWASP LLM) - Category Breakdown */}
-            {Object.keys(owaspCategoryGroups).length > 0 && (
+            {owaspCategoriesToShow.length > 0 && (
               <div className="mb-8 border-t border-white/20 pt-6">
                 <div className="flex items-center gap-2 mb-6">
                   <span className="text-2xl">🔒</span>
@@ -1040,8 +1038,11 @@ export default function ScanResultPage() {
                 </div>
 
                 <div className="space-y-6">
-                  {Object.entries(owaspCategoryGroups).map(([category, categoryFindings]: [string, any]) => {
+                  {owaspCategoriesToShow.map((category: string) => {
+                    const categoryFindings = findingsByCategory[category] || []
                     const meta = CATEGORY_META[category as keyof typeof CATEGORY_META]
+                    const hasFindings = categoryFindings.length > 0
+
                     if (!meta) return null
 
                     return (
@@ -1057,8 +1058,10 @@ export default function ScanResultPage() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <span className="text-2xl font-bold text-orange-400">{categoryFindings.length}</span>
-                              <p className="text-xs text-slate-400">{categoryFindings.length === 1 ? 'issue' : 'issues'}</p>
+                              <span className={`text-2xl font-bold ${hasFindings ? 'text-orange-400' : 'text-green-400'}`}>
+                                {hasFindings ? categoryFindings.length : '✓'}
+                              </span>
+                              <p className="text-xs text-slate-400">{hasFindings ? (categoryFindings.length === 1 ? 'issue' : 'issues') : 'passed'}</p>
                             </div>
                           </div>
                         </div>
@@ -1072,14 +1075,22 @@ export default function ScanResultPage() {
 
                         {/* Findings List for this Category */}
                         <div className="p-4 space-y-3">
-                          {categoryFindings
-                            .sort((a: any, b: any) => {
-                              const severityOrder: any = { critical: 0, high: 1, medium: 2, low: 3, info: 4 }
-                              return severityOrder[a.severity] - severityOrder[b.severity]
-                            })
-                            .map((finding: any, idx: number) => (
-                              <FindingCard key={`${category}-${idx}`} finding={finding} knowledgeBase={knowledgeBase} />
-                            ))}
+                          {hasFindings ? (
+                            categoryFindings
+                              .sort((a: any, b: any) => {
+                                const severityOrder: any = { critical: 0, high: 1, medium: 2, low: 3, info: 4 }
+                                return severityOrder[a.severity] - severityOrder[b.severity]
+                              })
+                              .map((finding: any, idx: number) => (
+                                <FindingCard key={`${category}-${idx}`} finding={finding} knowledgeBase={knowledgeBase} />
+                              ))
+                          ) : (
+                            <div className="bg-green-500/10 border border-green-400/30 rounded-lg p-6 text-center">
+                              <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-3" />
+                              <p className="text-green-200 font-semibold">No issues found in this category</p>
+                              <p className="text-green-300/70 text-sm mt-1">All checks passed successfully</p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )

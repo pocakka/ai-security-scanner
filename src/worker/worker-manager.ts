@@ -8,7 +8,7 @@ import fs from 'fs'
 import path from 'path'
 
 // Configuration: Max concurrent workers (configurable via env var)
-const MAX_CONCURRENT_WORKERS = parseInt(process.env.MAX_WORKERS || '5', 10) // Default: 5 workers
+const MAX_CONCURRENT_WORKERS = parseInt(process.env.MAX_WORKERS || '40', 10) // Default: 40 workers (optimized for i9 24-core)
 const WORKER_POOL_DIR = '/tmp/ai-scanner-workers'
 const MAX_WORKER_RUNTIME = 5 * 60 * 1000 // 5 minutes max runtime per job
 
