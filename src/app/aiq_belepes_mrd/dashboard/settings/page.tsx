@@ -425,7 +425,7 @@ export default function SettingsPage() {
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={settings.showExpertAuditPopup}
+                  checked={settings.showExpertAuditPopup ?? true}
                   onChange={(e) => updateField('showExpertAuditPopup', e.target.checked)}
                   className="w-5 h-5 rounded bg-white/10 border-white/20 text-blue-600 focus:ring-2 focus:ring-blue-500"
                 />
