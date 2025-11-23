@@ -99,10 +99,10 @@ PM2_COUNT=$(pm2 list | grep -c "analyzer-worker.*online" || true)
 echo -e "${GREEN}✓ PM2 workers started: $PM2_COUNT/100${NC}"
 echo ""
 
-# Step 5: Create PENDING scans
-echo -e "${YELLOW}[5/5] Creating PENDING scans from domain file...${NC}"
+# Step 5: Create PENDING scans (in batches)
+echo -e "${YELLOW}[5/5] Creating PENDING scans from domain file (100 per batch)...${NC}"
 echo ""
-python3 scripts/batch-create-scans.py "$DOMAIN_FILE"
+python3 scripts/batch-create-scans-chunked.py "$DOMAIN_FILE" --batch-size 100 --delay 3
 echo ""
 
 # Summary
