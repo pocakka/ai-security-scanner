@@ -427,18 +427,18 @@ export default function ScanResultPage() {
       if (!response.ok) throw new Error('Failed to fetch scan')
 
       const data = await response.json()
-      const wasNotCompleted = scan?.status !== 'COMPLETED'
+      // const wasNotCompleted = scan?.status !== 'COMPLETED'
       setScan(data)
 
       if (data.status === 'COMPLETED' || data.status === 'FAILED') {
         setLoading(false)
-        // Show lead modal when scan just completed (if enabled in settings)
-        if (wasNotCompleted && data.status === 'COMPLETED') {
-          // Check if popup is enabled in settings
-          if (siteSettings?.showExpertAuditPopup !== false) {
-            setTimeout(() => setShowLeadModal(true), 2000) // Show after 2 seconds
-          }
-        }
+        // DISABLED: Show lead modal when scan just completed (if enabled in settings)
+        // if (wasNotCompleted && data.status === 'COMPLETED') {
+        //   // Check if popup is enabled in settings
+        //   if (siteSettings?.showExpertAuditPopup !== false) {
+        //     setTimeout(() => setShowLeadModal(true), 2000) // Show after 2 seconds
+        //   }
+        // }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
