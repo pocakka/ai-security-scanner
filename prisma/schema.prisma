@@ -230,9 +230,10 @@ model SiteSettings {
   companyAddress  String?
 
   // Feature flags
-  enableTwitterCards Boolean @default(false)
-  enableOgTags       Boolean @default(true)
-  enableAnalytics    Boolean @default(false)
+  enableTwitterCards   Boolean @default(false)
+  enableOgTags         Boolean @default(true)
+  enableAnalytics      Boolean @default(false)
+  showExpertAuditPopup Boolean @default(true)
 
   // Timestamps
   updatedAt DateTime @updatedAt

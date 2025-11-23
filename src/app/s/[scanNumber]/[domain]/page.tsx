@@ -437,9 +437,12 @@ export default function ScanResultPage() {
 
       if (data.status === 'COMPLETED' || data.status === 'FAILED') {
         setLoading(false)
-        // Show lead modal when scan just completed
+        // Show lead modal when scan just completed (if enabled in settings)
         if (wasNotCompleted && data.status === 'COMPLETED') {
-          setTimeout(() => setShowLeadModal(true), 2000) // Show after 2 seconds
+          // Check if popup is enabled in settings
+          if (siteSettings?.showExpertAuditPopup !== false) {
+            setTimeout(() => setShowLeadModal(true), 2000) // Show after 2 seconds
+          }
         }
       }
     } catch (err) {

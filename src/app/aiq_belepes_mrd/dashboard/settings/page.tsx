@@ -30,6 +30,7 @@ interface SiteSettings {
   enableTwitterCards: boolean
   enableOgTags: boolean
   enableAnalytics: boolean
+  showExpertAuditPopup: boolean
 }
 
 export default function SettingsPage() {
@@ -417,6 +418,20 @@ export default function SettingsPage() {
                 <div>
                   <p className="text-white font-semibold">Enable Analytics</p>
                   <p className="text-sm text-slate-400">Google Analytics integration (coming soon)</p>
+                </div>
+              </label>
+
+              {/* Show Expert Audit Popup */}
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.showExpertAuditPopup}
+                  onChange={(e) => updateField('showExpertAuditPopup', e.target.checked)}
+                  className="w-5 h-5 rounded bg-white/10 border-white/20 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <div>
+                  <p className="text-white font-semibold">Show "Request Expert Audit" Popup</p>
+                  <p className="text-sm text-slate-400">Display the expert audit request popup on scan report pages</p>
                 </div>
               </label>
             </div>
