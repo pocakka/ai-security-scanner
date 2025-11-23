@@ -66,6 +66,35 @@ export async function POST(request: NextRequest) {
 
     console.log(`[API] ✅ Domain validated: ${domain} (${domainValidation.resolvedAddresses?.join(', ')})`)
 
+    // Check for existing scans (prevent duplicates)
+    // Only check for PENDING/SCANNING scans OR recent COMPLETED scans (< 24 hours)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+
+    const existingScan = await prisma.scan.findFirst({
+      where: {
+        OR: [
+          { url: normalizedUrl, status: { in: ['PENDING', 'SCANNING'] } },
+          { url: normalizedUrl, status: 'COMPLETED', completedAt: { gte: twentyFourHoursAgo } }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    if (existingScan) {
+      console.log(`[API] ⚠️  Duplicate scan prevented - existing scan #${existingScan.scanNumber} (${existingScan.status})`)
+      return NextResponse.json(
+        {
+          scanId: existingScan.id,
+          scanNumber: existingScan.scanNumber,
+          domain: existingScan.domain,
+          status: existingScan.status,
+          message: 'Scan already exists',
+          isDuplicate: true
+        },
+        { status: 200 }
+      )
+    }
+
     // Create scan record
     const scan = await prisma.scan.create({
       data: {

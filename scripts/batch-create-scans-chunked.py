@@ -74,7 +74,14 @@ def create_scan(url: str, api_base: str = "http://localhost:3000", max_retries: 
 
             if response.status_code == 200:
                 data = response.json()
-                return {"success": True, "scanId": data.get("scanId"), "url": url, "attempts": attempt + 1}
+                is_duplicate = data.get("isDuplicate", False)
+                return {
+                    "success": True,
+                    "scanId": data.get("scanId"),
+                    "url": url,
+                    "attempts": attempt + 1,
+                    "isDuplicate": is_duplicate
+                }
             else:
                 last_error = response.text
 
@@ -113,6 +120,7 @@ def process_batch(domains: list, batch_num: int, total_batches: int, max_retries
     error_count = 0
     errors = []
     retry_count = 0
+    duplicate_count = 0
 
     for i, domain in enumerate(domains, 1):
         url = domain if domain.startswith(('http://', 'https://')) else f'https://{domain}'
@@ -120,10 +128,14 @@ def process_batch(domains: list, batch_num: int, total_batches: int, max_retries
 
         if result["success"]:
             success_count += 1
+            is_duplicate = result.get('isDuplicate', False)
             retry_indicator = f" (retry {result['attempts']})" if result['attempts'] > 1 else ""
-            print(f"  ✓ {domain:50s} (scan #{result['scanId']}){retry_indicator}")
+            duplicate_indicator = " [DUPLICATE]" if is_duplicate else ""
+            print(f"  ✓ {domain:50s} (scan #{result['scanId']}){retry_indicator}{duplicate_indicator}")
             if result['attempts'] > 1:
                 retry_count += 1
+            if is_duplicate:
+                duplicate_count += 1
         else:
             error_count += 1
             error_msg = result['error'][:50] if len(result['error']) > 50 else result['error']
@@ -137,6 +149,8 @@ def process_batch(domains: list, batch_num: int, total_batches: int, max_retries
     print(f"\n{'='*60}")
     print(f"Batch {batch_num} Results:")
     print(f"  ✓ Success: {success_count}")
+    if duplicate_count > 0:
+        print(f"  ⚠️  Duplicates: {duplicate_count} (already existed)")
     if retry_count > 0:
         print(f"  🔄 Retried: {retry_count}")
     print(f"  ✗ Errors:  {error_count}")
