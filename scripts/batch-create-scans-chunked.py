@@ -1,51 +1,129 @@
 #!/usr/bin/env python3
 """
-Batch Create Scans - Chunked Version
+Batch Create Scans - Chunked Version with Network Resilience
 Creates PENDING scans in batches to avoid rate limiting
 
+Features:
+- Network health checks before each batch
+- Automatic retry on network failures
+- Exponential backoff on errors
+- No domains lost due to temporary network issues
+
 Usage:
-    python3 scripts/batch-create-scans-chunked.py domains.txt [--batch-size 100] [--delay 5]
+    python3 scripts/batch-create-scans-chunked.py domains.txt [--batch-size 100] [--delay 5] [--max-retries 3]
 """
 
 import sys
 import requests
 import time
+import socket
 from pathlib import Path
 
-def create_scan(url: str, api_base: str = "http://localhost:3000") -> dict:
-    """Create a single PENDING scan via API"""
-    try:
-        response = requests.post(
-            f"{api_base}/api/scan",
-            json={"url": url},
-            timeout=10
-        )
+def check_network_health() -> bool:
+    """
+    Check if network is working by pinging multiple reliable hosts
+    Returns True if network is healthy, False otherwise
+    """
+    test_hosts = [
+        ("8.8.8.8", 53),      # Google DNS
+        ("1.1.1.1", 53),      # Cloudflare DNS
+        ("208.67.222.222", 53) # OpenDNS
+    ]
 
-        if response.status_code == 200:
-            data = response.json()
-            return {"success": True, "scanId": data.get("scanId"), "url": url}
-        else:
-            return {"success": False, "error": response.text, "url": url}
-    except Exception as e:
-        return {"success": False, "error": str(e), "url": url}
+    for host, port in test_hosts:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(3)
+            result = sock.connect_ex((host, port))
+            sock.close()
+            if result == 0:
+                return True
+        except:
+            continue
 
-def process_batch(domains: list, batch_num: int, total_batches: int) -> tuple:
-    """Process a single batch of domains"""
+    return False
+
+def wait_for_network(max_attempts: int = 6, delay: int = 10) -> bool:
+    """
+    Wait for network to come back online
+    Returns True if network recovered, False if max attempts reached
+    """
+    for attempt in range(1, max_attempts + 1):
+        print(f"  ⚠️  Network issue detected. Attempt {attempt}/{max_attempts} - waiting {delay}s...")
+        time.sleep(delay)
+
+        if check_network_health():
+            print(f"  ✓ Network recovered!")
+            return True
+
+    return False
+
+def create_scan(url: str, api_base: str = "http://localhost:3000", max_retries: int = 3) -> dict:
+    """
+    Create a single PENDING scan via API with retry logic
+    """
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(
+                f"{api_base}/api/scan",
+                json={"url": url},
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                return {"success": True, "scanId": data.get("scanId"), "url": url, "attempts": attempt + 1}
+            else:
+                last_error = response.text
+
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.RequestException) as e:
+            last_error = str(e)
+
+            # Network error - wait a bit before retry
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                time.sleep(wait_time)
+                continue
+
+    return {"success": False, "error": last_error, "url": url, "attempts": max_retries}
+
+def process_batch(domains: list, batch_num: int, total_batches: int, max_retries: int = 3) -> tuple:
+    """Process a single batch of domains with network health check"""
+
+    # Network health check before starting batch
     print(f"\n{'='*60}")
-    print(f"📦 Batch {batch_num}/{total_batches} - Processing {len(domains)} domains")
-    print(f"{'='*60}\n")
+    print(f"📦 Batch {batch_num}/{total_batches} - {len(domains)} domains")
+    print(f"{'='*60}")
+
+    # Check network health
+    print(f"🌐 Checking network health...")
+    if not check_network_health():
+        print(f"⚠️  Network appears down. Waiting for recovery...")
+        if not wait_for_network():
+            print(f"❌ Network recovery failed. Skipping batch.")
+            return 0, len(domains), [{"domain": d, "error": "Network down"} for d in domains]
+    else:
+        print(f"✓ Network is healthy\n")
 
     success_count = 0
     error_count = 0
     errors = []
+    retry_count = 0
 
     for i, domain in enumerate(domains, 1):
         url = domain if domain.startswith(('http://', 'https://')) else f'https://{domain}'
-        result = create_scan(url)
+        result = create_scan(url, max_retries=max_retries)
 
         if result["success"]:
             success_count += 1
-            print(f"  ✓ {domain:50s} (scan #{result['scanId']})")
+            retry_indicator = f" (retry {result['attempts']})" if result['attempts'] > 1 else ""
+            print(f"  ✓ {domain:50s} (scan #{result['scanId']}){retry_indicator}")
+            if result['attempts'] > 1:
+                retry_count += 1
         else:
             error_count += 1
             error_msg = result['error'][:50] if len(result['error']) > 50 else result['error']
@@ -59,6 +137,8 @@ def process_batch(domains: list, batch_num: int, total_batches: int) -> tuple:
     print(f"\n{'='*60}")
     print(f"Batch {batch_num} Results:")
     print(f"  ✓ Success: {success_count}")
+    if retry_count > 0:
+        print(f"  🔄 Retried: {retry_count}")
     print(f"  ✗ Errors:  {error_count}")
     print(f"{'='*60}")
 
@@ -66,12 +146,13 @@ def process_batch(domains: list, batch_num: int, total_batches: int) -> tuple:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python3 batch-create-scans-chunked.py domains.txt [--batch-size 100] [--delay 5]")
+        print("Usage: python3 batch-create-scans-chunked.py domains.txt [--batch-size 100] [--delay 5] [--max-retries 3]")
         sys.exit(1)
 
     domain_file = sys.argv[1]
     batch_size = 100
     delay_between_batches = 5
+    max_retries = 3
 
     # Parse optional arguments
     for i, arg in enumerate(sys.argv):
@@ -79,6 +160,8 @@ def main():
             batch_size = int(sys.argv[i + 1])
         elif arg == "--delay" and i + 1 < len(sys.argv):
             delay_between_batches = int(sys.argv[i + 1])
+        elif arg == "--max-retries" and i + 1 < len(sys.argv):
+            max_retries = int(sys.argv[i + 1])
 
     # Read domains
     with open(domain_file, 'r') as f:
@@ -92,12 +175,13 @@ def main():
     total_batches = (total_domains + batch_size - 1) // batch_size
 
     print(f"\n{'='*60}")
-    print(f"🚀 BATCH SCAN CREATION")
+    print(f"🚀 BATCH SCAN CREATION (Network Resilient)")
     print(f"{'='*60}")
     print(f"Total domains:        {total_domains}")
     print(f"Batch size:           {batch_size}")
     print(f"Total batches:        {total_batches}")
     print(f"Delay between:        {delay_between_batches}s")
+    print(f"Max retries:          {max_retries}")
     print(f"{'='*60}\n")
 
     # Statistics
@@ -113,8 +197,13 @@ def main():
         end_idx = min(start_idx + batch_size, total_domains)
         batch_domains = all_domains[start_idx:end_idx]
 
-        # Process batch
-        success, errors, error_details = process_batch(batch_domains, batch_num, total_batches)
+        # Process batch with retries
+        success, errors, error_details = process_batch(
+            batch_domains,
+            batch_num,
+            total_batches,
+            max_retries=max_retries
+        )
         total_success += success
         total_errors += errors
         all_errors.extend(error_details)
