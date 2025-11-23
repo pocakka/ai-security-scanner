@@ -33,8 +33,8 @@ DB_URL = os.environ.get("DATABASE_URL", "postgresql://localhost/ai_security_scan
 
 # M4 Pro: 10 Performance cores + 4 Efficiency cores = 14 cores
 # Conservative: 12 parallel workers (85% of cores)
-MAX_WORKERS = 12            # Parallel scans (M4 optimized)
-SCAN_TIMEOUT = 120          # 120s per scan (same as original)
+MAX_WORKERS = 40  # i9 Ubuntu optimized            # Parallel scans (M4 optimized)
+SCAN_TIMEOUT = 300          # 5min per scan (full 30+ analyzers need time!)
 CLEANUP_INTERVAL = 300      # 5 min cleanup
 BATCH_SIZE = 10             # Batch insert size
 RESOURCE_BLOCKING = True    # Block images/fonts/CSS (TURBO v5)
@@ -205,9 +205,18 @@ class MasterScannerSpeed:
         Saves ~200ms per scan × 1000 = 3.3 minutes!
 
         FIXED: Thread-safe scanNumber generation using PostgreSQL row locking
+        FIXED: Extract and save domain field (for SEO URLs and dashboard)
         """
         url = f'https://{domain}' if not domain.startswith('http') else domain
         scan_id = str(uuid.uuid4())
+
+        # Extract domain from URL (same logic as /api/scan route.ts)
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            extracted_domain = parsed.hostname or domain
+        except:
+            extracted_domain = domain
 
         try:
             cur = self.conn.cursor()
@@ -229,15 +238,15 @@ class MasterScannerSpeed:
             cur.execute('SELECT COALESCE(MAX("scanNumber"), 0) + 1 FROM "Scan"')
             scan_number = cur.fetchone()[0]
 
-            # Direct insert (NO API overhead!)
+            # Direct insert with DOMAIN field (for SEO URLs!)
             cur.execute('''
                 INSERT INTO "Scan" (
-                    id, url, status, "createdAt", "scanNumber"
+                    id, url, domain, status, "createdAt", "scanNumber"
                 )
                 VALUES (
-                    %s, %s, 'PENDING', NOW(), %s
+                    %s, %s, %s, 'PENDING', NOW(), %s
                 )
-            ''', (scan_id, url, scan_number))
+            ''', (scan_id, url, extracted_domain, scan_number))
 
             cur.close()
             return scan_id
@@ -400,14 +409,18 @@ class MasterScannerSpeed:
         """
         Call TypeScript worker via subprocess
         Worker will detect pre-crawled data and skip crawling (FAST PATH!)
+
+        IMPORTANT: Uses index-sqlite.ts (FULL 30+ analyzers) NOT index.ts (only 7 analyzers)
+        This ensures ZERO quality loss - same analyzers as manual scans!
         """
         try:
             # Worker command (TURBO v5 HYBRID CLI mode)
+            # FIXED: Use index-sqlite.ts for FULL analysis (30+ analyzers)
             proc = await asyncio.create_subprocess_exec(
-                'npx', 'tsx', 'src/worker/index.ts',
+                'npx', 'tsx', 'src/worker/index-sqlite.ts',
                 '--scan-id', scan_id,
                 '--url', f'https://{domain}',
-                cwd='/Users/racz-akacosiattila/Desktop/10_M_USD/ai-security-scanner',
+                cwd='/home/aiq/Asztal/10_M_USD/ai-security-scanner',
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
