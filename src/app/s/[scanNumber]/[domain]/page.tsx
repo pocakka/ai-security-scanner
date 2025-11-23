@@ -911,7 +911,8 @@ export default function ScanResultPage() {
         )}
 
         {/* AI Detection Section - PRIORITIZED FIRST */}
-        {(summary?.hasAI || aiFindings.length > 0) && (
+        {/* Show if AI Trust Score detected AI OR if there are AI findings */}
+        {(scan.aiTrustScorecard?.hasAiImplementation || aiFindings.length > 0) && (
           <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-xl p-6 mb-8">
             {/* AI Section Header */}
             <div className="mb-6 pb-4 border-b border-white/20">
@@ -935,33 +936,77 @@ export default function ScanResultPage() {
               </div>
             </div>
 
-            {/* Detected AI Technologies */}
-            {(detectedTech?.aiProviders?.length > 0 || detectedTech?.chatWidgets?.length > 0) && (
+            {/* Detected AI Technologies - Pull from AI Trust Score for consistency */}
+            {scan.aiTrustScorecard?.hasAiImplementation && (
               <div className="mb-6 space-y-4">
                 <h3 className="text-lg font-semibold text-white">Detected Technologies</h3>
-                {detectedTech?.aiProviders?.length > 0 && (
+
+                {/* AI Provider Detection */}
+                {scan.aiTrustScorecard.detectedAiProvider && (
                   <div>
-                    <p className="text-sm text-slate-400 mb-2">AI Providers:</p>
+                    <p className="text-sm text-slate-400 mb-2">AI Provider:</p>
                     <div className="flex flex-wrap gap-2">
-                      {detectedTech.aiProviders.map((provider: string) => (
-                        <span key={provider} className="px-4 py-2 bg-blue-500/20 border border-blue-400/30 text-blue-300 rounded-lg text-sm font-semibold">
-                          {provider}
-                        </span>
-                      ))}
+                      <span className="px-4 py-2 bg-blue-500/20 border border-blue-400/30 text-blue-300 rounded-lg text-sm font-semibold">
+                        {scan.aiTrustScorecard.detectedAiProvider}
+                        {scan.aiTrustScorecard.detectedModel && (
+                          <span className="ml-2 text-xs text-blue-400/70">({scan.aiTrustScorecard.detectedModel})</span>
+                        )}
+                      </span>
                     </div>
                   </div>
                 )}
-                {detectedTech?.chatWidgets?.length > 0 && (
+
+                {/* Chat Framework Detection */}
+                {scan.aiTrustScorecard.detectedChatFramework && (
                   <div>
-                    <p className="text-sm text-slate-400 mb-2">Chat Widgets:</p>
+                    <p className="text-sm text-slate-400 mb-2">Chat Framework:</p>
                     <div className="flex flex-wrap gap-2">
-                      {detectedTech.chatWidgets.map((widget: string) => (
-                        <span key={widget} className="px-4 py-2 bg-purple-500/20 border border-purple-400/30 text-purple-300 rounded-lg text-sm font-semibold">
-                          {widget}
-                        </span>
-                      ))}
+                      <span className="px-4 py-2 bg-purple-500/20 border border-purple-400/30 text-purple-300 rounded-lg text-sm font-semibold">
+                        {scan.aiTrustScorecard.detectedChatFramework}
+                      </span>
                     </div>
                   </div>
+                )}
+
+                {/* AI Confidence Level */}
+                {scan.aiTrustScorecard.aiConfidenceLevel && (
+                  <div className="bg-slate-500/10 border border-slate-400/30 rounded-lg p-3">
+                    <p className="text-xs text-slate-400 mb-1">Detection Confidence:</p>
+                    <p className="text-sm text-slate-200">
+                      <span className="font-semibold capitalize">{scan.aiTrustScorecard.aiConfidenceLevel}</span>
+                      {' '}- AI presence detected with {scan.aiTrustScorecard.aiConfidenceLevel} confidence based on {scan.aiTrustScorecard.passedChecks}/{scan.aiTrustScorecard.totalChecks} checks.
+                    </p>
+                  </div>
+                )}
+
+                {/* Fallback: Legacy detectedTech if AI Trust Score doesn't have data */}
+                {!scan.aiTrustScorecard.detectedAiProvider && !scan.aiTrustScorecard.detectedChatFramework && (detectedTech?.aiProviders?.length > 0 || detectedTech?.chatWidgets?.length > 0) && (
+                  <>
+                    {detectedTech?.aiProviders?.length > 0 && (
+                      <div>
+                        <p className="text-sm text-slate-400 mb-2">AI Providers (Legacy Detection):</p>
+                        <div className="flex flex-wrap gap-2">
+                          {detectedTech.aiProviders.map((provider: string) => (
+                            <span key={provider} className="px-4 py-2 bg-blue-500/20 border border-blue-400/30 text-blue-300 rounded-lg text-sm font-semibold">
+                              {provider}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {detectedTech?.chatWidgets?.length > 0 && (
+                      <div>
+                        <p className="text-sm text-slate-400 mb-2">Chat Widgets (Legacy Detection):</p>
+                        <div className="flex flex-wrap gap-2">
+                          {detectedTech.chatWidgets.map((widget: string) => (
+                            <span key={widget} className="px-4 py-2 bg-purple-500/20 border border-purple-400/30 text-purple-300 rounded-lg text-sm font-semibold">
+                              {widget}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

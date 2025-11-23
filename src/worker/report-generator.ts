@@ -167,12 +167,30 @@ export function generateReport(
 
   // AI-specific finding
   if (aiDetection.hasAI) {
+    // Build description based on detected AI technologies
+    const detectedItems: string[] = []
+
+    if (aiDetection.providers.length > 0) {
+      detectedItems.push(`${aiDetection.providers.length} AI provider(s)`)
+    }
+    if (aiDetection.chatWidgets.length > 0) {
+      detectedItems.push(`${aiDetection.chatWidgets.length} chat widget(s)`)
+    }
+    if (aiDetection.llmAPIs && aiDetection.llmAPIs.length > 0) {
+      detectedItems.push(`${aiDetection.llmAPIs.length} LLM API endpoint(s)`)
+    }
+
+    // If no specific technologies detected, show generic message
+    const description = detectedItems.length > 0
+      ? `Detected ${detectedItems.join(', ')}`
+      : 'AI implementation detected through behavioral analysis and security checks. See AI Trust Score for detailed assessment.'
+
     findings.push({
       id: 'ai-presence',
       category: 'ai',
       severity: 'medium',
       title: 'AI Technology Detected',
-      description: `Detected ${aiDetection.providers.length} AI provider(s) and ${aiDetection.chatWidgets.length} chat widget(s)`,
+      description,
       impact: 'AI implementations require additional security considerations including prompt injection protection, data leakage prevention, and output validation.',
       recommendation: 'Conduct a comprehensive AI security audit to test for OWASP LLM Top 10 vulnerabilities using tools like Garak, PyRIT, and Promptfoo.',
     })

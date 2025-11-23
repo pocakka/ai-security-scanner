@@ -284,6 +284,15 @@ const AI_PROVIDERS: Record<string, string[]> = {
     'transformers.js',
     'huggingface api'
   ],
+  'Vercel AI SDK': [
+    'streamtext(',         // Vercel AI SDK streamText function
+    'streamobject(',       // Vercel AI SDK streamObject function
+    'generatetext(',       // Vercel AI SDK generateText function
+    'generateobject(',     // Vercel AI SDK generateObject function
+    '@ai-sdk/',            // Vercel AI SDK package
+    'ai-sdk-ui',           // Vercel AI SDK UI components
+    'vercel ai sdk'
+  ],
 }
 
 // Phase 2: Pattern Refinement - Nov 17, 2025
@@ -1403,9 +1412,18 @@ export function analyzeAiTrust(crawlResult: CrawlResult, securityScore: number =
   // ========================================
   // DETECT AI TECHNOLOGY EARLY (needed for relevance logic)
   // ========================================
-  const detectedAiProvider = aiDetection.provider || detectAiProvider(html, scripts)
-  const detectedModel = aiDetection.model || detectAiModel(html, scripts)
-  const detectedChatFramework = aiDetection.framework || detectChatFramework(html, scripts)
+  let detectedAiProvider = aiDetection.provider || detectAiProvider(html, scripts)
+  let detectedModel = aiDetection.model || detectAiModel(html, scripts)
+  let detectedChatFramework = aiDetection.framework || detectChatFramework(html, scripts)
+
+  // Fallback: Extract from evidence if not found by pattern matching
+  // This helps catch cases where AI tech is mentioned in documentation/examples
+  if (!detectedAiProvider && transparency.isModelVersionDisclosed.found) {
+    const evidence = transparency.isModelVersionDisclosed.evidence.join(' ').toLowerCase()
+    if (evidence.includes('streamtext') || evidence.includes('generatetext')) {
+      detectedAiProvider = 'Vercel AI SDK'
+    }
+  }
 
   // ========================================
   // CALCULATE SCORES
