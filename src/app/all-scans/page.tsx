@@ -141,7 +141,10 @@ export default function AllScansPage() {
               <input
                 type="url"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                onChange={(e) => {
+                  setUrl(e.target.value)
+                  setError('') // Clear error on input change
+                }}
                 placeholder="Enter a new URL to scan (e.g., https://example.com)"
                 className="w-full px-5 py-3 pl-12 bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:bg-white/15 transition-all"
                 required
@@ -169,6 +172,7 @@ export default function AllScansPage() {
           </form>
           {error && (
             <div className="mt-3 p-3 bg-red-500/20 border border-red-400/30 rounded-lg backdrop-blur-sm">
+              <p className="text-red-200 text-sm font-semibold mb-1">⚠️ Invalid URL</p>
               <p className="text-red-200 text-sm">{error}</p>
             </div>
           )}

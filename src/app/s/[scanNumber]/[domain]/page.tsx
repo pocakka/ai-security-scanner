@@ -279,6 +279,7 @@ export default function ScanResultPage() {
   // New scan form
   const [newScanUrl, setNewScanUrl] = useState('')
   const [newScanLoading, setNewScanLoading] = useState(false)
+  const [newScanError, setNewScanError] = useState('')
 
   // Admin authentication check
   const [isAdmin, setIsAdmin] = useState(false)
@@ -505,6 +506,7 @@ export default function ScanResultPage() {
     if (!newScanUrl || newScanLoading) return
 
     setNewScanLoading(true)
+    setNewScanError('') // Clear previous errors
     try {
       // Create a new scan with the provided URL
       const response = await fetch('/api/scan', {
@@ -513,15 +515,20 @@ export default function ScanResultPage() {
         body: JSON.stringify({ url: newScanUrl }),
       })
 
-      if (!response.ok) throw new Error('Failed to create new scan')
-
       const data = await response.json()
+
+      if (!response.ok) {
+        // Use the user-friendly message from API validation
+        const errorMessage = data.message || data.error || 'Failed to create new scan'
+        throw new Error(errorMessage)
+      }
+
       // Navigate to the SEO-friendly /s/ URL
       const domainSlug = data.domain?.toLowerCase().replace(/\./g, '-') || 'scan'
       router.push(`/s/${data.scanNumber}/${domainSlug}`)
     } catch (err) {
       console.error('New scan error:', err)
-      alert('Failed to create new scan. Please try again.')
+      setNewScanError(err instanceof Error ? err.message : 'Failed to create new scan. Please try again.')
       setNewScanLoading(false)
     }
   }
@@ -585,30 +592,44 @@ export default function ScanResultPage() {
                 <h3 className="text-xl font-semibold text-white mb-6">
                   Start a New Security Scan
                 </h3>
-                <form onSubmit={handleNewScan} className="flex flex-col sm:flex-row gap-4">
-                  <input
-                    type="url"
-                    value={newScanUrl}
-                    onChange={(e) => setNewScanUrl(e.target.value)}
-                    placeholder="Enter website URL (e.g., https://example.com)"
-                    className="flex-1 px-6 py-4 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                    disabled={newScanLoading}
-                  />
-                  <button
-                    type="submit"
-                    disabled={newScanLoading}
-                    className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-cyan-600 transition-all disabled:opacity-50 shadow-lg shadow-blue-500/50"
-                  >
-                    {newScanLoading ? (
-                      <span className="flex items-center gap-2">
-                        <RefreshCw className="animate-spin h-5 w-5" />
-                        Starting...
-                      </span>
-                    ) : (
-                      'Scan Now'
-                    )}
-                  </button>
+                <form onSubmit={handleNewScan} className="flex flex-col gap-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <input
+                      type="url"
+                      value={newScanUrl}
+                      onChange={(e) => {
+                        setNewScanUrl(e.target.value)
+                        setNewScanError('') // Clear error on input change
+                      }}
+                      placeholder="Enter website URL (e.g., https://example.com)"
+                      className="flex-1 px-6 py-4 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                      disabled={newScanLoading}
+                    />
+                    <button
+                      type="submit"
+                      disabled={newScanLoading}
+                      className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-cyan-600 transition-all disabled:opacity-50 shadow-lg shadow-blue-500/50"
+                    >
+                      {newScanLoading ? (
+                        <span className="flex items-center gap-2">
+                          <RefreshCw className="animate-spin h-5 w-5" />
+                          Starting...
+                        </span>
+                      ) : (
+                        'Scan Now'
+                      )}
+                    </button>
+                  </div>
+                  {newScanError && (
+                    <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold mb-1">Invalid URL</p>
+                        <p>{newScanError}</p>
+                      </div>
+                    </div>
+                  )}
                 </form>
               </div>
 

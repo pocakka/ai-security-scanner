@@ -44,7 +44,10 @@ export function ScanForm() {
         <input
           type="url"
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          onChange={(e) => {
+            setUrl(e.target.value)
+            setError('') // Clear error on input change
+          }}
           placeholder="Enter website URL (e.g., https://example.com)"
           className="flex-1 px-6 py-4 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           required
@@ -69,8 +72,9 @@ export function ScanForm() {
         </button>
       </div>
       {error && (
-        <div className="mt-4 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200">
-          {error}
+        <div className="mt-4 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm">
+          <p className="font-semibold mb-1">⚠️ Invalid URL</p>
+          <p>{error}</p>
         </div>
       )}
     </form>
