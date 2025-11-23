@@ -754,6 +754,15 @@ export default function ScanResultPage() {
   const generalAiFindings = findingsByCategory[generalAiCategory] || []
   const traditionalFindings = findings.filter((f: any) => traditionalSecurityCategories.includes(f.category))
 
+  // Group AI security findings by OWASP category for category-level display
+  const owaspCategoryGroups = aiSecurityCategories.reduce((acc: any, category: string) => {
+    const categoryFindings = findings.filter((f: any) => f.category === category)
+    if (categoryFindings.length > 0) {
+      acc[category] = categoryFindings
+    }
+    return acc
+  }, {})
+
   // In full report mode, show ALL categories even if no findings
   const traditionalCategoriesToShow = isFullReport
     ? traditionalSecurityCategories
@@ -1022,23 +1031,59 @@ export default function ScanResultPage() {
               </div>
             )}
 
-            {/* SUBSECTION 2: AI Security Vulnerabilities (OWASP LLM) */}
-            {aiSecurityFindings.length > 0 && (
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 border-t border-white/20 pt-6">
+            {/* SUBSECTION 2: AI Security Vulnerabilities (OWASP LLM) - Category Breakdown */}
+            {Object.keys(owaspCategoryGroups).length > 0 && (
+              <div className="mb-8 border-t border-white/20 pt-6">
+                <div className="flex items-center gap-2 mb-6">
                   <span className="text-2xl">🔒</span>
-                  <h3 className="text-xl font-semibold text-white">AI Security Vulnerabilities</h3>
-                  <span className="text-xs text-slate-400 ml-2">(OWASP LLM Top 10)</span>
+                  <h3 className="text-xl font-semibold text-white">AI Security Vulnerabilities (OWASP LLM Top 10)</h3>
                 </div>
-                <div className="space-y-4">
-                  {aiSecurityFindings
-                    .sort((a: any, b: any) => {
-                      const severityOrder: any = { critical: 0, high: 1, medium: 2, low: 3, info: 4 }
-                      return severityOrder[a.severity] - severityOrder[b.severity]
-                    })
-                    .map((finding: any, index: number) => (
-                      <FindingCard key={`ai-vuln-${index}`} finding={finding} knowledgeBase={knowledgeBase} />
-                    ))}
+
+                <div className="space-y-6">
+                  {Object.entries(owaspCategoryGroups).map(([category, categoryFindings]: [string, any]) => {
+                    const meta = CATEGORY_META[category as keyof typeof CATEGORY_META]
+                    if (!meta) return null
+
+                    return (
+                      <div key={category} className="border border-orange-500/50 rounded-xl overflow-hidden bg-gradient-to-br from-orange-500/5 to-transparent">
+                        {/* Category Header */}
+                        <div className="bg-orange-500/10 border-b border-orange-500/50 p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">{meta.icon}</span>
+                              <div>
+                                <h4 className="text-lg font-bold text-white">{meta.title}</h4>
+                                <p className="text-sm text-slate-400">{meta.description}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-2xl font-bold text-orange-400">{categoryFindings.length}</span>
+                              <p className="text-xs text-slate-400">{categoryFindings.length === 1 ? 'issue' : 'issues'}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* "What does this mean?" Explainer */}
+                        <div className="bg-blue-500/10 border-b border-blue-400/30 p-4">
+                          <p className="text-sm text-blue-200">
+                            <strong className="text-blue-300">What does this mean?</strong> {meta.explanation}
+                          </p>
+                        </div>
+
+                        {/* Findings List for this Category */}
+                        <div className="p-4 space-y-3">
+                          {categoryFindings
+                            .sort((a: any, b: any) => {
+                              const severityOrder: any = { critical: 0, high: 1, medium: 2, low: 3, info: 4 }
+                              return severityOrder[a.severity] - severityOrder[b.severity]
+                            })
+                            .map((finding: any, idx: number) => (
+                              <FindingCard key={`${category}-${idx}`} finding={finding} knowledgeBase={knowledgeBase} />
+                            ))}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
