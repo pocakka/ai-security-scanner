@@ -8,17 +8,22 @@ export async function GET(request: Request) {
     // Get pagination params from URL
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const limit = parseInt(searchParams.get('limit') || '200')
+    const status = searchParams.get('status')
     const skip = (page - 1) * limit
+
+    // Build where clause for status filter
+    const whereClause = status && status !== 'ALL' ? { status } : {}
 
     // Get total counts for pagination
     const [totalScans, totalLeads] = await Promise.all([
-      prisma.scan.count(),
+      prisma.scan.count({ where: whereClause }),
       prisma.lead.count()
     ])
 
-    // Fetch scans with pagination
+    // Fetch scans with pagination and optional status filter
     const scans = await prisma.scan.findMany({
+      where: whereClause,
       orderBy: { createdAt: 'desc' },
       skip,
       take: limit,

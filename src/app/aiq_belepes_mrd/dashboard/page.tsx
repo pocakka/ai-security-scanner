@@ -40,7 +40,8 @@ export default function ProtectedAdminPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(50)
+  const [itemsPerPage, setItemsPerPage] = useState(200)
+  const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [totalPages, setTotalPages] = useState(1)
   const [totalScansCount, setTotalScansCount] = useState(0)
   const [totalLeadsCount, setTotalLeadsCount] = useState(0)
@@ -54,13 +55,14 @@ export default function ProtectedAdminPage() {
     }
 
     setIsAuthenticated(true)
-    loadData(currentPage, itemsPerPage)
-  }, [router, currentPage, itemsPerPage])
+    loadData(currentPage, itemsPerPage, statusFilter)
+  }, [router, currentPage, itemsPerPage, statusFilter])
 
-  const loadData = async (page: number = 1, limit: number = 50) => {
+  const loadData = async (page: number = 1, limit: number = 200, status: string = 'ALL') => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/admin/data?page=${page}&limit=${limit}`)
+      const statusParam = status !== 'ALL' ? `&status=${status}` : ''
+      const response = await fetch(`/api/admin/data?page=${page}&limit=${limit}${statusParam}`)
       if (!response.ok) throw new Error('Failed to load data')
       const data = await response.json()
 
@@ -167,8 +169,79 @@ export default function ProtectedAdminPage() {
           <WorkerStatusPanel />
         </div>
 
+        {/* Status Filter Tabs */}
+        <div className="mb-6 bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-2">
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setStatusFilter('ALL')
+                setCurrentPage(1)
+              }}
+              className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                statusFilter === 'ALL'
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'bg-white/5 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              All Scans
+            </button>
+            <button
+              onClick={() => {
+                setStatusFilter('COMPLETED')
+                setCurrentPage(1)
+              }}
+              className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                statusFilter === 'COMPLETED'
+                  ? 'bg-green-600 text-white shadow-lg'
+                  : 'bg-white/5 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              ✓ Completed
+            </button>
+            <button
+              onClick={() => {
+                setStatusFilter('FAILED')
+                setCurrentPage(1)
+              }}
+              className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                statusFilter === 'FAILED'
+                  ? 'bg-red-600 text-white shadow-lg'
+                  : 'bg-white/5 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              ✗ Failed
+            </button>
+            <button
+              onClick={() => {
+                setStatusFilter('SCANNING')
+                setCurrentPage(1)
+              }}
+              className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                statusFilter === 'SCANNING'
+                  ? 'bg-yellow-600 text-white shadow-lg'
+                  : 'bg-white/5 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              ⟳ Scanning
+            </button>
+            <button
+              onClick={() => {
+                setStatusFilter('PENDING')
+                setCurrentPage(1)
+              }}
+              className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                statusFilter === 'PENDING'
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'bg-white/5 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              ⏸ Pending
+            </button>
+          </div>
+        </div>
+
         {/* Tabs Component */}
-        <AdminTabsWithDelete scans={scans} leads={leads} onDataChange={() => loadData(currentPage, itemsPerPage)} />
+        <AdminTabsWithDelete scans={scans} leads={leads} onDataChange={() => loadData(currentPage, itemsPerPage, statusFilter)} />
 
         {/* Pagination */}
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">

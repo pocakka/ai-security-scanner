@@ -34,7 +34,7 @@ DB_URL = "postgresql://scanner:ai_scanner_2025@localhost:6432/ai_security_scanne
 #SCAN_TIMEOUT = 120      # 120 másodperc per scan
 
 
-MAX_SCANNING = 40        # Max párhuzamos scan
+MAX_SCANNING = 30        # Max párhuzamos scan
 MAX_PENDING = 10         # Max várakozó
 SCAN_TIMEOUT = 160      # 120 másodperc per scan
 CLEANUP_INTERVAL = 120  # 5 percenként cleanup
