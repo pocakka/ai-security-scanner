@@ -13,6 +13,7 @@ export interface AdminDetectionFinding {
     paths?: string[]
     formAction?: string
     inputFields?: string[]
+    httpStatus?: number
   }
 }
 
@@ -90,31 +91,37 @@ export async function analyzeAdminDetection(crawlResult: CrawlResult): Promise<A
       })
 
       // ✅ ONLY real vulnerabilities (NOT redirects!)
-      // 200 = Open admin panel (CRITICAL)
-      // 401/403 = Auth-protected admin panel (HIGH - exists but protected)
+      // 200 = Open admin panel (CRITICAL - no auth!)
+      // 401 = Auth-protected admin panel (HIGH - exists but requires auth)
+      // ❌ 403 = Forbidden (FALSE POSITIVE - could be WAF/general block, NOT proof of admin panel)
       // ❌ 301/302 = Redirect (NOT a vulnerability - could redirect anywhere)
       // ❌ 404 = Not found (good)
-      if (response.ok || response.status === 401 || response.status === 403) {
+      if (response.ok || response.status === 401) {
         hasAdminPanel = true
         adminPanels++
 
-        const severity = path.includes('phpmyadmin') || path.includes('mysql') ? 'high' : 'medium'
+        const severity = response.ok
+          ? (path.includes('phpmyadmin') || path.includes('mysql') ? 'critical' : 'high')
+          : 'medium' // 401 = protected, lower severity
 
         findings.push({
           type: 'admin-panel',
           severity,
           title: `Admin panel detected at ${path}`,
-          description: `Administrative interface found (HTTP ${response.status})`,
+          description: response.ok
+            ? `OPEN administrative interface found (HTTP ${response.status} - NO AUTHENTICATION!)`
+            : `Auth-protected administrative interface found (HTTP ${response.status})`,
           evidence: adminUrl,
           location: path,
-          impact: severity === 'high'
-            ? 'Database management interface exposed, critical risk'
-            : 'Admin panel exposed to public internet, vulnerable to brute force attacks',
-          recommendation: severity === 'high'
-            ? 'IMMEDIATELY restrict database management access to specific IPs only'
-            : 'Implement IP whitelisting, 2FA, and rate limiting for admin access',
+          impact: response.ok
+            ? (severity === 'critical' ? 'CRITICAL: Database management interface publicly accessible without authentication!' : 'Admin panel publicly accessible without authentication - IMMEDIATE security risk!')
+            : 'Admin panel exists and requires authentication (good), but still targetable for brute force attacks',
+          recommendation: response.ok
+            ? (severity === 'critical' ? 'IMMEDIATELY restrict database management to localhost/VPN only, add authentication' : 'IMMEDIATELY add authentication, IP whitelisting, and 2FA')
+            : 'Good: Authentication enabled. Enhance with: IP whitelisting, 2FA, rate limiting, and CAPTCHA',
           metadata: {
-            paths: [path]
+            paths: [path],
+            httpStatus: response.status
           }
         })
 

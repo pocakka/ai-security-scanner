@@ -98,7 +98,12 @@ export async function POST(request: NextRequest) {
     console.log('[API] ✅ Worker spawned for scan:', scan.id)
 
     return NextResponse.json(
-      { scanId: scan.id, message: 'Scan queued successfully' },
+      {
+        scanId: scan.id,
+        scanNumber: scan.scanNumber,
+        domain: scan.domain,
+        message: 'Scan queued successfully'
+      },
       { status: 201 }
     )
   } catch (error) {

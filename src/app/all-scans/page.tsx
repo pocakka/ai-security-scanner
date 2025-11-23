@@ -14,7 +14,7 @@ function domainToSlug(domain: string): string {
 function getSeoUrl(scan: { domain: string | null; scanNumber?: number; id: string }): string {
   if (scan.domain && scan.scanNumber) {
     const domainSlug = domainToSlug(scan.domain)
-    return `/s/${domainSlug}/${scan.scanNumber}`
+    return `/s/${scan.scanNumber}/${domainSlug}`
   }
   // Fallback to UUID URL if scanNumber not available
   return `/scan/${scan.id}`
@@ -76,8 +76,9 @@ export default function AllScansPage() {
         throw new Error(errorMessage)
       }
 
-      // Redirect to results page
-      router.push(`/scan/${data.scanId}`)
+      // Redirect to /s/ route (SEO-friendly)
+      const domainSlug = data.domain?.toLowerCase().replace(/\./g, '-') || 'scan'
+      router.push(`/s/${data.scanNumber}/${domainSlug}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
       setScanLoading(false)

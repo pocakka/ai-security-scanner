@@ -425,19 +425,12 @@ export default function ScanResultPage() {
 
   const fetchScan = async () => {
     try {
-      // Fetch by scanNumber (primary key) + domain slug, then get full scan data by UUID
-      const lookupResponse = await fetch(`/api/s/${scanNumberParam}/${domainSlug}`)
-      if (!lookupResponse.ok) throw new Error('Scan not found')
-
-      const lookupData = await lookupResponse.json()
-      const fetchedScanId = lookupData.id
-      setScanId(fetchedScanId)
-
-      // Now fetch full scan data
-      const response = await fetch(`/api/scan/${fetchedScanId}`)
-      if (!response.ok) throw new Error('Failed to fetch scan')
+      // Fetch FULL scan data directly from /api/s/ (consistent with frontend route)
+      const response = await fetch(`/api/s/${scanNumberParam}/${domainSlug}`)
+      if (!response.ok) throw new Error('Scan not found')
 
       const data = await response.json()
+      setScanId(data.id) // Still set scanId for backwards compatibility
       const wasNotCompleted = scan?.status !== 'COMPLETED'
       setScan(data)
 
@@ -497,8 +490,9 @@ export default function ScanResultPage() {
       if (!response.ok) throw new Error('Failed to create new scan')
 
       const data = await response.json()
-      // Redirect to the SEO-friendly URL (will be available once scan completes)
-      window.location.href = `/scan/${data.scanId}`
+      // Redirect to the SEO-friendly /s/ URL
+      const domainSlug = data.domain?.toLowerCase().replace(/\./g, '-') || 'scan'
+      window.location.href = `/s/${data.scanNumber}/${domainSlug}`
     } catch (err) {
       console.error('Regenerate error:', err)
       alert('Failed to regenerate report. Please try again.')
@@ -522,8 +516,9 @@ export default function ScanResultPage() {
       if (!response.ok) throw new Error('Failed to create new scan')
 
       const data = await response.json()
-      // Navigate to the new scan page
-      router.push(`/scan/${data.scanId}`)
+      // Navigate to the SEO-friendly /s/ URL
+      const domainSlug = data.domain?.toLowerCase().replace(/\./g, '-') || 'scan'
+      router.push(`/s/${data.scanNumber}/${domainSlug}`)
     } catch (err) {
       console.error('New scan error:', err)
       alert('Failed to create new scan. Please try again.')
@@ -1379,6 +1374,26 @@ function FindingCard({ finding, knowledgeBase }: { finding: any; knowledgeBase: 
             <div className="bg-black/30 rounded-lg p-3 mb-3 border border-white/10">
               <p className="text-xs text-slate-400 mb-1 font-semibold">Evidence:</p>
               <p className="text-xs text-slate-300 font-mono break-all">{finding.evidence}</p>
+
+              {/* HTTP Status Code (for admin-panel findings) */}
+              {finding.metadata?.httpStatus && (
+                <div className="mt-2 pt-2 border-t border-white/10">
+                  <span className="text-xs text-slate-400">HTTP Status: </span>
+                  <span className={`text-xs font-bold ${
+                    finding.metadata.httpStatus === 200 ? 'text-red-400' :
+                    finding.metadata.httpStatus === 401 ? 'text-yellow-400' :
+                    finding.metadata.httpStatus === 403 ? 'text-orange-400' :
+                    'text-slate-300'
+                  }`}>
+                    {finding.metadata.httpStatus}
+                  </span>
+                  <span className="text-xs text-slate-500 ml-2">
+                    {finding.metadata.httpStatus === 200 && '(Open - No Authentication)'}
+                    {finding.metadata.httpStatus === 401 && '(Authentication Required)'}
+                    {finding.metadata.httpStatus === 403 && '(Forbidden)'}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 

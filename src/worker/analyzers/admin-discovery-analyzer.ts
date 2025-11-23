@@ -178,16 +178,17 @@ export async function analyzeAdminDiscovery(crawlResult: CrawlResult): Promise<A
         const redirectLocation = response.headers.get('location') || null
 
         // ========================================
-        // VULNERABILITY DETECTION (Nov 16, 2025)
-        // ONLY 200 OK = real vulnerability!
-        // 301/302/404 = NOT a vulnerability
-        // 401/403 = auth-protected (still a finding, lower severity)
+        // VULNERABILITY DETECTION (Nov 23, 2025 - UPDATED)
+        // ✅ ONLY real vulnerabilities (NOT redirects!)
+        // 200 = Open admin panel (CRITICAL - no auth!)
+        // 401 = Auth-protected admin panel (MEDIUM - exists but requires auth)
+        // ❌ 403 = Forbidden (FALSE POSITIVE - could be WAF/general block, NOT proof of admin panel)
+        // ❌ 301/302 = Redirect (NOT a vulnerability - could redirect anywhere)
+        // ❌ 404 = Not found (good)
         // ========================================
 
-        // ONLY report if admin panel is ACTUALLY accessible
-        // 200 = Direct access (CRITICAL)
-        // 401/403 = Auth-protected (HIGH - panel exists but protected)
-        if (response.status === 200 || response.status === 401 || response.status === 403) {
+        // ONLY report 200 and 401 (industry standard)
+        if (response.status === 200 || response.status === 401) {
           hasAdminPanel = true
           adminUrls.push(adminUrl)
 

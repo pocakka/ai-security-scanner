@@ -29,8 +29,9 @@ export function ScanForm() {
         throw new Error(errorMessage)
       }
 
-      // Redirect to results page
-      router.push(`/scan/${data.scanId}`)
+      // Redirect to /s/scanNumber/domain-slug route
+      const domainSlug = data.domain?.toLowerCase().replace(/\./g, '-') || 'scan'
+      router.push(`/s/${data.scanNumber}/${domainSlug}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
       setLoading(false)
