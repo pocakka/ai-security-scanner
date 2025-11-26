@@ -70,13 +70,29 @@ export async function validateDomain(
       }
     }
 
-    // DNS lookup with timeout
-    const lookupPromise = dns.resolve4(cleanDomain)
+    // DNS lookup with timeout - try both IPv4 and IPv6
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error('DNS_TIMEOUT')), timeout)
     })
 
-    const addresses = await Promise.race([lookupPromise, timeoutPromise])
+    // Try IPv4 first
+    let addresses: string[] = []
+    try {
+      const ipv4Addresses = await Promise.race([dns.resolve4(cleanDomain), timeoutPromise])
+      if (ipv4Addresses && ipv4Addresses.length > 0) {
+        addresses = ipv4Addresses
+      }
+    } catch (error: any) {
+      // IPv4 failed, try IPv6
+      try {
+        const ipv6Addresses = await Promise.race([dns.resolve6(cleanDomain), timeoutPromise])
+        if (ipv6Addresses && ipv6Addresses.length > 0) {
+          addresses = ipv6Addresses
+        }
+      } catch (ipv6Error) {
+        // Both failed - will handle below
+      }
+    }
 
     if (!addresses || addresses.length === 0) {
       return {

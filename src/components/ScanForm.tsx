@@ -15,7 +15,9 @@ export function ScanForm() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/scan', {
+      // ALWAYS use /api/scan/regenerate to force a NEW scan (bypass duplicate check)
+      // This ensures users always get fresh analysis when submitting from the homepage
+      const response = await fetch('/api/scan/regenerate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),

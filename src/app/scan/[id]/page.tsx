@@ -490,7 +490,7 @@ export default function ScanResultPage() {
 
       const data = await response.json()
       // Redirect to the new scan page
-      window.location.href = `/scan/${data.scanId}`
+      router.push(`/scan/${data.scanId}`)
     } catch (err) {
       console.error('Regenerate error:', err)
       alert('Failed to regenerate report. Please try again.')

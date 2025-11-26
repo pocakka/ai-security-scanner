@@ -21,6 +21,12 @@ model Scan {
   status        String   @default("PENDING") // PENDING, SCANNING, COMPLETED, FAILED
   workerId      String?  // Track which worker process is handling this scan
 
+  // Hybrid scanning metadata
+  scanType      String?  // FAST (PHP curl) or DEEP (Playwright)
+  workerType    String?  // PHP or PLAYWRIGHT
+  scanDuration  Int?     // Total scan time in milliseconds
+  error         String?  // Error message if scan failed
+
   // Results
   riskScore     Int?
   riskLevel     String? // LOW, MEDIUM, HIGH, CRITICAL
@@ -53,6 +59,9 @@ model Scan {
   @@index([completedAt])                  // Completed scans
   @@index([domain, createdAt])            // Domain timeline
   @@index([hasAI])                        // Filter AI-enabled sites
+  @@index([scanType])                     // Filter by scan type (FAST/DEEP)
+  @@index([workerType])                   // Filter by worker type (PHP/PLAYWRIGHT)
+  @@index([scanDuration])                 // Performance analysis
 
   // Note: scanNumber is @id, automatically has index
   // Partial index for active scans (PostgreSQL specific)

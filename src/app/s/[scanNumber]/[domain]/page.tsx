@@ -484,8 +484,8 @@ export default function ScanResultPage() {
 
     setRegenerating(true)
     try {
-      // Create a new scan with the same URL
-      const response = await fetch('/api/scan', {
+      // Use /api/scan/regenerate to force create a new scan (bypasses duplicate check)
+      const response = await fetch('/api/scan/regenerate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: scan.url }),
@@ -511,8 +511,9 @@ export default function ScanResultPage() {
     setNewScanLoading(true)
     setNewScanError('') // Clear previous errors
     try {
-      // Create a new scan with the provided URL
-      const response = await fetch('/api/scan', {
+      // ALWAYS use /api/scan/regenerate to force a NEW scan (bypass duplicate check)
+      // This ensures users always get fresh analysis when submitting from the report page
+      const response = await fetch('/api/scan/regenerate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: newScanUrl }),

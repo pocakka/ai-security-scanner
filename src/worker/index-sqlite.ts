@@ -80,14 +80,27 @@ async function runWithTimeout<T>(
 async function processScanJob(data: { scanId: string; url: string }) {
   const { scanId, url } = data
 
-  console.log(`[Worker] Processing scan ${scanId} for ${url}`)
+  console.log(`[Worker] ═══════════════════════════════════════════════════════════════`)
+  console.log(`[Worker] 🚀 STARTING SCAN: ${url}`)
+  console.log(`[Worker] ═══════════════════════════════════════════════════════════════`)
 
   // Performance timing tracking
   const timings: Record<string, number> = {}
   const startTime = Date.now()
 
+  // Helper function to log step progress
+  const logStep = (step: string, status: 'START' | 'DONE' | 'ERROR', durationMs?: number) => {
+    const elapsed = Date.now() - startTime
+    const statusIcon = status === 'START' ? '▶️' : status === 'DONE' ? '✅' : '❌'
+    const durationStr = durationMs ? ` (${durationMs}ms)` : ''
+    const totalStr = ` [Total: ${elapsed}ms]`
+    console.log(`[Worker] ${statusIcon} ${step}${durationStr}${totalStr}`)
+  }
+
   try {
     // Update status to scanning
+    logStep('Step 0: Update status to SCANNING', 'START')
+    const dbUpdateStart = Date.now()
     await prisma.scan.update({
       where: { id: scanId },
       data: {
@@ -96,23 +109,32 @@ async function processScanJob(data: { scanId: string; url: string }) {
         workerId: process.pid.toString(), // Store worker PID for monitoring
       },
     })
+    logStep('Step 0: Update status to SCANNING', 'DONE', Date.now() - dbUpdateStart)
 
     // Step 1: Crawl the website
-    console.log(`[Worker] Crawling ${url}...`)
+    logStep('Step 1: Crawl website with Playwright', 'START')
     const crawlStart = Date.now()
     const crawlResult = await crawler.crawl(url)
     timings.crawl = Date.now() - crawlStart
-    console.log(`[Worker] Crawl completed in ${timings.crawl}ms`)
+    logStep('Step 1: Crawl website with Playwright', 'DONE', timings.crawl)
+
+    // CRITICAL FIX: Ensure HTML is ALWAYS a string (not Buffer/Object)
+    // Many analyzers call html.toLowerCase() which fails if html is not a string
+    if (typeof crawlResult.html !== 'string' && crawlResult.html) {
+      crawlResult.html = crawlResult.html.toString()
+    }
 
     // Step 2: Run all analyzers
-    console.log(`[Worker] Running analyzers...`)
+    logStep('Step 2: Running 31 security analyzers', 'START')
     const analyzerStart = Date.now()
 
     // NOTE: AI Detection moved to after AI Trust Score (line 237) to ensure consistency
 
+    logStep('  2.1: Security Headers analyzer', 'START')
     const securityHeadersStart = Date.now()
     const securityHeaders = analyzeSecurityHeaders(crawlResult)
     timings.securityHeaders = Date.now() - securityHeadersStart
+    logStep('  2.1: Security Headers analyzer', 'DONE', timings.securityHeaders)
 
     const clientRisksStart = Date.now()
     const clientRisks = analyzeClientRisks(crawlResult)
@@ -358,6 +380,7 @@ async function processScanJob(data: { scanId: string; url: string }) {
     let llm01PromptInjection, llm02InsecureOutput, llm05SupplyChain, llm06SensitiveInfo, llm07PluginDesign, llm08ExcessiveAgency
 
     if (aiTrustResult.hasAiImplementation && (aiTrustResult.aiConfidenceLevel === 'medium' || aiTrustResult.aiConfidenceLevel === 'high')) {
+      logStep('Step 3: AI detected - Running 6 OWASP LLM analyzers', 'START')
       console.log(`[Worker] 🤖 AI detected! Running OWASP LLM security analyzers...`)
 
       // NEW: OWASP LLM01 - Prompt Injection Risk analyzer (HIGH)
@@ -525,10 +548,18 @@ async function processScanJob(data: { scanId: string; url: string }) {
       timings.llm06 = 0
       timings.llm07 = 0
       timings.llm08 = 0
+
+      logStep('Step 3: Skipped OWASP LLM analyzers (no AI detected)', 'DONE', 0)
     }
 
     // Calculate total time before DNS (everything except DNS)
     timings.totalAnalyzersBeforeDNS = Date.now() - analyzerStart
+
+    const totalOWASPTime = (timings.llm01 || 0) + (timings.llm02 || 0) + (timings.llm05 || 0) +
+                          (timings.llm06 || 0) + (timings.llm07 || 0) + (timings.llm08 || 0)
+    if (totalOWASPTime > 0) {
+      logStep('Step 3: OWASP LLM analyzers completed', 'DONE', totalOWASPTime)
+    }
 
     // AI Detection summary (now based on AI Trust Score)
     console.log(`[Worker] ✓ AI detected: ${aiDetection.hasAI} (based on AI Trust Score)`)
@@ -569,7 +600,10 @@ async function processScanJob(data: { scanId: string; url: string }) {
     console.log(`[Worker]   - CDN: ${techStack.categories.cdn.length}`)
     console.log(`[Worker]   - Social: ${techStack.categories.social.length}`)
 
+    logStep('Step 2: All analyzers completed', 'DONE', timings.totalAnalyzersBeforeDNS)
+
     // Step 3: Generate report (WITHOUT DNS initially) - we'll calculate score AFTER
+    logStep('Step 4: Generating security report', 'START')
     console.log(`[Worker] Generating initial report (without DNS)...`)
 
     // Create default DNS result (will be updated if DNS check succeeds)
@@ -626,8 +660,10 @@ async function processScanJob(data: { scanId: string; url: string }) {
       passiveAPI // ⭐ NEW: Passive API Discovery
     )
     timings.reportGeneration = Date.now() - reportStart
+    logStep('Step 4: Generating security report', 'DONE', timings.reportGeneration)
 
     // Step 4: Calculate NEW v3 Professional Scoring (AFTER report generation)
+    logStep('Step 5: Calculating security score', 'START')
     console.log(`[Worker] 🎯 Calculating Professional Security Score v3.0 (100=perfect, 0=critical)...`)
     const riskScoreStart = Date.now()
 
@@ -642,6 +678,7 @@ async function processScanJob(data: { scanId: string; url: string }) {
     )
 
     timings.riskScore = Date.now() - riskScoreStart
+    logStep('Step 5: Calculating security score', 'DONE', timings.riskScore)
 
     console.log(`[Worker] ✅ Score: ${scoreBreakdown.overallScore}/100 (${scoreBreakdown.grade}, ${scoreBreakdown.riskLevel})`)
     console.log(`[Worker]   - Critical Infrastructure: ${scoreBreakdown.categories.criticalInfrastructure.score}/100`)
@@ -704,11 +741,13 @@ async function processScanJob(data: { scanId: string; url: string }) {
     console.log(`[Worker]   TOTAL: ${timings.total}ms`)
 
     // Step 5: Save results
+    logStep('Step 6: Saving scan results to database', 'START')
     console.log(`[Worker] Saving results...`)
     // Detect if AI is present on the site
     const hasAI = (report.detectedTech?.aiProviders?.length ?? 0) > 0
     console.log(`[Worker] AI detected: ${hasAI} (${report.detectedTech?.aiProviders?.length ?? 0} providers)`)
 
+    const dbSaveStart = Date.now()
     await prisma.scan.update({
       where: { id: scanId },
       data: {
@@ -729,8 +768,10 @@ async function processScanJob(data: { scanId: string; url: string }) {
     })
 
     // Step 5.5: Save AI Trust Scorecard (UPSERT - handles retries!)
+    // CRITICAL: Wrapped in try-catch to prevent status rollback if this fails
     console.log(`[Worker] Saving AI Trust Scorecard...`)
-    await prisma.aiTrustScorecard.upsert({
+    try {
+      await prisma.aiTrustScorecard.upsert({
       where: { scanId: scanId },
       create: {
         scanId: scanId,
@@ -841,10 +882,20 @@ async function processScanJob(data: { scanId: string; url: string }) {
         detailedChecks: (aiTrustResult.detailedChecks || {}) as any,
         summary: (aiTrustResult.summary || {}) as any,
       },
-    })
-    console.log(`[Worker] ✅ AI Trust Scorecard saved (upsert)`)
+      })
+      console.log(`[Worker] ✅ AI Trust Scorecard saved (upsert)`)
+    } catch (scorecardError) {
+      // CRITICAL: Don't let aiTrustScorecard errors fail the entire scan
+      // The scan is already marked as COMPLETED with results
+      console.error(`[Worker] ⚠️  AI Trust Scorecard save failed (non-fatal):`, scorecardError)
+      console.log(`[Worker] ℹ️  Scan results are preserved, only AI Trust Score is missing`)
+    }
+
+    const dbSaveDuration = Date.now() - dbSaveStart
+    logStep('Step 6: Saving scan results to database', 'DONE', dbSaveDuration)
 
     // Step 6: DNS Security analyzer (OPTIONAL - with 10 second timeout)
+    logStep('Step 7: DNS Security check (10s timeout)', 'START')
     console.log(`[Worker] 🌍 Running DNS Security check (10s timeout)...`)
     const dnsStart = Date.now()
 
@@ -876,19 +927,25 @@ async function processScanJob(data: { scanId: string; url: string }) {
         },
       })
       console.log(`[Worker] ✅ DNS results added to scan`)
+      logStep('Step 7: DNS Security check (10s timeout)', 'DONE', timings.dns)
 
     } catch (error) {
       console.log(`[Worker] ⚠️  DNS Security check skipped: ${error instanceof Error ? error.message : 'Unknown error'}`)
       // DNS check failed or timed out - continue without it
       timings.dns = Date.now() - dnsStart
+      logStep('Step 7: DNS Security check (10s timeout)', 'ERROR', timings.dns)
     }
 
     // Update total time including DNS attempt
     timings.totalAnalyzers = Date.now() - analyzerStart
 
-    console.log(`[Worker] ✅ Scan ${scanId} completed successfully`)
+    console.log(`[Worker] ═══════════════════════════════════════════════════════════════`)
+    console.log(`[Worker] ✅ SCAN COMPLETED SUCCESSFULLY`)
+    console.log(`[Worker] ═══════════════════════════════════════════════════════════════`)
     console.log(`[Worker] Risk Score: ${scoreBreakdown.overallScore}/100 (${scoreBreakdown.grade} - ${scoreBreakdown.riskLevel})`)
     console.log(`[Worker] AI Trust Score: ${aiTrustResult.weightedScore}/100 (${aiTrustResult.grade})`)
+    console.log(`[Worker] Total Duration: ${timings.total}ms`)
+    console.log(`[Worker] ═══════════════════════════════════════════════════════════════`)
 
     return { success: true, scanId, riskScore: scoreBreakdown.overallScore }
 

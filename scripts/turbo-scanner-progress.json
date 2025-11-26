@@ -1,0 +1,13 @@
+{
+  "last_index": 290,
+  "stats": {
+    "total": 229881,
+    "queued": 244,
+    "processed": 42,
+    "success": 41,
+    "failed": 1,
+    "timeout": 2,
+    "start_time": 1763983914.7930453
+  },
+  "timestamp": "2025-11-24T12:37:27.587170"
+}

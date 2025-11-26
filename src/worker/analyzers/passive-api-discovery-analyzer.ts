@@ -363,14 +363,26 @@ export async function analyzePassiveAPIDiscovery(
   // 5. API Endpoint Discovery
   checkTimeout()
   const discoveredEndpoints = new Set<string>()
+  const MAX_TOTAL_ENDPOINTS = 50 // Limit total endpoints to prevent excessive processing
+
   for (const pattern of API_ENDPOINT_PATTERNS) {
+    // Early exit if we already have enough endpoints
+    if (discoveredEndpoints.size >= MAX_TOTAL_ENDPOINTS) break
+
+    // Check timeout before each pattern
+    checkTimeout()
+
     // Use matchAll instead of exec to avoid infinite loops
     const matches = html.matchAll(pattern)
     let matchCount = 0
-    const MAX_ENDPOINT_MATCHES = 100 // Limit to prevent excessive processing
+    const MAX_ENDPOINT_MATCHES = 20 // Reduced from 100 to 20 per pattern
 
     for (const match of matches) {
+      // Check timeout every 5 matches
+      if (matchCount % 5 === 0) checkTimeout()
+
       if (matchCount++ > MAX_ENDPOINT_MATCHES) break
+      if (discoveredEndpoints.size >= MAX_TOTAL_ENDPOINTS) break
 
       const endpoint = match[1]
       if (!discoveredEndpoints.has(endpoint) && endpoint.length > 5) {

@@ -3,11 +3,11 @@ module.exports = {
     name: 'analyzer-worker',
     script: 'npx',
     args: 'tsx src/worker/index-sqlite.ts',
-    instances: 100,
+    instances: 300,
     exec_mode: 'cluster',
     env: {
       NODE_ENV: 'production',
-      MAX_WORKERS: '100',
+      MAX_WORKERS: '300',
       DATABASE_URL: 'postgresql://scanner:ai_scanner_2025@localhost:6432/ai_security_scanner'
     },
     max_memory_restart: '500M',

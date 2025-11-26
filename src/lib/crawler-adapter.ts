@@ -13,7 +13,7 @@ export class CrawlerAdapter {
 
   constructor() {
     this.crawler = new PlaywrightCrawler({
-      timeout: 60000,
+      timeout: 25000, // 25s - must be less than worker timeout to prevent hangs
       captureScreenshot: false,
       evaluateJavaScript: true,
     })

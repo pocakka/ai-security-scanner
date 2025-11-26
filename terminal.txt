@@ -1,0 +1,864 @@
+aiq@aiq-System-Product-Name:~/Asztal/10_M_USD/ai-security-scanner$ ./scripts/start-ai-batch.sh domains.txt
+═══════════════════════════════════════════════════════════════════
+  ⚡ AI BATCH SCANNER - Optimized for AI Red Teaming
+═══════════════════════════════════════════════════════════════════
+
+  🚀 OPTIMIZATIONS:
+    - PHP crawler (80ms vs 3700ms Playwright)
+    - AI-only analyzers (skip reconnaissance, admin, port scan, etc)
+    - 100 workers (vs 50 normal)
+    - 3.3s/scan vs 22s/scan = 6.7x faster!
+
+  ✅ UI UNCHANGED:
+    - Next.js dev server: http://localhost:3000 (normal Playwright)
+    - Normal workers keep running (ecosystem-optimized.config.js)
+
+═══════════════════════════════════════════════════════════════════
+
+📂 Domain file: domains.txt
+📊 Domains to scan: 224879
+
+⏱️  Estimated time: ~2.9h (at 76,000 scans/hour)
+
+▶️  Start AI Batch Scanner? (y/n) y
+
+═══════════════════════════════════════════════════════════════════
+  STEP 1: Starting Auto-Cleanup Daemon
+═══════════════════════════════════════════════════════════════════
+
+✅ Cleanup daemon started (PID: 3429797)
+   - Timeout: 60s (scans older than this = FAILED)
+   - Check interval: 30s
+   - Log: ./logs/cleanup-daemon.log
+
+═══════════════════════════════════════════════════════════════════
+  STEP 2: Starting AI Batch Workers (100 workers)
+═══════════════════════════════════════════════════════════════════
+
+[PM2][WARN] Applications ai-batch-worker not running, starting...
+[PM2] App [ai-batch-worker] launched (100 instances)
+┌─────┬────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id  │ name               │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├─────┼────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 50  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429818  │ 2s     │ 0    │ online    │ 0%       │ 75.5mb   │ aiq      │ disabled │
+│ 51  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429825  │ 2s     │ 0    │ online    │ 0%       │ 75.3mb   │ aiq      │ disabled │
+│ 52  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429832  │ 2s     │ 0    │ online    │ 0%       │ 75.5mb   │ aiq      │ disabled │
+│ 53  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429843  │ 2s     │ 0    │ online    │ 0%       │ 76.4mb   │ aiq      │ disabled │
+│ 54  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429854  │ 2s     │ 0    │ online    │ 0%       │ 75.2mb   │ aiq      │ disabled │
+│ 55  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429865  │ 2s     │ 0    │ online    │ 0%       │ 74.9mb   │ aiq      │ disabled │
+│ 56  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429876  │ 2s     │ 0    │ online    │ 0%       │ 74.1mb   │ aiq      │ disabled │
+│ 57  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429887  │ 2s     │ 0    │ online    │ 0%       │ 75.2mb   │ aiq      │ disabled │
+│ 58  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429898  │ 2s     │ 0    │ online    │ 0%       │ 74.2mb   │ aiq      │ disabled │
+│ 59  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429909  │ 2s     │ 0    │ online    │ 0%       │ 74.1mb   │ aiq      │ disabled │
+│ 60  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429927  │ 2s     │ 0    │ online    │ 0%       │ 74.6mb   │ aiq      │ disabled │
+│ 61  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429950  │ 2s     │ 0    │ online    │ 0%       │ 74.9mb   │ aiq      │ disabled │
+│ 62  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429979  │ 2s     │ 0    │ online    │ 0%       │ 75.5mb   │ aiq      │ disabled │
+│ 63  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430009  │ 2s     │ 0    │ online    │ 0%       │ 74.6mb   │ aiq      │ disabled │
+│ 64  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430044  │ 2s     │ 0    │ online    │ 0%       │ 75.3mb   │ aiq      │ disabled │
+│ 65  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430073  │ 2s     │ 0    │ online    │ 0%       │ 74.5mb   │ aiq      │ disabled │
+│ 66  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430104  │ 2s     │ 0    │ online    │ 0%       │ 74.5mb   │ aiq      │ disabled │
+│ 67  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430135  │ 2s     │ 0    │ online    │ 0%       │ 75.5mb   │ aiq      │ disabled │
+│ 68  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430170  │ 2s     │ 0    │ online    │ 0%       │ 74.4mb   │ aiq      │ disabled │
+│ 69  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430201  │ 2s     │ 0    │ online    │ 0%       │ 74.4mb   │ aiq      │ disabled │
+│ 70  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430240  │ 2s     │ 0    │ online    │ 0%       │ 76.8mb   │ aiq      │ disabled │
+│ 71  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430288  │ 2s     │ 0    │ online    │ 0%       │ 75.9mb   │ aiq      │ disabled │
+│ 72  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430327  │ 2s     │ 0    │ online    │ 0%       │ 76.8mb   │ aiq      │ disabled │
+│ 73  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430353  │ 2s     │ 0    │ online    │ 0%       │ 76.1mb   │ aiq      │ disabled │
+│ 74  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430468  │ 2s     │ 0    │ online    │ 0%       │ 76.4mb   │ aiq      │ disabled │
+│ 75  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430525  │ 2s     │ 0    │ online    │ 0%       │ 75.6mb   │ aiq      │ disabled │
+│ 76  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430567  │ 2s     │ 0    │ online    │ 0%       │ 76.4mb   │ aiq      │ disabled │
+│ 77  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430620  │ 2s     │ 0    │ online    │ 0%       │ 75.2mb   │ aiq      │ disabled │
+│ 78  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430683  │ 2s     │ 0    │ online    │ 0%       │ 75.1mb   │ aiq      │ disabled │
+│ 79  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430791  │ 2s     │ 0    │ online    │ 0%       │ 76.2mb   │ aiq      │ disabled │
+│ 80  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430822  │ 1s     │ 0    │ online    │ 0%       │ 77.2mb   │ aiq      │ disabled │
+│ 81  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430867  │ 1s     │ 0    │ online    │ 0%       │ 74.8mb   │ aiq      │ disabled │
+│ 82  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430925  │ 1s     │ 0    │ online    │ 0%       │ 77.5mb   │ aiq      │ disabled │
+│ 83  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430984  │ 1s     │ 0    │ online    │ 0%       │ 76.9mb   │ aiq      │ disabled │
+│ 84  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431018  │ 1s     │ 0    │ online    │ 0%       │ 76.1mb   │ aiq      │ disabled │
+│ 85  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431040  │ 1s     │ 0    │ online    │ 0%       │ 75.4mb   │ aiq      │ disabled │
+│ 86  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431131  │ 1s     │ 0    │ online    │ 0%       │ 75.5mb   │ aiq      │ disabled │
+│ 87  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431174  │ 1s     │ 0    │ online    │ 0%       │ 76.6mb   │ aiq      │ disabled │
+│ 88  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431225  │ 1s     │ 0    │ online    │ 0%       │ 76.1mb   │ aiq      │ disabled │
+│ 89  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431290  │ 1s     │ 0    │ online    │ 0%       │ 74.8mb   │ aiq      │ disabled │
+│ 90  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431415  │ 1s     │ 0    │ online    │ 0%       │ 75.9mb   │ aiq      │ disabled │
+│ 91  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431454  │ 1s     │ 0    │ online    │ 0%       │ 74.4mb   │ aiq      │ disabled │
+│ 92  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431485  │ 1s     │ 0    │ online    │ 0%       │ 75.7mb   │ aiq      │ disabled │
+│ 93  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431536  │ 1s     │ 0    │ online    │ 0%       │ 76.3mb   │ aiq      │ disabled │
+│ 94  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431589  │ 1s     │ 0    │ online    │ 0%       │ 75.9mb   │ aiq      │ disabled │
+│ 95  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431645  │ 1s     │ 0    │ online    │ 0%       │ 75.0mb   │ aiq      │ disabled │
+│ 96  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431717  │ 1s     │ 0    │ online    │ 0%       │ 75.7mb   │ aiq      │ disabled │
+│ 97  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431796  │ 1s     │ 0    │ online    │ 0%       │ 76.4mb   │ aiq      │ disabled │
+│ 98  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431820  │ 1s     │ 0    │ online    │ 0%       │ 76.5mb   │ aiq      │ disabled │
+│ 99  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431898  │ 1s     │ 0    │ online    │ 0%       │ 75.8mb   │ aiq      │ disabled │
+│ 100 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431945  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 101 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432001  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 102 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432094  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 103 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432135  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 104 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432187  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 105 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432269  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 106 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432340  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 107 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432388  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 108 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432493  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 109 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432550  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 110 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432577  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 111 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432622  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 112 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432700  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 113 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432785  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 114 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432843  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 115 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432884  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 116 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3432948  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 117 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433029  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 118 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433130  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 119 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433173  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 120 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433201  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 121 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433296  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 122 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433313  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 123 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433346  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 124 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433393  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 125 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433414  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 126 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433462  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 127 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433486  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 128 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433533  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 129 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433557  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 130 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433584  │ 0      │ 0    │ │ 0%       │ 0b       │ aiq      │ disabled │
+│ 131 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433623  │ 0s     │ 0    │ online    │ 0%       │ 75.3mb   │ aiq      │ disabled │
+│ 132 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433663  │ 0s     │ 0    │ online    │ 0%       │ 75.6mb   │ aiq      │ disabled │
+│ 133 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433707  │ 0s     │ 0    │ online    │ 0%       │ 75.4mb   │ aiq      │ disabled │
+│ 134 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433723  │ 0s     │ 0    │ online    │ 0%       │ 75.8mb   │ aiq      │ disabled │
+│ 135 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433766  │ 0s     │ 0    │ online    │ 0%       │ 74.8mb   │ aiq      │ disabled │
+│ 136 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433814  │ 0s     │ 0    │ online    │ 0%       │ 74.4mb   │ aiq      │ disabled │
+│ 137 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433844  │ 0s     │ 0    │ online    │ 0%       │ 74.3mb   │ aiq      │ disabled │
+│ 138 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433878  │ 0s     │ 0    │ online    │ 0%       │ 74.9mb   │ aiq      │ disabled │
+│ 139 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433932  │ 0s     │ 0    │ online    │ 0%       │ 75.3mb   │ aiq      │ disabled │
+│ 140 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3433973  │ 0s     │ 0    │ online    │ 0%       │ 75.1mb   │ aiq      │ disabled │
+│ 141 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3434009  │ 0s     │ 0    │ online    │ 0%       │ 71.3mb   │ aiq      │ disabled │
+│ 142 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3434058  │ 0s     │ 0    │ online    │ 0%       │ 71.9mb   │ aiq      │ disabled │
+│ 143 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3434079  │ 0s     │ 0    │ online    │ 0%       │ 69.8mb   │ aiq      │ disabled │
+│ 144 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3434106  │ 0s     │ 0    │ online    │ 0%       │ 65.4mb   │ aiq      │ disabled │
+│ 145 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3434153  │ 0s     │ 0    │ online    │ 0%       │ 65.1mb   │ aiq      │ disabled │
+│ 146 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3434184  │ 0s     │ 0    │ online    │ 0%       │ 58.5mb   │ aiq      │ disabled │
+│ 147 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3434252  │ 0s     │ 0    │ online    │ 0%       │ 53.8mb   │ aiq      │ disabled │
+│ 148 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3434289  │ 0s     │ 0    │ online    │ 0%       │ 51.2mb   │ aiq      │ disabled │
+│ 149 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3434334  │ 0s     │ 0    │ online    │ 0%       │ 46.5mb   │ aiq      │ disabled │
+│ 0   │ analyzer-worker    │ default     │ N/A     │ cluster │ 3426597  │ 2m     │ 32   │ online    │ 0.4%     │ 63.1mb   │ aiq      │ disabled │
+│ 1   │ analyzer-worker    │ default     │ N/A     │ cluster │ 3426619  │ 2m     │ 32   │ online    │ 0%       │ 62.1mb   │ aiq      │ disabled │
+│ 2   │ analyzer-worker    │ default     │ N/A     │ cluster │ 3426618  │ 2m     │ 32   │ online    │ 0%       │ 63.4mb   │ aiq      │ disabled │
+│ 3   │ analyzer-worker    │ default     │ N/A     │ cluster │ 3426809  │ 2m     │ 32   │ online    │ 0%       │ 64.5mb   │ aiq      │ disabled │
+│ 4   │ analyzer-worker    │ default     │ N/A     │ cluster │ 3426596  │ 2m     │ 32   │ online    │ 0%       │ 64.3mb   │ aiq      │ disabled │
+│ 5   │ analyzer-worker    │ default     │ N/A     │ cluster │ 3426820  │ 2m     │ 32   │ online    │ 0%       │ 64.6mb   │ aiq      │ disabled │
+│ 6   │ analyzer-worker    │ default     │ N/A     │ cluster │ 3426638  │ 2m     │ 32   │ online    │ 0%       │ 63.5mb   │ aiq      │ disabled │
+│ 7   │ analyzer-worker    │ default     │ N/A     │ cluster │ 3426835  │ 2m     │ 32   │ online    │ 0%       │ 64.6mb   │ aiq      │ disabled │
+│ 8   │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427116  │ 2m     │ 32   │ online    │ 0%       │ 63.9mb   │ aiq      │ disabled │
+│ 9   │ analyzer-worker    │ default     │ N/A     │ cluster │ 3426621  │ 2m     │ 32   │ online    │ 0%       │ 63.7mb   │ aiq      │ disabled │
+│ 10  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3426827  │ 2m     │ 32   │ online    │ 0%       │ 65.0mb   │ aiq      │ disabled │
+│ 11  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427384  │ 2m     │ 32   │ online    │ 0%       │ 63.7mb   │ aiq      │ disabled │
+│ 12  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427129  │ 2m     │ 32   │ online    │ 0%       │ 64.6mb   │ aiq      │ disabled │
+│ 13  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427711  │ 2m     │ 32   │ online    │ 0%       │ 64.7mb   │ aiq      │ disabled │
+│ 14  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427775  │ 2m     │ 32   │ online    │ 0%       │ 64.0mb   │ aiq      │ disabled │
+│ 15  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427130  │ 2m     │ 32   │ online    │ 0%       │ 64.1mb   │ aiq      │ disabled │
+│ 16  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427200  │ 2m     │ 32   │ online    │ 0.4%     │ 63.8mb   │ aiq      │ disabled │
+│ 17  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427454  │ 2m     │ 32   │ online    │ 0%       │ 62.7mb   │ aiq      │ disabled │
+│ 18  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427214  │ 2m     │ 32   │ online    │ 0%       │ 63.4mb   │ aiq      │ disabled │
+│ 19  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427136  │ 2m     │ 32   │ online    │ 0%       │ 63.6mb   │ aiq      │ disabled │
+│ 20  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427428  │ 2m     │ 32   │ online    │ 0%       │ 64.1mb   │ aiq      │ disabled │
+│ 21  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427429  │ 2m     │ 32   │ online    │ 0%       │ 63.1mb   │ aiq      │ disabled │
+│ 22  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428519  │ 2m     │ 32   │ online    │ 0%       │ 63.3mb   │ aiq      │ disabled │
+│ 23  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427427  │ 2m     │ 32   │ online    │ 0.4%     │ 64.7mb   │ aiq      │ disabled │
+│ 24  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428334  │ 2m     │ 32   │ online    │ 0%       │ 64.0mb   │ aiq      │ disabled │
+│ 25  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428351  │ 2m     │ 32   │ online    │ 0%       │ 65.2mb   │ aiq      │ disabled │
+│ 26  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428588  │ 2m     │ 32   │ online    │ 0.4%     │ 64.8mb   │ aiq      │ disabled │
+│ 27  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427774  │ 2m     │ 32   │ online    │ 0%       │ 64.0mb   │ aiq      │ disabled │
+│ 28  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427998  │ 2m     │ 32   │ online    │ 0%       │ 63.3mb   │ aiq      │ disabled │
+│ 29  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428518  │ 2m     │ 32   │ online    │ 0%       │ 64.6mb   │ aiq      │ disabled │
+│ 30  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3427999  │ 2m     │ 32   │ online    │ 0%       │ 63.9mb   │ aiq      │ disabled │
+│ 31  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428274  │ 2m     │ 32   │ online    │ 0%       │ 65.3mb   │ aiq      │ disabled │
+│ 32  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428919  │ 2m     │ 32   │ online    │ 0%       │ 63.4mb   │ aiq      │ disabled │
+│ 33  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428705  │ 2m     │ 32   │ online    │ 0%       │ 63.8mb   │ aiq      │ disabled │
+│ 34  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428012  │ 2m     │ 32   │ online    │ 0%       │ 64.6mb   │ aiq      │ disabled │
+│ 35  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428765  │ 2m     │ 32   │ online    │ 0%       │ 64.1mb   │ aiq      │ disabled │
+│ 36  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428907  │ 2m     │ 32   │ online    │ 0%       │ 62.7mb   │ aiq      │ disabled │
+│ 37  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3429036  │ 2m     │ 32   │ online    │ 0%       │ 62.7mb   │ aiq      │ disabled │
+│ 38  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428280  │ 2m     │ 32   │ online    │ 0%       │ 63.8mb   │ aiq      │ disabled │
+│ 39  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428962  │ 2m     │ 32   │ online    │ 0%       │ 62.7mb   │ aiq      │ disabled │
+│ 40  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428940  │ 2m     │ 32   │ online    │ 0%       │ 63.8mb   │ aiq      │ disabled │
+│ 41  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3429015  │ 2m     │ 32   │ online    │ 0%       │ 63.5mb   │ aiq      │ disabled │
+│ 42  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428827  │ 2m     │ 32   │ online    │ 0%       │ 63.8mb   │ aiq      │ disabled │
+│ 43  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3429008  │ 2m     │ 32   │ online    │ 0%       │ 64.0mb   │ aiq      │ disabled │
+│ 44  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428675  │ 2m     │ 32   │ online    │ 0%       │ 64.6mb   │ aiq      │ disabled │
+│ 45  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428986  │ 2m     │ 32   │ online    │ 0.4%     │ 62.8mb   │ aiq      │ disabled │
+│ 46  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428952  │ 2m     │ 32   │ online    │ 0.4%     │ 63.2mb   │ aiq      │ disabled │
+│ 47  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428788  │ 2m     │ 32   │ online    │ 0%       │ 64.1mb   │ aiq      │ disabled │
+│ 48  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428747  │ 2m     │ 32   │ online    │ 0%       │ 64.5mb   │ aiq      │ disabled │
+│ 49  │ analyzer-worker    │ default     │ N/A     │ cluster │ 3428758  │ 2m     │ 32   │ online    │ 0%       │ 65.1mb   │ aiq      │ disabled │
+└─────┴────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+
+⏳ Waiting 5s for workers to initialize...
+
+│ 50  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429818  │ 7s     │ 0    │ online    │ 0%       │ 75.5mb   │ aiq      │ disabled │
+│ 51  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429825  │ 7s     │ 0    │ online    │ 0%       │ 75.3mb   │ aiq      │ disabled │
+│ 52  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429832  │ 7s     │ 0    │ online    │ 0%       │ 75.5mb   │ aiq      │ disabled │
+│ 53  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429843  │ 7s     │ 0    │ online    │ 0%       │ 76.4mb   │ aiq      │ disabled │
+│ 54  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429854  │ 7s     │ 0    │ online    │ 0%       │ 75.2mb   │ aiq      │ disabled │
+│ 55  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429865  │ 7s     │ 0    │ online    │ 0%       │ 74.9mb   │ aiq      │ disabled │
+│ 56  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429876  │ 7s     │ 0    │ online    │ 0%       │ 74.1mb   │ aiq      │ disabled │
+│ 57  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429887  │ 7s     │ 0    │ online    │ 0%       │ 75.2mb   │ aiq      │ disabled │
+│ 58  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429898  │ 7s     │ 0    │ online    │ 0%       │ 74.4mb   │ aiq      │ disabled │
+│ 59  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429909  │ 7s     │ 0    │ online    │ 0%       │ 74.3mb   │ aiq      │ disabled │
+│ 60  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429927  │ 7s     │ 0    │ online    │ 0%       │ 74.6mb   │ aiq      │ disabled │
+│ 61  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429950  │ 7s     │ 0    │ online    │ 0%       │ 74.9mb   │ aiq      │ disabled │
+│ 62  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3429979  │ 7s     │ 0    │ online    │ 0%       │ 75.5mb   │ aiq      │ disabled │
+│ 63  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430009  │ 7s     │ 0    │ online    │ 0%       │ 74.6mb   │ aiq      │ disabled │
+│ 64  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430044  │ 7s     │ 0    │ online    │ 0%       │ 75.3mb   │ aiq      │ disabled │
+│ 65  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430073  │ 7s     │ 0    │ online    │ 0%       │ 74.5mb   │ aiq      │ disabled │
+│ 66  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430104  │ 7s     │ 0    │ online    │ 0%       │ 74.5mb   │ aiq      │ disabled │
+│ 67  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430135  │ 7s     │ 0    │ online    │ 0%       │ 75.5mb   │ aiq      │ disabled │
+│ 68  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430170  │ 7s     │ 0    │ online    │ 0%       │ 74.4mb   │ aiq      │ disabled │
+│ 69  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430201  │ 7s     │ 0    │ online    │ 0%       │ 74.4mb   │ aiq      │ disabled │
+│ 70  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430240  │ 7s     │ 0    │ online    │ 0%       │ 76.8mb   │ aiq      │ disabled │
+│ 71  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430288  │ 7s     │ 0    │ online    │ 0%       │ 75.9mb   │ aiq      │ disabled │
+│ 72  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430327  │ 7s     │ 0    │ online    │ 0%       │ 76.8mb   │ aiq      │ disabled │
+│ 73  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430353  │ 7s     │ 0    │ online    │ 0%       │ 76.1mb   │ aiq      │ disabled │
+│ 74  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430468  │ 7s     │ 0    │ online    │ 0%       │ 76.6mb   │ aiq      │ disabled │
+│ 75  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430525  │ 7s     │ 0    │ online    │ 0%       │ 75.6mb   │ aiq      │ disabled │
+│ 76  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430567  │ 7s     │ 0    │ online    │ 0%       │ 76.4mb   │ aiq      │ disabled │
+│ 77  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430620  │ 7s     │ 0    │ online    │ 0%       │ 75.2mb   │ aiq      │ disabled │
+│ 78  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430683  │ 7s     │ 0    │ online    │ 0%       │ 75.1mb   │ aiq      │ disabled │
+│ 79  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430791  │ 7s     │ 0    │ online    │ 0%       │ 76.2mb   │ aiq      │ disabled │
+│ 80  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430822  │ 7s     │ 0    │ online    │ 0%       │ 77.2mb   │ aiq      │ disabled │
+│ 81  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430867  │ 7s     │ 0    │ online    │ 0%       │ 75.0mb   │ aiq      │ disabled │
+│ 82  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430925  │ 7s     │ 0    │ online    │ 0%       │ 77.5mb   │ aiq      │ disabled │
+│ 83  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3430984  │ 7s     │ 0    │ online    │ 0%       │ 76.9mb   │ aiq      │ disabled │
+│ 84  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431018  │ 7s     │ 0    │ online    │ 0%       │ 76.1mb   │ aiq      │ disabled │
+│ 85  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431040  │ 6s     │ 0    │ online    │ 0%       │ 75.4mb   │ aiq      │ disabled │
+│ 86  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431131  │ 6s     │ 0    │ online    │ 0%       │ 75.5mb   │ aiq      │ disabled │
+│ 87  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431174  │ 6s     │ 0    │ online    │ 0%       │ 76.6mb   │ aiq      │ disabled │
+│ 88  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431225  │ 6s     │ 0    │ online    │ 0%       │ 76.1mb   │ aiq      │ disabled │
+│ 89  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431290  │ 6s     │ 0    │ online    │ 0%       │ 74.8mb   │ aiq      │ disabled │
+│ 90  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431415  │ 6s     │ 0    │ online    │ 0%       │ 75.9mb   │ aiq      │ disabled │
+│ 91  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431454  │ 6s     │ 0    │ online    │ 0%       │ 74.4mb   │ aiq      │ disabled │
+│ 92  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431485  │ 6s     │ 0    │ online    │ 0%       │ 75.7mb   │ aiq      │ disabled │
+│ 93  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431536  │ 6s     │ 0    │ online    │ 0%       │ 76.3mb   │ aiq      │ disabled │
+│ 94  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431589  │ 6s     │ 0    │ online    │ 0%       │ 75.9mb   │ aiq      │ disabled │
+│ 95  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431645  │ 6s     │ 0    │ online    │ 0%       │ 75.0mb   │ aiq      │ disabled │
+│ 96  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431717  │ 6s     │ 0    │ online    │ 0%       │ 75.7mb   │ aiq      │ disabled │
+│ 97  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431796  │ 6s     │ 0    │ online    │ 0%       │ 76.4mb   │ aiq      │ disabled │
+│ 98  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431820  │ 6s     │ 0    │ online    │ 0%       │ 76.5mb   │ aiq      │ disabled │
+│ 99  │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3431898  │ 6s     │ 0    │ online    │ 0%       │ 75.8mb   │ aiq      │ disabled │
+│ 100 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436369  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 101 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436383  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 102 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436416  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 103 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436397  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 104 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436390  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 105 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436371  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 106 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436417  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 107 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436446  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 108 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436454  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 109 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436543  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 110 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436627  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 111 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436607  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 112 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436624  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 113 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436701  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 114 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436680  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 115 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436754  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 116 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436736  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 117 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436770  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 118 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436824  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 119 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436849  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 120 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436864  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 121 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3436991  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 122 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437132  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 123 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437102  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 124 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437024  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 125 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437017  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 126 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437170  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 127 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437168  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 128 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437150  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 129 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437145  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 130 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437209  │ 0      │ 2    │        │ aiq      │ disabled │
+│ 131 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437306  │ 0s     │ 2    │ online    │ 0%       │ 74.2mb   │ aiq      │ disabled │
+│ 132 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437401  │ 0s     │ 2    │ online    │ 0%       │ 74.9mb   │ aiq      │ disabled │
+│ 133 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437326  │ 0s     │ 2    │ online    │ 0%       │ 75.0mb   │ aiq      │ disabled │
+│ 134 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437284  │ 0s     │ 2    │ online    │ 0%       │ 76.3mb   │ aiq      │ disabled │
+│ 135 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437404  │ 0s     │ 2    │ online    │ 0%       │ 75.1mb   │ aiq      │ disabled │
+│ 136 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437376  │ 0s     │ 2    │ online    │ 0%       │ 74.6mb   │ aiq      │ disabled │
+│ 137 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437337  │ 0s     │ 2    │ online    │ 0%       │ 76.1mb   │ aiq      │ disabled │
+│ 138 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437453  │ 0s     │ 2    │ online    │ 0%       │ 74.5mb   │ aiq      │ disabled │
+│ 139 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437448  │ 0s     │ 2    │ online    │ 0%       │ 75.0mb   │ aiq      │ disabled │
+│ 140 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437499  │ 0s     │ 2    │ online    │ 0%       │ 74.7mb   │ aiq      │ disabled │
+│ 141 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437504  │ 0s     │ 2    │ online    │ 0%       │ 75.7mb   │ aiq      │ disabled │
+│ 142 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437573  │ 0s     │ 2    │ online    │ 100%     │ 76.1mb   │ aiq      │ disabled │
+│ 143 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437540  │ 0s     │ 2    │ online    │ 0%       │ 75.3mb   │ aiq      │ disabled │
+│ 144 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437605  │ 0s     │ 2    │ online    │ 100%     │ 76.0mb   │ aiq      │ disabled │
+│ 145 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437593  │ 0s     │ 2    │ online    │ 0%       │ 76.5mb   │ aiq      │ disabled │
+│ 146 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437616  │ 0s     │ 2    │ online    │ 100%     │ 75.3mb   │ aiq      │ disabled │
+│ 147 │ ai-batch-worker    │ default     │ N/A     │ cluster │ 3437588  │ 0s     │ 2    │ online    │ 100%     │ 75.1mb   │ aiq      │ disabled │
+
+════════════════════════════════════════════════════════════════════════════════
+  🚀 PARALLEL SCANNER - 00:00:00
+════════════════════════════════════════════════════════════════════════════════
+  Progress: 3106/224880 (1.4%)
+  Created: 1497 | Failed: 1574
+────────────────────────────────────────────────────────────────────────────────
+  📊 Queue Status:
+    PENDING:    0 / 20 target
+    SCANNING:   0 / 70 target
+    Total Active: 0
+    Completed: 0 | Failed: 0
+────────────────────────────────────────────────────────────────────────────────
+  🎬 Creating 90 scans with 50 threads...
+════════════════════════════════════════════════════════════════════════════════
+  ✓ [3106/224880] parentslead.org
+  ✓ [3107/224880] dask.pydata.org
+  ✓ [3108/224880] forums.onlinebookclub.org
+  ✓ [3109/224880] spice.fsi.stanford.edu
+  ✓ [3110/224880] math.uci.edu
+  ✓ [3111/224880] localpocket.com
+  ✓ [3112/224880] systango.com
+  ✓ [3113/224880] fcnp.com
+  ✓ [3114/224880] tellymix.co.uk
+  ✓ [3115/224880] deepdreamgenerator.com
+  ✓ [3116/224880] lcv.org
+  ✓ [3117/224880] showme.missouri.edu
+  ✓ [3118/224880] prijemni.infostud.com
+  ✓ [3119/224880] atourin.com
+  ✓ [3120/224880] lapreferente.com
+  ✓ [3121/224880] quello.msu.edu
+  ✓ [3122/224880] thebsps.org
+  ✓ [3123/224880] icatproject.org
+  ✓ [3124/224880] obnug.com
+  ✓ [3125/224880] planndu.com
+  ✓ [3126/224880] dramonline.org
+  ✓ [3127/224880] doctormonk.com
+  ✓ [3128/224880] reinventingorganizations.com
+  ✓ [3129/224880] halafeek.com
+  ✓ [3130/224880] dhhs.vic.gov.au
+  ✓ [3131/224880] pakistaniat.com
+  ✓ [3132/224880] richzhang.github.io
+  ✓ [3133/224880] powell-pressburger.org
+  ✓ [3134/224880] ibjjf.org
+  ✓ [3135/224880] wach.com
+  ✓ [3136/224880] mplace.io
+  ✓ [3137/224880] contestedhistories.org
+  ✓ [3138/224880] brentonfilm.com
+  ✓ [3139/224880] winebid.com
+  ✓ [3140/224880] rusmania.com
+  ✓ [3141/224880] ogden.basic-english.org
+  ✓ [3143/224880] philiplaven.com
+  ✓ [3144/224880] southlanarkshire.gov.uk
+  ✓ [3142/224880] usagi.org
+  ✓ [3145/224880] missouriplants.com
+  ✓ [3146/224880] reactor-core.org
+  ✓ [3147/224880] sunshineccu.com
+  ✓ [3148/224880] clane-design.com
+  ✓ [3149/224880] framalistes.org
+  ✓ [3150/224880] yhawards.com
+  ✓ [3151/224880] the-parallax.com
+  ✓ [3152/224880] touringcarracing.net
+  ✓ [3153/224880] talithakum.info
+  ✓ [3154/224880] sweathelp.org
+  ✓ [3155/224880] whiparound.com
+  ✓ [3156/224880] ah-soft.com
+  ✓ [3157/224880] grantourismotravels.com
+  ✓ [3158/224880] engineering.uci.edu
+  ✓ [3159/224880] packeta.com
+  ✓ [3160/224880] education-ni.gov.uk
+  ✓ [3161/224880] initalytoday.com
+  ✓ [3162/224880] mdconsult.com
+  ✓ [3163/224880] extrememustangmakeover.com
+  ✓ [3164/224880] coreui.io
+  ✓ [3165/224880] fusioncu.com
+  ✓ [3166/224880] valentinog.com
+  ✓ [3167/224880] itb.com
+  ✓ [3168/224880] cardinalrulepress.com
+  ✓ [3169/224880] beinmediagroup.com
+  ✓ [3170/224880] 2017.us.wordcamp.org
+  ❌ [3171/224880] brooklynbp.nyc.gov - API 400
+  ✓ [3172/224880] naturephoto-cz.com
+  ✓ [3173/224880] asia.playstation.com
+  ✓ [3175/224880] charlotte.edu
+  ✓ [3177/224880] animalcharityevaluators.org
+  ❌ [3174/224880] londonambulance.nhs.uk - API 400
+  ✓ [3180/224880] til.simonwillison.net
+  ❌ [3176/224880] luca.ntop.org - API 400
+  ✓ [3181/224880] guitartabmaker.com
+
+════════════════════════════════════════════════════════════════════════════════
+  🚀 PARALLEL SCANNER - 00:01:37
+════════════════════════════════════════════════════════════════════════════════
+  Progress: 3196/224880 (1.4%)
+  Created: 1573 | Failed: 1588
+────────────────────────────────────────────────────────────────────────────────
+  📊 Queue Status:
+    PENDING:    0 / 20 target
+    SCANNING:   0 / 70 target
+    Total Active: 0
+    Completed: 0 | Failed: 0
+────────────────────────────────────────────────────────────────────────────────
+  🎬 Creating 90 scans with 50 threads...
+════════════════════════════════════════════════════════════════════════════════
+  ❌ [3196/224880] accessfayetteville.org - API 400
+  ❌ [3197/224880] codeship.io - API 400
+  ❌ [3198/224880] linuxfrench.net - API 400
+  ❌ [3199/224880] tropicalfruitbox.com - API 400
+  ❌ [3200/224880] thegunzone.com - API 400
+  ❌ [3201/224880] kemppi.com - API 400
+  ❌ [3202/224880] kissfm969.com - API 400
+  ❌ [3203/224880] californiaherps.com - API 400
+  ✓ [3208/224880] hurricanescience.org
+  ❌ [3204/224880] thedickinsonpress.com - API 400
+  ✓ [3209/224880] jacobsalmela.com
+  ❌ [3205/224880] mastofeed.com - API 400
+  ✓ [3210/224880] buchi.com
+  ❌ [3206/224880] launchschool.com - API 400
+  ❌ [3207/224880] greatrun.org - API 400
+  ❌ [3211/224880] wp301redirects.com - API 400
+  ❌ [3212/224880] joe.endocrinology-journals.org - API 400
+  ❌ [3213/224880] joshkeaton.com - API 400
+  ✓ [3218/224880] thegreengrid.org
+  ❌ [3214/224880] duplicatefilesfixer.com - API 400
+  ❌ [3215/224880] arthistory.upenn.edu - API 400
+  ✓ [3220/224880] bemil.chosun.com
+  ❌ [3216/224880] roigarena.com - API 400
+  ❌ [3217/224880] mjae.com - API 400
+  ❌ [3219/224880] olyfed.com - API 400
+  ✓ [3224/224880] seaspiracy.org
+  ❌ [3221/224880] kansasmemory.org - API 400
+  ❌ [3222/224880] marudhararts.com - API 400
+  ❌ [3223/224880] music4games.net - API 400
+  ✓ [3229/224880] villaggioqatar.com
+  ❌ [3225/224880] oldcarscanada.com - API 400
+  ✓ [3230/224880] flex-tools.com
+  ❌ [3226/224880] manhattanbeach.gov - API 400
+  ❌ [3227/224880] rinkel.com - API 400
+  ✓ [3232/224880] ltrr.arizona.edu
+  ❌ [3228/224880] constellation-chicago.com - API 400
+  ❌ [3231/224880] goorin.com - API 400
+  ❌ [3233/224880] legacyofslavery.harvard.edu - API 400
+^C
+
+⏸️  Stopping scanner...
+
+💾 Progress saved: 3232 domains processed
+  ❌ [3234/224880] smallable.com - API 400
+  ❌ [3235/224880] earth5r.org - API 400
+  ❌ [3236/224880] jazzinamerica.org - API 400
+^C
+
+⏸️  Stopping scanner...
+
+💾 Progress saved: 3232 domains processed
+  ❌ [3237/224880] a11yto.com - API 400
+
+═══════════════════════════════════════════════════════════════════
+  ✅ BATCH SCAN COMPLETE!
+═══════════════════════════════════════════════════════════════════
+
+🛑 Stopping cleanup daemon (PID: 3429797)...
+
+📊 Final Statistics:
+
+ Total Scans: 224+
+ Completed: 176  +
+ Failed: 47      +
+ AI Detected: 0  +
+ High Risk: 0
+
+
+🎯 AI Red Teaming Leads:
+
+
+
+═══════════════════════════════════════════════════════════════════
+  Next steps:
+    1. Review AI leads in database
+    2. Export results: psql ... -c 'SELECT * FROM "Scan" WHERE "hasAI" = true'
+    3. Stop batch workers: pm2 delete ai-batch-worker
+═══════════════════════════════════════════════════════════════════
+
+aiq@aiq-System-Product-Name:~/Asztal/10_M_USD/ai-security-scanner$ 
+
+---------INNEN IS NÉZ MEG--------
+
+URL-ről másolva:
+http://localhost:3000/aiq_belepes_mrd/dashboard
+
+	
+ltrr.arizona.edu
+https://ltrr.arizona.edu/
+	FAILED	-	-	2025. 11. 26. 15:13	
+View
+	
+flex-tools.com
+https://flex-tools.com/
+	FAILED	-	-	2025. 11. 26. 15:13	
+View
+	
+villaggioqatar.com
+https://villaggioqatar.com/
+	FAILED	-	-	2025. 11. 26. 15:13	
+View
+	
+seaspiracy.org
+https://seaspiracy.org/
+	FAILED	-	-	2025. 11. 26. 15:13	
+View
+	
+bemil.chosun.com
+https://bemil.chosun.com/
+	FAILED	-	-	2025. 11. 26. 15:13	
+View
+	
+thegreengrid.org
+https://thegreengrid.org/
+	FAILED	-	-	2025. 11. 26. 15:13	
+View
+	
+buchi.com
+https://buchi.com/
+	FAILED	-	-	2025. 11. 26. 15:13	
+View
+	
+jacobsalmela.com
+https://jacobsalmela.com/
+	FAILED	-	-	2025. 11. 26. 15:13	
+View
+	
+hurricanescience.org
+https://hurricanescience.org/
+	FAILED	-	-	2025. 11. 26. 15:13	
+View
+	
+elycathedral.org
+https://elycathedral.org/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+gala.gre.ac.uk
+https://gala.gre.ac.uk/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+glaa.org
+https://glaa.org/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+ltgov.bc.ca
+https://ltgov.bc.ca/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+lumecube.com
+https://lumecube.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+guitartabmaker.com
+https://guitartabmaker.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+til.simonwillison.net
+https://til.simonwillison.net/
+	COMPLETED	98/100	LOW	2025. 11. 26. 15:12	
+View
+	
+animalcharityevaluators.org
+https://animalcharityevaluators.org/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+charlotte.edu
+https://charlotte.edu/
+	COMPLETED	98/100	LOW	2025. 11. 26. 15:12	
+View
+	
+asia.playstation.com
+https://asia.playstation.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+naturephoto-cz.com
+https://naturephoto-cz.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+2017.us.wordcamp.org
+https://2017.us.wordcamp.org/
+	COMPLETED	87/100	LOW	2025. 11. 26. 15:12	
+View
+	
+beinmediagroup.com
+https://beinmediagroup.com/
+	COMPLETED	96/100	LOW	2025. 11. 26. 15:12	
+View
+	
+cardinalrulepress.com
+https://cardinalrulepress.com/
+	COMPLETED	100/100	LOW	2025. 11. 26. 15:12	
+View
+	
+itb.com
+https://itb.com/
+	COMPLETED	98/100	LOW	2025. 11. 26. 15:12	
+View
+	
+valentinog.com
+https://valentinog.com/
+	COMPLETED	100/100	LOW	2025. 11. 26. 15:12	
+View
+	
+fusioncu.com
+https://fusioncu.com/
+	COMPLETED	100/100	LOW	2025. 11. 26. 15:12	
+View
+	
+coreui.io
+https://coreui.io/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+extrememustangmakeover.com
+https://extrememustangmakeover.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+mdconsult.com
+https://mdconsult.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+initalytoday.com
+https://initalytoday.com/
+	COMPLETED	94/100	LOW	2025. 11. 26. 15:12	
+View
+	
+education-ni.gov.uk
+https://education-ni.gov.uk/
+	COMPLETED	100/100	LOW	2025. 11. 26. 15:12	
+View
+	
+packeta.com
+https://packeta.com/
+	COMPLETED	95/100	LOW	2025. 11. 26. 15:12	
+View
+	
+engineering.uci.edu
+https://engineering.uci.edu/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+grantourismotravels.com
+https://grantourismotravels.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+ah-soft.com
+https://ah-soft.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+whiparound.com
+https://whiparound.com/
+	COMPLETED	81/100	LOW	2025. 11. 26. 15:12	
+View
+	
+sweathelp.org
+https://sweathelp.org/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+talithakum.info
+https://talithakum.info/
+	COMPLETED	81/100	LOW	2025. 11. 26. 15:12	
+View
+	
+touringcarracing.net
+https://touringcarracing.net/
+	COMPLETED	96/100	LOW	2025. 11. 26. 15:12	
+View
+	
+the-parallax.com
+https://the-parallax.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+yhawards.com
+https://yhawards.com/
+	COMPLETED	92/100	LOW	2025. 11. 26. 15:12	
+View
+	
+framalistes.org
+https://framalistes.org/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+clane-design.com
+https://clane-design.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+sunshineccu.com
+https://sunshineccu.com/
+	COMPLETED	79/100	LOW	2025. 11. 26. 15:12	
+View
+	
+reactor-core.org
+https://reactor-core.org/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+missouriplants.com
+https://missouriplants.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+usagi.org
+https://usagi.org/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+southlanarkshire.gov.uk
+https://southlanarkshire.gov.uk/
+	COMPLETED	90/100	LOW	2025. 11. 26. 15:12	
+View
+	
+philiplaven.com
+https://philiplaven.com/
+	COMPLETED	99/100	LOW	2025. 11. 26. 15:12	
+View
+	
+ogden.basic-english.org
+https://ogden.basic-english.org/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+rusmania.com
+https://rusmania.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+winebid.com
+https://winebid.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+brentonfilm.com
+https://brentonfilm.com/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+contestedhistories.org
+https://contestedhistories.org/
+	FAILED	-	-	2025. 11. 26. 15:12	
+View
+	
+mplace.io
+https://mplace.io/
+	COMPLETED	87/100	LOW	2025. 11. 26. 15:12	
+View
+	
+wach.com
+https://wach.com/
+	COMPLETED	95/100	LOW	2025. 11. 26. 15:12	
+View
+	
+ibjjf.org
+https://ibjjf.org/
+	COMPLETED	98/100	LOW	2025. 11. 26. 15:11	
+View
+	
+powell-pressburger.org
+https://powell-pressburger.org/
+	FAILED	-	-	2025. 11. 26. 15:11	
+View
+	
+richzhang.github.io
+https://richzhang.github.io/
+	COMPLETED	90/100	LOW	2025. 11. 26. 15:11	
+View
+	
+pakistaniat.com
+https://pakistaniat.com/
+	FAILED	-	-	2025. 11. 26. 15:11	
+View
+	
+dhhs.vic.gov.au
+https://dhhs.vic.gov.au/
+	FAILED	-	-	2025. 11. 26. 15:11	
+View
+	
+halafeek.com
+https://halafeek.com/
+	FAILED	-	-	2025. 11. 26. 15:11	
+View
+	
+reinventingorganizations.com
+https://reinventingorganizations.com/
+	COMPLETED	92/100	LOW	2025. 11. 26. 15:11	
+View
+	
+doctormonk.com
+https://doctormonk.com/
+	COMPLETED	87/100	LOW	2025. 11. 26. 15:11	
+View
+	
+dramonline.org
+https://dramonline.org/
+	COMPLETED	79/100	LOW	2025. 11. 26. 15:11	
+View
+	
+planndu.com
+https://planndu.com/
+	FAILED	-	-	2025. 11. 26. 15:11	
+View
+	
+obnug.com
+https://obnug.com/
+	COMPLETED	81/100	LOW	2025. 11. 26. 15:11	
+View
+	
+icatproject.org
+https://icatproject.org/
+	COMPLETED	99/100	LOW	2025. 11. 26. 15:11	
+View
+	
+thebsps.org
+https://thebsps.org/
+	FAILED	-	-	2025. 11. 26. 15:11	
+View
+	
+quello.msu.edu
+https://quello.msu.edu/
+	FAILED	-	-	2025. 11. 26. 15:11	
+View
+	
+lapreferente.com
+https://lapreferente.com/
+	COMPLETED	84/100	LOW	2025. 11. 26. 15:11	
+View
+	
+atourin.com
+https://atourin.com/
+	COMPLETED	90/100	LOW	2025. 11. 26. 15:11	
+View
+	
+prijemni.infostud.com
+https://prijemni.infostud.com/
+	COMPLETED	84/100	LOW	2025. 11. 26. 15:11	
+View
+	
+showme.missouri.edu
+https://showme.missouri.edu/
+	FAILED	-	-	2025. 11. 26. 15:11	
+View
+	
+lcv.org
+https://lcv.org/
+	COMPLETED	98/100	LOW	2025. 11. 26. 15:11	
+View
+	
+deepdreamgenerator.com
+https://deepdreamgenerator.com/
+	FAILED	-	-	2025. 11. 26. 15:11	
+View
