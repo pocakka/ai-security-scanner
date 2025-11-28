@@ -74,6 +74,19 @@ export class WorkerManager {
   }
 
   /**
+   * Check if a process is still running
+   */
+  private isProcessAlive(pid: number): boolean {
+    try {
+      // Sending signal 0 checks if process exists without killing it
+      process.kill(pid, 0)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /**
    * Find available worker slot (1-MAX_CONCURRENT_WORKERS)
    */
   private findAvailableSlot(): number | null {
@@ -81,12 +94,29 @@ export class WorkerManager {
       const pidFile = path.join(WORKER_POOL_DIR, `worker-${slot}.pid`)
       const lockFile = path.join(WORKER_POOL_DIR, `worker-${slot}.lock`)
 
-      // Check if slot is free
+      // Check if slot is free (no lock file)
       if (!fs.existsSync(lockFile)) {
         return slot
       }
 
-      // Check if lock is stale
+      // Check if the process that owns this slot is still alive
+      if (fs.existsSync(pidFile)) {
+        try {
+          const storedPid = parseInt(fs.readFileSync(pidFile, 'utf-8'))
+          if (!this.isProcessAlive(storedPid)) {
+            // Process is dead, clean up and use this slot
+            console.log(`[WorkerManager] Slot ${slot} has dead PID ${storedPid}, reclaiming...`)
+            this.cleanupSlot(slot)
+            return slot
+          }
+        } catch {
+          // Error reading PID file, clean up and use slot
+          this.cleanupSlot(slot)
+          return slot
+        }
+      }
+
+      // Check if lock is stale (>5 minutes old)
       try {
         const lockData = fs.readFileSync(lockFile, 'utf-8')
         const lockTime = parseInt(lockData)
@@ -94,6 +124,7 @@ export class WorkerManager {
 
         if (now - lockTime > MAX_WORKER_RUNTIME) {
           // Stale lock, clean it up and use this slot
+          console.log(`[WorkerManager] Slot ${slot} lock expired, reclaiming...`)
           this.cleanupSlot(slot)
           return slot
         }
@@ -269,6 +300,21 @@ export class WorkerManager {
         console.log('[WorkerManager] No new jobs for 5 minutes, shutting down...')
         this.shutdown()
       }, MAX_WORKER_RUNTIME)
+    }
+  }
+
+  /**
+   * Refresh lock timestamp to show we're alive
+   * Called after each job to prevent watchdog from killing us
+   */
+  refreshLock(): void {
+    if (this.workerSlot === null) return
+
+    try {
+      const lockFile = path.join(WORKER_POOL_DIR, `worker-${this.workerSlot}.lock`)
+      fs.writeFileSync(lockFile, Date.now().toString())
+    } catch (error) {
+      // Ignore errors - not critical
     }
   }
 

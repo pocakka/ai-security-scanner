@@ -1,0 +1,439 @@
+Nézz inenne végig visszafelé mindent, de ne csinálj semmit, csak tanuld meg mi hogy van, mi mit hív meg, mi mit csinál! 
+EZ most is fut (le ne állítsd!):
+ai-security-scanner/scripts/parallel-scanner.py
+
+EZ pedig a legfontosabb:
+ai-security-scanner/src/app/s/scan/Number/domain/page.tsx 
+
+Doksi:
+Claude_page_2025_11_26.md
+és
+Claude_parallel_scanner_2025_11_26.md
+Rendben, átnézem a rendszert visszafelé, hogy megértsem a működését. Nem állítok le semmit, csak tanulok.
+Read Claude_parallel_scanner_2025_11_26.md, Claude_page_2025_11_26.md, parallel-scanner.py
+Read page.tsx
+Most megnézem a Next.js page.tsx fájlt is, ami a legfontosabb:
+Globpattern: "**/s/**/domain/page.tsx"
+No files found
+Globpattern: "**/[scanId]/**/page.tsx"
+Found 2 files
+Read page.tsx
+Most megnézem az API route-okat is, hogy lássam mi hogyan kapcsolódik össze:
+Globpattern: "**/api/scan/**/route.ts"
+Found 6 files
+Globpattern: "**/api/s/**/route.ts"
+Found 1 file
+Read route.ts, route.ts
+Read route.ts
+Most megnézem a worker-t is, ami a tényleges scan-eket végzi:
+Globpattern: "**/worker/*.ts"
+Found 25 files
+Read index-sqlite.ts
+Rendben, most már átláttam a teljes rendszert. Íme az összefoglaló arról, amit megtanultam:
+🧠 AI Security Scanner - Rendszer Áttekintés
+📊 Architektúra
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         AI SECURITY SCANNER                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐         ┌─────────────────────┐                       │
+│  │ parallel-scanner│ ──POST──► /api/scan           │                       │
+│  │   (Python 3)    │         │ (Next.js API Route) │                       │
+│  │  20 threads     │         └────────┬────────────┘                       │
+│  │  domains.txt    │                  │                                     │
+│  └─────────────────┘                  ▼                                     │
+│                           ┌───────────────────────┐                         │
+│                           │    PostgreSQL DB      │                         │
+│                           │  (via pgBouncer:6432) │                         │
+│                           │  - Scan table         │                         │
+│                           │  - AiTrustScorecard   │                         │
+│                           └───────────┬───────────┘                         │
+│                                       │                                     │
+│                                       ▼                                     │
+│                           ┌───────────────────────┐                         │
+│                           │   SQLite Job Queue    │                         │
+│                           └───────────┬───────────┘                         │
+│                                       │                                     │
+│                                       ▼                                     │
+│                           ┌───────────────────────┐                         │
+│                           │  Worker (index-sqlite)│                         │
+│                           │  - Playwright Crawler │                         │
+│                           │  - 31 Analyzers       │                         │
+│                           └───────────────────────┘                         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+🔑 Kulcs Fájlok és Szerepük
+Fájl	Szerep
+parallel-scanner.py	Batch domain scanner - 20 thread párhuzamosan, queue management
+page.tsx (/s/[scanNumber]/[domain])	Frontend - scan eredmények megjelenítése, polling, SEO
+/api/scan/route.ts	Új scan létrehozása, 24h duplikát check, domain validáció
+/api/scan/regenerate/route.ts	Új scan MINDIG (bypass duplicate check)
+/api/s/[scanNumber]/[domain]/route.ts	SEO-barát scan lekérdezés
+index-sqlite.ts	Worker - 31 biztonsági analyzer futtatása
+🔄 Adatfolyam
+parallel-scanner.py → POST /api/scan (domain-enként)
+API → PostgreSQL-be Scan rekord (PENDING)
+API → SQLite queue-ba job
+API → Worker spawn (auto)
+Worker → Playwright crawl
+Worker → 31 analyzer futtatása
+Worker → Score számítás (v3: 100=tökéletes)
+Worker → PostgreSQL update (COMPLETED)
+Frontend → 2 másodpercenkénti polling amíg PENDING/SCANNING
+Frontend → SEO meta tag-ek dinamikus frissítése
+🛡️ 31 Security Analyzer
+Security Headers, SSL/TLS, Cookie Security
+JS Libraries (CVE check), Tech Stack Detection
+Reconnaissance, Admin Detection, Admin Discovery
+CORS, DNS Security, Port Scanner
+Compliance (GDPR/CCPA/PCI DSS)
+WAF Detection, MFA Detection, Rate Limiting
+GraphQL Security, Error Disclosure, SPA/API
+OWASP LLM Top 10 (6 analyzer, csak ha AI detektálva):
+LLM01: Prompt Injection
+LLM02: Insecure Output
+LLM05: Supply Chain
+LLM06: Sensitive Info
+LLM07: Plugin Design
+LLM08: Excessive Agency
+Backend/Frontend Framework Security
+Passive API Discovery
+AI Trust Score
+⚙️ parallel-scanner.py Konfiguráció (épp most fut!)
+MAX_THREADS = 20           # Párhuzamos scan-ek
+THREAD_RATE_LIMIT = 1.2s   # Thread indítások között
+TARGET_SCANNING = 20       # Max aktív scan
+TARGET_PENDING = 5         # Pending queue méret
+STUCK_TIMEOUT = 120s       # Elakadt scan cleanup
+POLL_INTERVAL = 3s         # DB status check
+🎯 API Endpoint-ok
+Endpoint	Metódus	Cél
+/api/scan	POST	Új scan (24h duplicate check)
+/api/scan/regenerate	POST	Új scan (bypass duplicate)
+/api/s/{scanNumber}/{domain}	GET	Scan eredmények (SEO URL)
+/api/scan/{id}/pdf	GET	PDF letöltés
+/api/knowledge-base	GET	E-E-A-T tartalom
+/api/leads	POST	Expert audit lead
+Mindent megtanultam - a parallel scanner fut, nem nyúltam hozzá! 🚀
+első kérdés:
+
+"MAX_THREADS = 20             # Kevés párhuzamos kapcsolat"
+ez azt jelenri, hogy 20 magon fut? (i9 128G ram, ubuntu)
+vagy tud futni egyszerre 40 szálon is 20 magon?
+összesen 24 core van az i9-ben
+Jó kérdés! Tisztázzuk:
+MAX_THREADS = 20 → NEM CPU magok!
+Ez 20 párhuzamos HTTP kapcsolat (hálózati I/O), nem CPU core használat.
+Mi történik valójában:
+┌─────────────────────────────────────────────────────────────┐
+│  Python ThreadPoolExecutor(max_workers=20)                  │
+│                                                             │
+│  Thread 1  ──► HTTP POST ──► várakozás (I/O bound) ◄──┐    │
+│  Thread 2  ──► HTTP POST ──► várakozás (I/O bound)    │    │
+│  Thread 3  ──► HTTP POST ──► várakozás (I/O bound)    │    │
+│  ...                                                   │    │
+│  Thread 20 ──► HTTP POST ──► várakozás (I/O bound)    │    │
+│                                                        │    │
+│  CPU használat: ~5-10% (mert csak várakoznak!)        │    │
+└─────────────────────────────────────────────────────────────┘
+A te rendszereden (i9, 24 core, 128GB RAM):
+Beállítás	Elméleti max	Ajánlott	Miért?
+MAX_THREADS	100-200+	50-100	I/O bound, nem CPU bound
+Valós korlát	Hálózat + API	~50-70	API túlterhelés elkerülése
+Miért csak 20 most?
+A kódban látható komment:
+# Threading - CONSERVATIVE (WARP still has limits)
+MAX_THREADS = 20             # Kevés párhuzamos kapcsolat
+WARP = Cloudflare WARP VPN - valószínűleg rate limit miatt konzervatív.
+Válasz a kérdésedre:
+24 core-on futhat 200+ thread is (Python GIL miatt ez I/O-nál OK)
+20 thread ≠ 20 core használat - inkább ~1-2 core-t használ összesen
+A bottleneck nem a CPU, hanem:
+Hálózati sávszélesség
+API rate limit (/api/scan)
+Worker kapacitás (hány scan dolgozható fel egyszerre)
+Szeretnéd, hogy növeljük a thread számot? A rendszered bőven elbírná a 50-100-at is.
+viszont akkor miért pörög 100%-on minden mag?
+
+ELméleti kérdés továbbra is. az ubuntu-n más app nem fut
+Ez nagyon fontos megfigyelés! 🔍
+A válasz: NEM a parallel-scanner.py eszi a CPU-t!
+A parallel-scanner.py csak HTTP kéréseket küld - az ~0% CPU-t használ.
+Ki használja a 100% CPU-t?
+┌─────────────────────────────────────────────────────────────────┐
+│  A VALÓDI CPU-ZABÁLÓK:                                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. PM2 WORKER-EK (index-sqlite.ts)                            │
+│     └── Playwright böngészők (Chromium instance-ok!)           │
+│     └── 31 security analyzer / scan                            │
+│                                                                 │
+│  2. PLAYWRIGHT/CHROMIUM                                         │
+│     └── Headless Chrome példányok                              │
+│     └── JavaScript renderelés                                   │
+│     └── DOM parsing                                             │
+│                                                                 │
+│  3. Next.js API SERVER                                          │
+│     └── Request handling                                        │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+Miért 100% minden magon?
+A screenshot alapján 20 SCANNING fut egyszerre, és:
+Komponens	CPU/instance	20 instance
+Playwright Chromium	~1-2 core	20-40 core
+Analyzer-ek (31 db)	~0.5 core	+10 core
+20 párhuzamos Chromium = 24 core 100%-on ✓
+Összefoglalva:
+parallel-scanner.py  ──►  /api/scan  ──►  SQLite Queue  ──►  Worker
+     (0% CPU)              (5% CPU)         (0%)           (🔥100% CPU!)
+                                                                │
+                                                                ▼
+                                                    Playwright Chromium ×20
+                                                         (24 core 100%)
+A TARGET_SCANNING = 20 a worker-eknél szabályozza, hány Chromium fut egyszerre - ez eszi a CPU-t, nem a Python script!
+tehát akkor a scanning a limit?
+tehát pl ha  atarget scanning "40" akkor 20 magon az nem is fut el?
+Pontosan! Most érted! 🎯
+TARGET_SCANNING = a valódi limit
+parallel-scanner.py          Worker-ek (PM2)
+        │                          │
+        │ MAX_THREADS=20           │ TARGET_SCANNING=20
+        │ (HTTP kérések)           │ (Chromium példányok)
+        │                          │
+        ▼                          ▼
+   "Hány kérést              "Hány SCAN fut
+    küldök másodpercenként"   EGYSZERRE a CPU-n"
+        │                          │
+        │                          │
+    ~0% CPU                    🔥 100% CPU
+Ha TARGET_SCANNING = 40 lenne:
+Beállítás	24 core-on	Eredmény
+TARGET_SCANNING = 20	20 Chromium	✅ Jól kihasználva
+TARGET_SCANNING = 40	40 Chromium	⚠️ Túlterhelés!
+TARGET_SCANNING = 60	60 Chromium	🔥 Rendszer lefagy
+40 Chromium 24 core-on:
+Core 1:  [Chromium 1] + [Chromium 2]  ──► context switch őrület
+Core 2:  [Chromium 3] + [Chromium 4]  ──► lassabb mint 1 db!
+...
+Core 24: [Chromium 47] + [Chromium 48] ──► SWAP, OOM killer
+Több Chromium ≠ gyorsabb! Sőt, lassabb lesz mert:
+Context switching overhead
+RAM elfogyhat (1 Chromium = ~200-500MB)
+40 × 300MB = 12GB RAM csak Chromiumra
+Optimális a 24 core-odra:
+TARGET_SCANNING = 20-24  # ← Ez most jó!
+TARGET_PENDING = 10-20   # ← Buffer a queue-ban
+A jelenlegi TARGET_SCANNING = 20 közel optimális a 24 core-odhoz! 👍
+a chromium hogy kerül a képbe? nem playwright van? mi most a srawling process?
+Jó kérdés! Tisztázzuk:
+Playwright = Chromium vezérlő
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  Playwright  ──────►  Chromium (headless böngésző)         │
+│  (Node.js lib)        (valódi Chrome motor)                │
+│                                                             │
+│  Olyan mint:                                                │
+│  Sofőr (Playwright) ──► Autó (Chromium)                    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+Playwright NEM saját renderelő motor - csak egy vezérlő library, ami Chromiumot irányít.
+A crawling folyamat (index-sqlite.ts):
+1. Worker kap egy job-ot (scanId, url)
+           │
+           ▼
+2. CrawlerAdapter / MockCrawler
+           │
+           ▼
+3. Playwright ELINDÍT egy Chromium instance-t
+           │
+           ▼
+4. Chromium MEGNYITJA az URL-t
+   └── JavaScript renderelés
+   └── CSS betöltés  
+   └── Network requests
+   └── Cookie-k
+           │
+           ▼
+5. Playwright KINYERI az adatokat:
+   └── HTML forrás
+   └── Response headers
+   └── SSL certificate info
+   └── Cookies
+           │
+           ▼
+6. Chromium BEZÁRUL
+           │
+           ▼
+7. 31 analyzer fut a kinyert adatokon
+A kódban (index-sqlite.ts:49-51):
+const USE_REAL_CRAWLER = process.env.USE_REAL_CRAWLER === 'true'
+const crawler = USE_REAL_CRAWLER ? new CrawlerAdapter() : new MockCrawler()
+CrawlerAdapter = Playwright + Chromium (valódi böngésző)
+MockCrawler = Fake data teszteléshez
+Miért Chromium és nem sima HTTP request?
+Módszer	JavaScript	SPA-k	Cloudflare	CPU
+Simple HTTP (axios)	❌	❌	❌ Blokkolva	1%
+Playwright + Chromium	✅	✅	✅ Átmegy	🔥
+Modern weboldalak 80%-a JavaScript nélkül üres HTML - ezért kell a valódi böngésző.
+van rá olyan alternatíva, ami nem eszi a processzort, de tudja ugyanezt? 
+"Playwright + Chromium	✅	✅	✅ Átmegy"
+Sajnos nincs tökéletes alternatíva - ez egy trade-off:
+Összehasonlítás
+Megoldás	JS render	SPA	Cloudflare bypass	CPU	RAM
+Playwright + Chromium	✅	✅	✅	🔥 100%	300MB/inst
+Puppeteer + Chrome	✅	✅	✅	🔥 100%	300MB/inst
+Selenium	✅	✅	⚠️	🔥 120%	400MB/inst
+curl/axios	❌	❌	❌	1%	5MB
+Cheerio	❌	❌	❌	2%	10MB
+Puppeteer + Browserless.io	✅	✅	✅	☁️ 0%	0MB
+ScrapingBee API	✅	✅	✅	☁️ 0%	0MB
+Reális opciók:
+1️⃣ Cloud Scraping Service (0% lokális CPU)
+Te ──► ScrapingBee/Browserless API ──► Ők futtatják a Chromiumot
+                                              │
+                                              ▼
+                                        Visszaküldik a HTML-t
+Ár: ~$50-200/hó 100k requesthez
+2️⃣ Külön szerver csak crawlolásra
+Main szerver (API + DB)  ◄──►  Crawl szerver (csak Playwright)
+      (nem terhelt)                  (100% CPU, de külön)
+3️⃣ Hibrid megközelítés (amit javaslok)
+# Először próbáld egyszerű HTTP-vel
+response = requests.get(url)
+
+if needs_javascript(response):  # Cloudflare, SPA detection
+    # Csak AKKOR indíts Chromiumot
+    response = playwright.crawl(url)
+Ez ~60-70% CPU megtakarítás lehet, mert sok oldal nem igényel JS renderelést.
+Válasz a kérdésedre:
+Nem - ha valódi böngésző kell (JS + Cloudflare bypass), az mindig CPU-intenzív. A böngésző motor (V8 JavaScript engine) maga eszi a CPU-t. A legjobb amit tehetsz:
+Hibrid megközelítés (csak ha kell, akkor Chromium)
+Cloud service (más fizeti az áramot 😄)
+Elfogadni hogy 20 párhuzamos scan = 100% CPU
+nincs pl firefox, vagy más, lightweight böngésző?
+De igen! Van pár lightweight alternatíva:
+Böngésző motorok összehasonlítása
+Motor	Böngésző	CPU	RAM	JS	Cloudflare
+Chromium (Blink)	Chrome/Edge	🔥🔥🔥	300MB	✅	✅
+Firefox (Gecko)	Firefox	🔥🔥	250MB	✅	✅
+WebKit	Safari	🔥	150MB	✅	⚠️
+Playwright már támogatja mindhármat!
+// Jelenlegi (Chromium - nehéz)
+const browser = await playwright.chromium.launch()
+
+// Firefox (kicsit könnyebb)
+const browser = await playwright.firefox.launch()
+
+// WebKit (legkönnyebb!)
+const browser = await playwright.webkit.launch()
+Realisztikus megtakarítás:
+Motor	20 instance CPU	20 instance RAM
+Chromium	100% (24 core)	~6 GB
+Firefox	~85% (20 core)	~5 GB
+WebKit	~60% (14 core)	~3 GB
+⚠️ De van hátrány:
+Chromium	Firefox	WebKit
+Cloudflare bypass	✅ Legjobb	✅ OK	⚠️ Gyengébb
+Bot detection	✅ Legjobb	⚠️	❌ Könnyen detektálják
+Kompatibilitás	✅ 95% web	✅ 90%	⚠️ 80%
+Javaslat:
+Firefox lehet a sweet spot - ~15-20% CPU megtakarítás, de még jó Cloudflare bypass. Kipróbáljuk? Csak egy sor módosítás a crawler-adapter.ts-ben.
+máshonnan nézve elméleti kérdés.
+Mit tud a chromium, tehát mik az ok a konkrét funkciók, amiket tud? amik miatt nélkülözhetetlen ehhez a prjekthez
+Jó kérdés! Nézzük meg, konkrétan mit csinál a Chromium ebben a projektben:
+Mit kér le a Crawler? (crawler-adapter.ts)
+// A crawl() függvény visszatérési értéke:
+{
+  html: string,              // Renderelt HTML (JS lefutása UTÁN)
+  responseHeaders: object,   // HTTP response headers
+  cookies: array,            // Összes cookie
+  sslCertificate: object,    // SSL cert info
+  url: string,               // Final URL (redirectek után)
+  statusCode: number         // HTTP status
+}
+Melyikhez KELL böngésző?
+Adat	Chromium kell?	Alternatíva
+HTML (renderelt)	⚠️ CSAK ha JS renderel	curl/axios ha statikus
+Response Headers	❌ NEM	curl/axios ✅
+Cookies	❌ NEM	curl/axios ✅
+SSL Certificate	❌ NEM	openssl / node TLS ✅
+Final URL	❌ NEM	curl -L ✅
+Status Code	❌ NEM	curl/axios ✅
+🎯 Az egyetlen ok ami miatt Chromium kell:
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│   JAVASCRIPT RENDERELÉS                                     │
+│                                                             │
+│   React/Vue/Angular SPA-k üres HTML-t küldenek:            │
+│                                                             │
+│   <body>                                                    │
+│     <div id="root"></div>  ← Üres!                         │
+│     <script src="app.js">  ← JS tölti be a tartalmat       │
+│   </body>                                                   │
+│                                                             │
+│   Chromium LEFUTTATJA a JS-t → renderelt HTML              │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+Másodlagos ok: Cloudflare/Bot protection
+Cloudflare challenge:
+1. "Checking your browser..." oldal
+2. JavaScript challenge futtatása
+3. Cookie beállítása
+4. Redirect az igazi oldalra
+
+Ezt CSAK valódi böngésző tudja megoldani.
+💡 Következtetés:
+Ha a te scan célpontjaid 80%-a:
+Statikus oldal (WordPress, HTML)
+Nincs Cloudflare védelem
+Akkor: Az esetek 80%-ában NEM kell Chromium - elég lenne curl/axios!
+Szeretnéd, hogy megnézzem a crawler-adapter.ts-t, és csináljunk egy hibrid megoldást?
+Először próba curl-lel (gyors, 0% CPU)
+Ha JS kell vagy Cloudflare van → Chromium fallback
+elolvasod a tipp.md-t? csak ötlet szinten egyelőre
+Persze, olvasom!
+Read tipp.md
+Ez egy nagyon jó technikai összefoglaló! Az Attila pontosan leírta a lényeget.
+Kulcs tanulságok a tipp.md-ből:
+🎯 Miért működik a Chromium (3 szint):
+1. TLS Fingerprint (JA3/JA4)
+   └── Python requests = "Én egy bot vagyok" ❌
+   └── Chromium BoringSSL = "Én Chrome vagyok" ✅
+
+2. JavaScript Execution
+   └── window.navigator, webdriver flag, canvas fingerprint
+   └── Ezt CSAK valódi JS engine tudja
+
+3. HTTP/2 Fingerprint
+   └── Frame sorrend, HPACK tömörítés
+💡 A javasolt megoldás: curl_cffi
+from curl_cffi import requests
+
+# TLS fingerprint = Chrome 110, de NINCS Chromium futtatás!
+response = requests.get(
+    "https://target-site.com",
+    impersonate="chrome110"
+)
+curl_cffi	Playwright
+CPU	~1%	🔥 100%
+RAM	~5MB	~300MB
+Cloudflare bypass	✅ TLS szinten	✅ Minden szinten
+JS renderelés	❌	✅
+🔥 A te projektedre alkalmazva:
+┌─────────────────────────────────────────────────────────────┐
+│  HIBRID CRAWLER STRATÉGIA                                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  1. ELSŐ PRÓBA: curl_cffi (Chrome TLS impersonate)         │
+│     └── CPU: ~1%                                            │
+│     └── Ha működik → használd ezt                          │
+│                                                             │
+│  2. FALLBACK: Playwright + Chromium (optimalizálva)        │
+│     └── Csak ha curl_cffi fail                             │
+│     └── Képek/CSS/font blokkolva                           │
+│                                                             │
+│  Várható eredmény: ~70% scan curl_cffi-vel = 70% CPU spórolás│
+└─────────────────────────────────────────────────────────────┘
+Ez egy nagyon jó irány! Kipróbáljuk a curl_cffi-t a projektben?
+jó lenne kipróbálni de úgy, hogy új crawelr készülne, tehát ne a mostani legyen pl átkódolva, VAGY ha át lesz kódolva, vissza tudjuk csinálni, és legyen leírva előr, mi hol fog módosulni, hol lehet visszacsinálni
+na?

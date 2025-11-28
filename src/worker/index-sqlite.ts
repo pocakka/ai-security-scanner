@@ -8,6 +8,7 @@ import { prisma } from '../lib/db'
 import { jobQueue } from '../lib/queue-sqlite'
 import { MockCrawler } from './crawler-mock'
 import { CrawlerAdapter } from '../lib/crawler-adapter'
+import { HybridCrawler } from '../lib/crawler-hybrid'
 import { WorkerManager } from './worker-manager'
 import { AIDetectionResult } from './analyzers/ai-detection' // Import only the type, not the function
 import { analyzeSecurityHeaders } from './analyzers/security-headers'
@@ -48,9 +49,20 @@ const workerManager = WorkerManager.getInstance()
 
 // Choose crawler based on environment variable
 const USE_REAL_CRAWLER = process.env.USE_REAL_CRAWLER === 'true'
-const crawler = USE_REAL_CRAWLER ? new CrawlerAdapter() : new MockCrawler()
+const USE_HYBRID_CRAWLER = process.env.USE_HYBRID_CRAWLER === 'true'
 
-console.log(`[Worker] Using ${USE_REAL_CRAWLER ? 'REAL Playwright' : 'MOCK'} crawler`)
+// Crawler selection: Hybrid > Real (Playwright) > Mock
+let crawler: CrawlerAdapter | HybridCrawler | MockCrawler
+if (USE_HYBRID_CRAWLER) {
+  crawler = new HybridCrawler()
+  console.log(`[Worker] Using HYBRID crawler (curl_cffi + Playwright fallback)`)
+} else if (USE_REAL_CRAWLER) {
+  crawler = new CrawlerAdapter()
+  console.log(`[Worker] Using REAL Playwright crawler`)
+} else {
+  crawler = new MockCrawler()
+  console.log(`[Worker] Using MOCK crawler`)
+}
 
 /**
  * Timeout wrapper for analyzers

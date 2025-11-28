@@ -33,11 +33,11 @@ API_URL = "http://localhost:3000/api/scan"
 DB_URL = "postgresql://scanner:ai_scanner_2025@localhost:6432/ai_security_scanner"
 
 # Threading - CONSERVATIVE (WARP still has limits)
-MAX_THREADS = 10             # Kevés párhuzamos kapcsolat
-THREAD_RATE_LIMIT = 2.0      # 2 sec várakozás thread-ek között
+MAX_THREADS = 40             # Kevés párhuzamos kapcsolat
+THREAD_RATE_LIMIT = 0.7      # 1.2 sec várakozás thread-ek között
 
 # Queue targets - Conservative
-TARGET_SCANNING = 15         # Max 15 aktív scan
+TARGET_SCANNING = 40         # Max 15 aktív scan
 TARGET_PENDING = 5           # Kis pending queue
 
 # Other
@@ -120,7 +120,7 @@ def get_queue_status() -> Dict:
         print(f"❌ DB Error: {e}")
         return {'pending': 0, 'scanning': 0, 'completed': 0, 'failed': 0}
 
-def cleanup_stuck_scans(timeout_seconds: int = 180) -> int:
+def cleanup_stuck_scans(timeout_seconds: int = 720) -> int:
     """Clean up scans stuck in SCANNING status for more than timeout_seconds"""
     try:
         conn = psycopg2.connect(DB_URL)

@@ -38,6 +38,7 @@ interface Scan {
   status: string
   riskScore: number | null
   riskLevel: string | null
+  hasAI: boolean | null
   createdAt: Date
 }
 
@@ -333,6 +334,9 @@ export default function AdminTabsWithDelete({ scans, leads, onDataChange }: Admi
                   Risk Level
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  AI
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                   Created
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -343,7 +347,7 @@ export default function AdminTabsWithDelete({ scans, leads, onDataChange }: Admi
             <tbody className="divide-y divide-white/10">
               {scans.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
                     No scans yet. Create one from the home page!
                   </td>
                 </tr>
@@ -388,6 +392,19 @@ export default function AdminTabsWithDelete({ scans, leads, onDataChange }: Admi
                           'bg-green-500/20 text-green-300'
                         }`}>
                           {scan.riskLevel}
+                        </span>
+                      ) : (
+                        <span className="text-slate-500">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      {scan.hasAI === true ? (
+                        <span className="px-2 py-1 rounded text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-400/30">
+                          YES
+                        </span>
+                      ) : scan.hasAI === false ? (
+                        <span className="px-2 py-1 rounded text-xs font-semibold bg-slate-500/20 text-slate-400">
+                          NO
                         </span>
                       ) : (
                         <span className="text-slate-500">-</span>
