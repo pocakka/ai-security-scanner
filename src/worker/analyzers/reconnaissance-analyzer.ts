@@ -1,5 +1,92 @@
 import { CrawlResult } from '../crawler-mock'
 
+/**
+ * Detects if response is a CAPTCHA/challenge page instead of real content
+ * Many hosting providers (SiteGround, Cloudflare, etc.) return 200/202 with captcha
+ * instead of proper 403/404 for sensitive files
+ */
+function isCaptchaOrChallenge(body: string, headers?: Headers): boolean {
+  const lowerBody = body.toLowerCase()
+
+  // Common CAPTCHA/challenge patterns
+  const captchaPatterns = [
+    'sgcaptcha',                    // SiteGround captcha
+    'cf-captcha',                   // Cloudflare captcha
+    'challenge-platform',           // Cloudflare challenge
+    'g-recaptcha',                  // Google reCAPTCHA
+    'h-captcha',                    // hCaptcha
+    'captcha-container',            // Generic captcha
+    'please verify you are human',  // Common captcha text
+    'checking your browser',        // Cloudflare browser check
+    'just a moment',                // Cloudflare waiting page
+    'ddos-guard',                   // DDoS-Guard
+    'security check',               // Generic security check
+    'access denied',                // Access denied pages
+    'forbidden',                    // 403-like content in 200 response
+    'rate limit',                   // Rate limiting pages
+    'blocked',                      // Blocked access
+    '/.well-known/sgcaptcha',       // SiteGround captcha redirect
+  ]
+
+  for (const pattern of captchaPatterns) {
+    if (lowerBody.includes(pattern)) {
+      return true
+    }
+  }
+
+  // Check for meta refresh to captcha
+  if (lowerBody.includes('meta') && lowerBody.includes('refresh') &&
+      (lowerBody.includes('captcha') || lowerBody.includes('challenge'))) {
+    return true
+  }
+
+  // Check headers for captcha indicators
+  if (headers) {
+    const sgCaptcha = headers.get('sg-captcha')
+    if (sgCaptcha === 'challenge') {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * Validates that a sensitive file response contains expected content
+ * Returns true if the file appears to be real, false if it's a fake/captcha response
+ */
+async function isRealSensitiveFile(response: Response, expectedPatterns?: RegExp[]): Promise<boolean> {
+  if (!response.ok) {
+    return false
+  }
+
+  try {
+    const body = await response.text()
+
+    // First check if it's a captcha/challenge
+    if (isCaptchaOrChallenge(body, response.headers)) {
+      return false
+    }
+
+    // If we have expected patterns, verify at least one matches
+    if (expectedPatterns && expectedPatterns.length > 0) {
+      return expectedPatterns.some(pattern => pattern.test(body))
+    }
+
+    // For files without specific patterns, check it's not HTML error page
+    // Real sensitive files (.env, .sql, .bak) are typically not HTML
+    const contentType = response.headers.get('content-type') || ''
+    if (contentType.includes('text/html') && body.includes('<!DOCTYPE') || body.includes('<html')) {
+      // HTML response for non-HTML file = likely error page or captcha
+      return false
+    }
+
+    return true
+  } catch {
+    return false
+  }
+}
+
 export interface ReconnaissanceFinding {
   type: 'information-disclosure' | 'critical-exposure' | 'reconnaissance'
   severity: 'low' | 'medium' | 'high' | 'critical'
@@ -147,32 +234,40 @@ export async function analyzeReconnaissance(crawlResult: CrawlResult): Promise<R
   // 3. Check for .git folder exposure
   try {
     const gitPaths = ['/.git/HEAD', '/.git/config', '/.git/index']
+    // Expected patterns for real git files
+    const gitPatterns = [
+      /^ref:\s*refs\/heads\//,  // .git/HEAD
+      /\[core\]/,               // .git/config
+      /DIRC/,                   // .git/index (binary header)
+    ]
 
     for (const path of gitPaths) {
       const gitUrl = new URL(path, baseUrl).href
       const response = await fetch(gitUrl, {
-        method: 'HEAD',
         redirect: 'manual' // Don't follow redirects
       })
 
-      // ✅ ONLY 200 OK = real vulnerability (file is ACCESSIBLE)
+      // ✅ ONLY 200 OK = potential vulnerability, but need to verify content
       // ❌ 403 Forbidden = GOOD! Server is blocking access (not a vulnerability)
       // ❌ 404 Not Found = GOOD! File doesn't exist
-      // ❌ 301/302 Redirect = Not conclusive (may redirect to 404 or homepage)
-      if (response.ok) {  // Only 200-299 status codes
-        findings.push({
-          type: 'critical-exposure',
-          severity: 'critical',
-          title: 'Git repository exposed',
-          description: 'Git repository files are accessible, potentially exposing source code and history',
-          evidence: gitUrl,
-          impact: 'Complete source code disclosure including credentials, API keys, and development history',
-          recommendation: 'Immediately block access to .git folder in web server configuration. Add: "location ~ /\\.git { deny all; }" to nginx or "RedirectMatch 404 /\\.git" to Apache config',
-          metadata: {
-            paths: [path]
-          }
-        })
-        break // One confirmation is enough
+      if (response.ok) {
+        // Verify it's a real git file, not captcha/challenge
+        const isReal = await isRealSensitiveFile(response.clone(), gitPatterns)
+        if (isReal) {
+          findings.push({
+            type: 'critical-exposure',
+            severity: 'critical',
+            title: 'Git repository exposed',
+            description: 'Git repository files are accessible, potentially exposing source code and history',
+            evidence: gitUrl,
+            impact: 'Complete source code disclosure including credentials, API keys, and development history',
+            recommendation: 'Immediately block access to .git folder in web server configuration. Add: "location ~ /\\.git { deny all; }" to nginx or "RedirectMatch 404 /\\.git" to Apache config',
+            metadata: {
+              paths: [path]
+            }
+          })
+          break // One confirmation is enough
+        }
       }
     }
   } catch (error) {
@@ -182,28 +277,38 @@ export async function analyzeReconnaissance(crawlResult: CrawlResult): Promise<R
   // 4. Check for .env file exposure
   try {
     const envPaths = ['/.env', '/.env.local', '/.env.production', '/config/.env', '/.env.example']
+    // .env files typically contain KEY=value patterns
+    const envPatterns = [
+      /^[A-Z_]+=.*/m,           // KEY=value format
+      /^DB_|^API_|^SECRET_/m,   // Common env prefixes
+      /^DATABASE_URL=/m,
+      /^APP_KEY=/m,
+    ]
 
     for (const path of envPaths) {
       const envUrl = new URL(path, baseUrl).href
       const response = await fetch(envUrl, {
-        method: 'HEAD',
         redirect: 'manual'
       })
 
       if (response.ok) {
-        findings.push({
-          type: 'critical-exposure',
-          severity: 'critical',
-          title: 'Environment variables file exposed',
-          description: '.env file is publicly accessible, likely containing sensitive configuration',
-          evidence: envUrl,
-          impact: 'API keys, database credentials, and other secrets may be exposed',
-          recommendation: 'Immediately remove .env files from public directory and add to .gitignore. Block access in web server config.',
-          metadata: {
-            paths: [path]
-          }
-        })
-        break
+        // Verify it's a real .env file, not captcha
+        const isReal = await isRealSensitiveFile(response.clone(), envPatterns)
+        if (isReal) {
+          findings.push({
+            type: 'critical-exposure',
+            severity: 'critical',
+            title: 'Environment variables file exposed',
+            description: '.env file is publicly accessible, likely containing sensitive configuration',
+            evidence: envUrl,
+            impact: 'API keys, database credentials, and other secrets may be exposed',
+            recommendation: 'Immediately remove .env files from public directory and add to .gitignore. Block access in web server config.',
+            metadata: {
+              paths: [path]
+            }
+          })
+          break
+        }
       }
     }
   } catch (error) {
@@ -221,24 +326,27 @@ export async function analyzeReconnaissance(crawlResult: CrawlResult): Promise<R
       for (const ext of backupExtensions) {
         const backupUrl = new URL(`/${file}${ext}`, baseUrl).href
         const response = await fetch(backupUrl, {
-          method: 'HEAD',
           redirect: 'manual'
         })
 
         if (response.ok) {
-          findings.push({
-            type: 'critical-exposure',
-            severity: 'high',
-            title: 'Backup file accessible',
-            description: `Backup file ${file}${ext} is publicly accessible`,
-            evidence: backupUrl,
-            impact: 'May contain sensitive configuration, passwords, or source code',
-            recommendation: 'Remove all backup files from web root. Use proper backup storage outside of public directories.',
-            metadata: {
-              paths: [`/${file}${ext}`]
-            }
-          })
-          break // One backup file is enough evidence
+          // Verify it's a real backup file, not captcha
+          const isReal = await isRealSensitiveFile(response.clone())
+          if (isReal) {
+            findings.push({
+              type: 'critical-exposure',
+              severity: 'high',
+              title: 'Backup file accessible',
+              description: `Backup file ${file}${ext} is publicly accessible`,
+              evidence: backupUrl,
+              impact: 'May contain sensitive configuration, passwords, or source code',
+              recommendation: 'Remove all backup files from web root. Use proper backup storage outside of public directories.',
+              metadata: {
+                paths: [`/${file}${ext}`]
+              }
+            })
+            break // One backup file is enough evidence
+          }
         }
       }
     }
@@ -247,52 +355,66 @@ export async function analyzeReconnaissance(crawlResult: CrawlResult): Promise<R
     for (const dir of backupPaths) {
       const backupUrl = new URL(dir, baseUrl).href
       const response = await fetch(backupUrl, {
-        method: 'HEAD',
         redirect: 'manual'
       })
 
-      // ✅ ONLY 200 OK = real vulnerability (directory is ACCESSIBLE)
+      // ✅ ONLY 200 OK = potential vulnerability, but verify content
       // ❌ 403 Forbidden = GOOD! Server is blocking access
       if (response.ok) {
-        findings.push({
-          type: 'information-disclosure',
-          severity: 'medium',
-          title: 'Backup directory exposed',
-          description: `Backup directory ${dir} exists and may be accessible`,
-          evidence: backupUrl,
-          impact: 'Backup files may be enumerable or accessible',
-          recommendation: 'Remove backup directories from web root or properly restrict access',
-          metadata: {
-            paths: [dir]
-          }
-        })
-        break
+        const isReal = await isRealSensitiveFile(response.clone())
+        if (isReal) {
+          findings.push({
+            type: 'information-disclosure',
+            severity: 'medium',
+            title: 'Backup directory exposed',
+            description: `Backup directory ${dir} exists and may be accessible`,
+            evidence: backupUrl,
+            impact: 'Backup files may be enumerable or accessible',
+            recommendation: 'Remove backup directories from web root or properly restrict access',
+            metadata: {
+              paths: [dir]
+            }
+          })
+          break
+        }
       }
     }
 
     // Check for SQL dumps
     const sqlDumps = ['backup.sql', 'db.sql', 'dump.sql', 'database.sql', 'mysql.sql', 'data.sql']
+    // SQL dumps typically start with comments or CREATE/INSERT statements
+    const sqlPatterns = [
+      /^--.*MySQL/im,           // MySQL dump comment
+      /^CREATE\s+TABLE/im,      // CREATE TABLE statement
+      /^INSERT\s+INTO/im,       // INSERT statement
+      /^DROP\s+TABLE/im,        // DROP TABLE statement
+      /^\/\*.*mysqldump/im,     // mysqldump header
+    ]
+
     for (const dump of sqlDumps) {
       const dumpUrl = new URL(`/${dump}`, baseUrl).href
       const response = await fetch(dumpUrl, {
-        method: 'HEAD',
         redirect: 'manual'
       })
 
       if (response.ok) {
-        findings.push({
-          type: 'critical-exposure',
-          severity: 'critical',
-          title: 'Database dump exposed',
-          description: `SQL dump file ${dump} is publicly accessible`,
-          evidence: dumpUrl,
-          impact: 'Complete database including user credentials may be exposed',
-          recommendation: 'IMMEDIATELY remove SQL dumps from web root. This is a critical security issue.',
-          metadata: {
-            paths: [`/${dump}`]
-          }
-        })
-        break
+        // Verify it's a real SQL dump, not captcha
+        const isReal = await isRealSensitiveFile(response.clone(), sqlPatterns)
+        if (isReal) {
+          findings.push({
+            type: 'critical-exposure',
+            severity: 'critical',
+            title: 'Database dump exposed',
+            description: `SQL dump file ${dump} is publicly accessible`,
+            evidence: dumpUrl,
+            impact: 'Complete database including user credentials may be exposed',
+            recommendation: 'IMMEDIATELY remove SQL dumps from web root. This is a critical security issue.',
+            metadata: {
+              paths: [`/${dump}`]
+            }
+          })
+          break
+        }
       }
     }
   } catch (error) {
@@ -368,26 +490,28 @@ export async function analyzeReconnaissance(crawlResult: CrawlResult): Promise<R
     for (const path of idePaths) {
       const ideUrl = new URL(path, baseUrl).href
       const response = await fetch(ideUrl, {
-        method: 'HEAD',
         redirect: 'manual'
       })
 
-      // ✅ ONLY 200 OK = real vulnerability (IDE files are ACCESSIBLE)
+      // ✅ ONLY 200 OK = potential vulnerability, but verify content
       // ❌ 403 Forbidden = GOOD! Server is blocking access
       if (response.ok) {
-        findings.push({
-          type: 'information-disclosure',
-          severity: 'low',
-          title: 'IDE configuration files exposed',
-          description: `IDE files/folders found at ${path}`,
-          evidence: ideUrl,
-          impact: 'Project structure, settings, and development environment details visible',
-          recommendation: 'Add IDE directories to .gitignore and block access in web server',
-          metadata: {
-            paths: [path]
-          }
-        })
-        break
+        const isReal = await isRealSensitiveFile(response.clone())
+        if (isReal) {
+          findings.push({
+            type: 'information-disclosure',
+            severity: 'low',
+            title: 'IDE configuration files exposed',
+            description: `IDE files/folders found at ${path}`,
+            evidence: ideUrl,
+            impact: 'Project structure, settings, and development environment details visible',
+            recommendation: 'Add IDE directories to .gitignore and block access in web server',
+            metadata: {
+              paths: [path]
+            }
+          })
+          break
+        }
       }
     }
   } catch (error) {
