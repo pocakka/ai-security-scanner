@@ -219,32 +219,33 @@ def cleanup_stuck_pending(timeout_seconds: int = 300) -> int:
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
 
-        # Find stuck PENDING scans
+        # Find stuck PENDING scan IDs
         cur.execute("""
-            SELECT COUNT(*)
+            SELECT id
             FROM "Scan"
             WHERE status = 'PENDING'
             AND "createdAt" < NOW() - make_interval(secs => %s)
         """, (timeout_seconds,))
 
-        stuck_count = cur.fetchone()[0]
+        stuck_scan_ids = [row[0] for row in cur.fetchall()]
+        stuck_count = len(stuck_scan_ids)
 
         if stuck_count > 0:
-            # Delete stuck PENDING scans (and their jobs)
+            # Delete Jobs that reference these Scans (by scanId in data JSON)
             cur.execute("""
                 DELETE FROM "Job"
-                WHERE status = 'PENDING'
-                AND "createdAt" < NOW() - make_interval(secs => %s)
-            """, (timeout_seconds,))
+                WHERE data->>'scanId' = ANY(%s)
+            """, (stuck_scan_ids,))
+            jobs_deleted = cur.rowcount
 
+            # Delete the stuck PENDING scans
             cur.execute("""
                 DELETE FROM "Scan"
-                WHERE status = 'PENDING'
-                AND "createdAt" < NOW() - make_interval(secs => %s)
-            """, (timeout_seconds,))
+                WHERE id = ANY(%s)
+            """, (stuck_scan_ids,))
 
             conn.commit()
-            print(f"  🗑️ Deleted {stuck_count} stuck PENDING scans (older than {timeout_seconds}s)")
+            print(f"  🗑️ Deleted {stuck_count} stuck PENDING scans + {jobs_deleted} orphan jobs (older than {timeout_seconds}s)")
 
         cur.close()
         conn.close()

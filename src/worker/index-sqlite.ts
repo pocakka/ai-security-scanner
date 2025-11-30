@@ -110,6 +110,13 @@ async function processScanJob(data: { scanId: string; url: string }) {
   }
 
   try {
+    // First check if the Scan still exists (may have been deleted by cleanup)
+    const existingScan = await prisma.scan.findUnique({ where: { id: scanId } })
+    if (!existingScan) {
+      console.log(`[Worker] ⚠️ Scan ${scanId} not found (deleted by cleanup?), skipping...`)
+      return // Exit gracefully - the job will be marked as complete
+    }
+
     // Update status to scanning
     logStep('Step 0: Update status to SCANNING', 'START')
     const dbUpdateStart = Date.now()
