@@ -32,22 +32,40 @@ export class SQLiteQueue {
 
   /**
    * Get next pending job (for worker processing)
+   * Set JOB_ORDER=DESC for newest-first (UI priority)
+   * Default: oldest-first (batch processing)
    */
   async getNext(): Promise<{ id: string; type: string; data: any } | null> {
     // Use raw SQL for atomic claim (prevents race conditions)
     // Also properly checks attempts < maxAttempts
-    const jobs = await prisma.$queryRaw<Array<{id: string, type: string, data: string}>>`
-      UPDATE "Job"
-      SET status = 'PROCESSING', "startedAt" = NOW(), attempts = attempts + 1
-      WHERE id = (
-        SELECT id FROM "Job"
-        WHERE status = 'PENDING' AND attempts < "maxAttempts"
-        ORDER BY "createdAt" ASC
-        LIMIT 1
-        FOR UPDATE SKIP LOCKED
-      )
-      RETURNING id, type, data
-    `
+    // JOB_ORDER=DESC means newest first (UI scans get priority)
+    const orderDesc = process.env.JOB_ORDER === 'DESC'
+
+    const jobs = orderDesc
+      ? await prisma.$queryRaw<Array<{id: string, type: string, data: string}>>`
+        UPDATE "Job"
+        SET status = 'PROCESSING', "startedAt" = NOW(), attempts = attempts + 1
+        WHERE id = (
+          SELECT id FROM "Job"
+          WHERE status = 'PENDING' AND attempts < "maxAttempts"
+          ORDER BY "createdAt" DESC
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED
+        )
+        RETURNING id, type, data
+      `
+      : await prisma.$queryRaw<Array<{id: string, type: string, data: string}>>`
+        UPDATE "Job"
+        SET status = 'PROCESSING', "startedAt" = NOW(), attempts = attempts + 1
+        WHERE id = (
+          SELECT id FROM "Job"
+          WHERE status = 'PENDING' AND attempts < "maxAttempts"
+          ORDER BY "createdAt" ASC
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED
+        )
+        RETURNING id, type, data
+      `
 
     if (!jobs || jobs.length === 0) {
       return null
