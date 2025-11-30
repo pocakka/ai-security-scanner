@@ -33,6 +33,7 @@ export default function WorkerStatusPanel() {
   const [triggerLoading, setTriggerLoading] = useState(false)
   const [triggerMessage, setTriggerMessage] = useState<string | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
 
   const fetchStatus = async () => {
     try {
@@ -69,6 +70,34 @@ export default function WorkerStatusPanel() {
     } finally {
       setTriggerLoading(false)
       // Clear message after 5 seconds
+      setTimeout(() => setTriggerMessage(null), 5000)
+    }
+  }
+
+  const handleBulkDelete = async (statusToDelete: 'PENDING' | 'FAILED') => {
+    if (!confirm(`Are you sure you want to delete ALL ${statusToDelete} scans and jobs?`)) {
+      return
+    }
+
+    setDeleteLoading(statusToDelete)
+    try {
+      const response = await fetch('/api/admin/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: statusToDelete }),
+      })
+      const data = await response.json()
+
+      if (data.success) {
+        setTriggerMessage(`✅ ${data.message}`)
+        fetchStatus()
+      } else {
+        setTriggerMessage(`❌ ${data.error}`)
+      }
+    } catch (err) {
+      setTriggerMessage('❌ Failed to delete')
+    } finally {
+      setDeleteLoading(null)
       setTimeout(() => setTriggerMessage(null), 5000)
     }
   }
@@ -145,13 +174,52 @@ export default function WorkerStatusPanel() {
           {/* Queue Stats */}
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
-              <div className="text-orange-400 text-xs font-medium mb-1">Pending</div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-orange-400 text-xs font-medium">Pending</div>
+                {status.queue.pending > 0 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleBulkDelete('PENDING')
+                    }}
+                    disabled={deleteLoading === 'PENDING'}
+                    className="text-xs px-2 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded transition-colors disabled:opacity-50"
+                    title="Delete all pending scans"
+                  >
+                    {deleteLoading === 'PENDING' ? '...' : 'Delete All'}
+                  </button>
+                )}
+              </div>
               <div className="text-2xl font-bold text-white">{status.queue.pending}</div>
             </div>
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
               <div className="text-blue-400 text-xs font-medium mb-1">Processing</div>
               <div className="text-2xl font-bold text-white">{status.queue.processing}</div>
             </div>
+          </div>
+
+          {/* Delete All Failed Button */}
+          <div className="mb-4">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleBulkDelete('FAILED')
+              }}
+              disabled={deleteLoading === 'FAILED'}
+              className="w-full px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {deleteLoading === 'FAILED' ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-red-400 border-t-transparent"></div>
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <>
+                  <span>🗑️</span>
+                  <span>Delete All Failed Scans</span>
+                </>
+              )}
+            </button>
           </div>
 
           {/* Process Pending Scans Button - ALWAYS SHOW if any jobs exist */}

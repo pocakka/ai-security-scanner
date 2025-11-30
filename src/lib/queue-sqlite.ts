@@ -34,35 +34,26 @@ export class SQLiteQueue {
    * Get next pending job (for worker processing)
    */
   async getNext(): Promise<{ id: string; type: string; data: any } | null> {
-    // Find oldest pending job
-    const job = await prisma.job.findFirst({
-      where: {
-        status: 'PENDING',
-        attempts: {
-          lt: prisma.job.fields.maxAttempts, // attempts < maxAttempts
-        },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    })
+    // Use raw SQL for atomic claim (prevents race conditions)
+    // Also properly checks attempts < maxAttempts
+    const jobs = await prisma.$queryRaw<Array<{id: string, type: string, data: string}>>`
+      UPDATE "Job"
+      SET status = 'PROCESSING', "startedAt" = NOW(), attempts = attempts + 1
+      WHERE id = (
+        SELECT id FROM "Job"
+        WHERE status = 'PENDING' AND attempts < "maxAttempts"
+        ORDER BY "createdAt" ASC
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED
+      )
+      RETURNING id, type, data
+    `
 
-    if (!job) {
+    if (!jobs || jobs.length === 0) {
       return null
     }
 
-    // Mark as processing
-    await prisma.job.update({
-      where: { id: job.id },
-      data: {
-        status: 'PROCESSING',
-        startedAt: new Date(),
-        attempts: {
-          increment: 1,
-        },
-      },
-    })
-
+    const job = jobs[0]
     return {
       id: job.id,
       type: job.type,

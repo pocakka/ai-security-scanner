@@ -1041,42 +1041,106 @@ async function processOneJob() {
   }
 }
 
-// Continuous worker loop - processes jobs until stopped
-async function workerLoop() {
-  // Check if we should start (prevents multiple workers)
+// Single-job worker - processes ONE job then exits
+// This prevents memory leaks from accumulating workers
+async function runSingleJob() {
+  // HARD TIMEOUT: Force exit after 90 seconds no matter what
+  const HARD_TIMEOUT_MS = 90000
+  const hardTimeoutId = setTimeout(() => {
+    console.error('[Worker] ⏰ HARD TIMEOUT - forcing exit after 90s')
+    process.exit(1)
+  }, HARD_TIMEOUT_MS)
+  hardTimeoutId.unref() // Don't keep process alive just for this timer
+
+  // Check if we should start (prevents too many workers)
   const canStart = await workerManager.start()
   if (!canStart) {
-    console.log('[Worker] Another worker is already running, exiting...')
+    console.log('[Worker] Worker pool full, exiting...')
+    clearTimeout(hardTimeoutId)
     process.exit(0)
   }
 
-  console.log('[Worker] ✅ SQLite Queue Worker started')
-  console.log('[Worker] 🔄 Continuous mode - will process jobs until stopped')
-
-  let running = true
-  let jobsProcessed = 0
+  console.log('[Worker] ✅ Single-job worker started (90s hard timeout)')
 
   // Graceful shutdown handler
-  const shutdown = async () => {
-    running = false
-    console.log('[Worker] 🛑 Shutdown signal received, will exit after current job...')
-  }
-  process.on('SIGINT', shutdown)
-  process.on('SIGTERM', shutdown)
-
-  while (running) {
-    await processOneJob()
-    jobsProcessed++
-
-    if (!running) break
+  const cleanup = async () => {
+    clearTimeout(hardTimeoutId)
+    try {
+      await Promise.race([
+        crawler.close(),
+        new Promise(resolve => setTimeout(resolve, 5000)) // 5s max for cleanup
+      ])
+    } catch (e) { /* ignore */ }
+    await workerManager.shutdown()
   }
 
-  // Cleanup
-  console.log(`[Worker] 🧹 Cleaning up... (processed ${jobsProcessed} jobs)`)
-  await crawler.close()
-  await workerManager.shutdown()
+  process.on('SIGINT', async () => {
+    console.log('[Worker] 🛑 SIGINT received, cleaning up...')
+    await cleanup()
+    process.exit(0)
+  })
+  process.on('SIGTERM', async () => {
+    console.log('[Worker] 🛑 SIGTERM received, cleaning up...')
+    await cleanup()
+    process.exit(0)
+  })
+
+  try {
+    // Get job directly (don't use processOneJob which has wait logic)
+    const job = await jobQueue.getNext()
+
+    if (!job) {
+      console.log('[Worker] 💤 No jobs available, exiting...')
+      await cleanup()
+      process.exit(0)
+    }
+
+    console.log(`[Worker] 🎯 Processing job ${job.id} (type: ${job.type})`)
+
+    if (job.type === 'scan') {
+      try {
+        // 60 second timeout for the scan itself
+        const scanPromise = processScanJob(job.data)
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('⏰ Scan timeout after 60s')), 60000)
+        )
+
+        await Promise.race([scanPromise, timeoutPromise])
+        await jobQueue.complete(job.id)
+        console.log('[Worker] ✅ Job completed successfully')
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        console.error(`[Worker] ❌ Job failed: ${errorMessage}`)
+
+        // Mark scan as FAILED
+        if (job.data.scanId) {
+          try {
+            await prisma.scan.update({
+              where: { id: job.data.scanId },
+              data: {
+                status: 'FAILED',
+                workerId: null,
+                completedAt: new Date(),
+              },
+            })
+          } catch (e) { /* ignore */ }
+        }
+
+        await jobQueue.fail(job.id, errorMessage)
+      }
+    } else {
+      console.log(`[Worker] ⚠️ Unknown job type: ${job.type}`)
+      await jobQueue.fail(job.id, `Unknown job type: ${job.type}`)
+    }
+  } catch (error) {
+    console.error('[Worker] ❌ Fatal error:', error)
+  }
+
+  // Cleanup and exit
+  console.log('[Worker] 🧹 Cleaning up and exiting...')
+  await cleanup()
   process.exit(0)
 }
 
-// Start the worker loop
-workerLoop()
+// Start single-job worker
+runSingleJob()
